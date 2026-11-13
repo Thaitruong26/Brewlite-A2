@@ -1,0 +1,93 @@
+@startuml
+title BrewLite · Assignment 2\nTask 2.1 — Activity diagram thanh toán đơn hàng
+caption Nhóm 13 · Kiều Ngọc Nghĩa
+
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 15
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam ArrowColor #39534A
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #467460
+  FontColor #18392C
+  DiamondBackgroundColor #FFF2D6
+  DiamondBorderColor #9A702C
+  StartColor #214F3B
+  EndColor #214F3B
+}
+skinparam swimlaneBorderColor #BDCFC4
+skinparam swimlaneTitleFontStyle bold
+skinparam swimlaneTitleFontColor #214F3B
+
+|#FFFAEF|barista|Barista
+|#F5F9FC|system|Hệ thống BrewLite
+|#F4FAF4|customer|Khách hàng
+
+|customer|
+start
+:Xem tổng tiền, chọn MoMo QR hoặc thẻ\nvà xác nhận đặt hàng;
+
+|system|
+:Tính giá và kiểm tra\nưu đãi, điểm, tồn nguyên liệu;
+if (Yêu cầu tạo đơn hợp lệ?) then ([Có])
+  :Tạo đơn PENDING và giữ nguyên liệu,\ntrừ điểm đã dùng nếu có;
+else ([Không])
+  |customer|
+  :Xem lý do từ chối\nvà chỉnh lại giỏ hàng;
+  stop
+endif
+
+|system|
+if (Phương thức thanh toán?) then ([MoMo QR])
+  :Hiển thị QR, số tiền, mã đơn\nvà hạn thanh toán 15 phút;
+  |customer|
+  :Có thể quét QR và chuyển tiền\nkèm mã đơn;
+  |barista|
+  :Theo dõi đơn chờ và đối chiếu\nsố tiền, mã đơn thực nhận;
+  if (Kết quả chờ thanh toán?) then ([Đối soát khớp])
+    :Bấm xác nhận đã nhận tiền;
+    |system|
+    :Kiểm tra quyền và trạng thái đơn,\nghi nhận giao dịch ví;
+  else ([Đơn bị hủy hoặc hết hạn])
+    |system|
+    :Hủy đơn, hoàn nguyên liệu,\nlượt ưu đãi và điểm đã dùng nếu có;
+    |customer|
+    :Xem thông báo CANCELLED;
+    stop
+  endif
+else ([Thẻ])
+  |system|
+  repeat
+    if (Đơn còn hạn?) then ([Có])
+      :Kiểm tra khóa chống gửi trùng,\nxử lý giao dịch thẻ mô phỏng;
+      if (Thẻ bị từ chối?) then ([Có])
+        :Ghi PAYMENT_FAILED;
+        |customer|
+        :Xem lỗi và chọn có thử lại hay không;
+      endif
+    endif
+  repeat while (Thẻ lỗi, đơn còn hạn và khách thử lại?) is ([Thử lại với khóa mới]) not ([Dừng thử])
+  |system|
+  if (Giao dịch thành công?) then ([Có])
+    :Ghi nhận giao dịch thẻ;
+  else ([Chưa thanh toán])
+    :Chờ yêu cầu hủy hoặc\nđến hạn thanh toán;
+    :Hủy đơn, hoàn nguyên liệu,\nlượt ưu đãi và điểm đã dùng nếu có;
+    |customer|
+    :Xem thông báo CANCELLED;
+    stop
+  endif
+endif
+
+|system|
+:Đưa đơn sang PAID và cộng điểm\nthưởng nếu đủ điều kiện;
+fork
+  |system|
+  :Hiển thị xác nhận và trạng thái\ntrên trang theo dõi của khách;
+fork again
+  |barista|
+  :Đơn xuất hiện trong hàng đợi pha chế;
+end fork
+stop
+@enduml
