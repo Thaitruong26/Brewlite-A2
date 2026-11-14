@@ -35,22 +35,27 @@ export class PaymentsService {
     user?: { id: number; role?: string },
     res?: any,
   ) {
+    // 1. Validate idempotency key
     if (!idempotencyKey?.trim()) {
       throw new BadRequestException('Idempotency-Key is required');
     }
 
-    const normalized = {
+    const normalizedKey = idempotencyKey.trim();
+
+    // 2. Create request hash
+    const normalizedRequest = {
       orderId: dto.orderId,
       method: dto.method,
       mockResult: dto.mockResult ?? null,
     };
 
     const requestHash = createHash('sha256')
-      .update(JSON.stringify(normalized))
+      .update(JSON.stringify(normalizedRequest))
       .digest('hex');
 
+    // 3. Check idempotent request
     const existing = await this.prisma.payment.findUnique({
-      where: { idempotencyKey },
+      where: { idempotencyKey: normalizedKey },
     });
 
     if (existing) {
@@ -79,6 +84,7 @@ export class PaymentsService {
       return existing.responseSnapshot ?? existing;
     }
 
+    // 4. Find order
     const order = await this.prisma.order.findUnique({
       where: { id: dto.orderId },
     });
@@ -87,23 +93,35 @@ export class PaymentsService {
       throw new NotFoundException('Order not found');
     }
 
+    // 5. Check ownership
     if (user && order.userId !== user.id && user.role !== 'BARISTA') {
-      throw new ForbiddenException('Bạn không có quyền thanh toán đơn hàng này');
+      throw new ForbiddenException(
+        'Bạn không có quyền thanh toán đơn hàng này',
+      );
     }
 
-    if (order.status !== 'PENDING' && order.status !== 'PAYMENT_FAILED') {
+    // 6. Check order status
+    if (
+      order.status !== 'PENDING' &&
+      order.status !== 'PAYMENT_FAILED'
+    ) {
       throw new BadRequestException({
         code: 'ORDER_NOT_AVAILABLE_FOR_PAYMENT',
         message: 'Order is not available for payment',
       });
     }
 
+    // 7. Check payment timeout
     if (order.createdAt) {
-      const isExpired = Date.now() - new Date(order.createdAt).getTime() > ORDER_PAYMENT_TIMEOUT_MS;
+      const isExpired =
+        Date.now() - new Date(order.createdAt).getTime() >
+        ORDER_PAYMENT_TIMEOUT_MS;
+
       if (isExpired) {
         if (this.ordersService) {
           await this.ordersService.cancelOrderInternal(order.id);
         }
+
         throw new BadRequestException({
           code: 'ORDER_EXPIRED',
           message: 'Đơn hàng đã hết hạn thanh toán (quá 15 phút)',
@@ -111,6 +129,7 @@ export class PaymentsService {
       }
     }
 
+    // 8. Check existing active payment
     const activePayment = await this.prisma.payment.findFirst({
       where: {
         orderId: order.id,
@@ -120,12 +139,19 @@ export class PaymentsService {
 
     if (activePayment) {
       if (activePayment.status === 'SUCCESS') {
-        throw new ConflictException('Đơn hàng này đã được thanh toán thành công');
+        throw new ConflictException(
+          'Đơn hàng này đã được thanh toán thành công',
+        );
       }
-      throw new ConflictException('Đơn hàng đang có một giao dịch thanh toán khác đang xử lý');
+
+      throw new ConflictException(
+        'Đơn hàng đang có một giao dịch thanh toán khác đang xử lý',
+      );
     }
 
+    // 9. Create payment
     let payment;
+
     try {
       payment = await this.prisma.payment.create({
         data: {
@@ -133,17 +159,21 @@ export class PaymentsService {
           amount: order.total,
           method: dto.method,
           status: 'PROCESSING',
-          idempotencyKey,
+          idempotencyKey: normalizedKey,
           requestHash,
         },
       });
     } catch (err: any) {
       if (err?.code === 'P2002') {
-        throw new ConflictException('Đơn hàng đang có một giao dịch thanh toán khác');
+        throw new ConflictException(
+          'Giao dịch thanh toán đã tồn tại hoặc đang được xử lý',
+        );
       }
+
       throw err;
     }
 
+    // 10. Process mock payment
     const success = dto.mockResult !== MockPaymentResult.FAILED;
 
     const response = {
@@ -169,47 +199,79 @@ export class PaymentsService {
       },
     };
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      const updatedPayment = await tx.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: success ? 'SUCCESS' : 'FAILED',
-          responseSnapshot: response,
-          failureReason: success ? null : 'Mock payment failure',
-        },
-      });
+    // 11. Update payment and order in transaction
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const updatedPayment = await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: success ? 'SUCCESS' : 'FAILED',
+            responseSnapshot: response,
+            failureReason: success ? null : 'Mock payment failure',
+          },
+        });
 
-      // Theo Sơ đồ 9.1: PAYMENT_FAILED chỉ cho phép thử lại quay về PENDING
-      // Nếu đơn đang ở PAYMENT_FAILED, chuyển về PENDING trước khi sang PAID / PAYMENT_FAILED
-      if (order.status === 'PAYMENT_FAILED') {
-        assertTransition('PAYMENT_FAILED' as any, 'PENDING' as any);
+        // Retry payment: PAYMENT_FAILED -> PENDING
+        if (order.status === 'PAYMENT_FAILED') {
+          assertTransition(
+            'PAYMENT_FAILED' as any,
+            'PENDING' as any,
+          );
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: { status: 'PENDING' },
+          });
+        }
+
+        // Update order status
+        const targetStatus = success ? 'PAID' : 'PAYMENT_FAILED';
+
+        assertTransition('PENDING' as any, targetStatus as any);
+
         await tx.order.update({
           where: { id: order.id },
-          data: { status: 'PENDING' },
+          data: { status: targetStatus },
         });
-      }
 
-      const targetStatus = success ? 'PAID' : 'PAYMENT_FAILED';
-      assertTransition('PENDING' as any, targetStatus as any);
+        // Award loyalty points only on successful payment
+        if (success) {
+          await this.loyaltyService.award(tx, order);
+        }
 
-      await tx.order.update({
-        where: { id: order.id },
-        data: {
-          status: targetStatus,
-        },
+        return updatedPayment.responseSnapshot ?? response;
       });
 
-      if (success) {
-        await this.loyaltyService.award(tx, order);
+      if (!success) {
+        throw new HttpException(response, 402);
       }
 
-      return updatedPayment.responseSnapshot ?? response;
-    });
+      return result;
+    } catch (err) {
+      // Do not leave payment stuck in PROCESSING
+      if (
+        !(err instanceof HttpException && err.getStatus() === 402)
+      ) {
+        try {
+          await this.prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: 'FAILED',
+              failureReason: 'Payment processing error',
+              responseSnapshot: {
+                paymentId: payment.id,
+                orderId: order.id,
+                status: 'FAILED',
+                message: 'Payment processing error',
+              },
+            },
+          });
+        } catch {
+          // Preserve the original error
+        }
+      }
 
-    if (!success) {
-      throw new HttpException(response, 402);
+      throw err;
     }
-
-    return result;
   }
 }
