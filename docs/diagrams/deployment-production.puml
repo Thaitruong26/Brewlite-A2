@@ -1,0 +1,42 @@
+@startuml
+skinparam shadowing false
+left to right direction
+node "Customer phone" as Phone { artifact "Browser (mobile-first)" }
+node "Barista device" as Barista { artifact "Browser" }
+frame "Local development" as Local {
+ node "Docker compose (local)" as DC {
+   artifact "Next.js dev" as LWEB
+   artifact "NestJS dev" as LAPI
+   database "PostgreSQL dev volume" as LDB
+ }
+}
+frame "CI: GitHub Actions" as CI {
+ artifact "lint → test → build → scan" as QA
+ artifact "Docker image: SHA tag" as Build
+}
+cloud "GHCR registry" as GHCR
+frame "Production target: Render (PROPOSED, NOT DEPLOYED)" as PROD {
+ node "Managed HTTPS ingress" as Edge
+ node "Next.js Web Service :3000" as Web
+ node "NestJS API Web Service :3001" as API
+ database "Managed PostgreSQL\nprivate :5432 + persistent storage" as DB
+ artifact "Secret env (JWT, DB_URL, VNPay key)" as Secrets
+ artifact "GET /health + structured logs" as Logs
+}
+cloud "VNPay Sandbox" as VN
+Phone --> Edge : HTTPS :443
+Barista --> Edge : HTTPS :443
+Edge --> Web : HTTPS
+Web --> API : HTTPS /api (server-to-server)
+API --> DB : internal TCP :5432
+API --> VN : HTTPS :443 pay/refund/QueryDr
+VN --> API : HTTPS :443 IPN (public URL)
+Secrets ..> Web
+Secrets ..> API
+Logs ..> API
+QA --> Build
+Build --> GHCR : push SHA tag
+GHCR --> Web : pull image (if supported)
+GHCR --> API : pull image
+DC ..> QA : separate environment
+@enduml

@@ -1,0 +1,28 @@
+digraph G {
+ graph [label="architecture-logical — BrewLite A2 design", labelloc="t",fontsize=19, fontname="DejaVu Sans", bgcolor="white",pad="0.5",rankdir="LR",nodesep="0.4",ranksep="0.75",splines="spline"];
+ node [style="rounded,filled",fontname="DejaVu Sans",fontsize=11,margin="0.20,0.13",penwidth=1.3,color="#64748b"];
+ edge [color="#475569",fontname="DejaVu Sans",fontsize=10,arrowsize=0.7];
+ "Users" [label="Customer / Barista / Manager", shape=box, fillcolor="#eef2ff"];
+"Web" [label="Next.js mobile-first\napps/web", shape=box, fillcolor="#dbeafe"];
+"Api" [label="NestJS modular monolith\napps/api", shape=box, fillcolor="#dbeafe"];
+"Auth" [label="Auth / Catalog", shape=box, fillcolor="#eff6ff"];
+"Orders" [label="Checkout / Orders / Inventory", shape=box, fillcolor="#eff6ff"];
+"Payments" [label="PaymentProvider / VNPay Adapter / Mock Adapter", shape=box, fillcolor="#eff6ff"];
+"Cancel" [label="Cancellation / Loyalty / Promotion", shape=box, fillcolor="#eff6ff"];
+"DB" [label="PostgreSQL + Prisma migration", shape=box, fillcolor="#dbeafe"];
+"VN" [label="VNPay Sandbox", shape=box, fillcolor="#fff7ed"];
+"Obs" [label="Health / Logger / Config", shape=box, fillcolor="#eff6ff"];
+"Users" -> "Web" [label="HTTPS"];
+"Web" -> "Api" [label="REST/JWT"];
+"Api" -> "Auth" [label="module"];
+"Api" -> "Orders" [label="module"];
+"Api" -> "Payments" [label="module"];
+"Api" -> "Cancel" [label="module"];
+"Api" -> "Obs" [label="module"];
+"Orders" -> "DB" [label="transaction"];
+"Payments" -> "DB" [label="payment ledger"];
+"Cancel" -> "DB" [label="refund + points"];
+"Payments" -> "VN" [label="signed HTTPS"];
+"VN" -> "Api" [label="signed IPN"];
+
+ }

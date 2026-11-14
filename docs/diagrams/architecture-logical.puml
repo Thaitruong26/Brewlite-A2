@@ -1,0 +1,26 @@
+@startuml
+left to right direction
+skinparam componentStyle rectangle
+actor Customer
+actor Barista
+node "Next.js mobile-first Web (apps/web)" as Web
+node "NestJS Modular Monolith (apps/api)" as API {
+ component "Auth / Catalog / Cart" as C
+ component "Checkout / Orders / Inventory" as O
+ component "Payment Service" as P
+ component "PaymentProvider" as I
+ component "Cancellation / Loyalty / Promotion" as L
+ component "Observability / Health" as H
+}
+database "PostgreSQL + Prisma migrations" as DB
+cloud "VNPay Sandbox" as VN
+Customer --> Web : HTTPS
+Barista --> Web : HTTPS
+Web --> API : HTTPS REST / JWT
+API --> DB : Prisma + private TCP 5432
+O --> P
+P --> I
+I --> VN : Signed HTTPS pay/refund/query
+VN --> API : HTTPS IPN
+L --> O
+@enduml

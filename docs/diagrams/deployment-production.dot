@@ -1,0 +1,32 @@
+digraph G {
+ graph [label="deployment-production — BrewLite A2 design", labelloc="t",fontsize=19, fontname="DejaVu Sans", bgcolor="white",pad="0.5",rankdir="LR",nodesep="0.4",ranksep="0.75",splines="spline"];
+ node [style="rounded,filled",fontname="DejaVu Sans",fontsize=11,margin="0.20,0.13",penwidth=1.3,color="#64748b"];
+ edge [color="#475569",fontname="DejaVu Sans",fontsize=10,arrowsize=0.7];
+ "Phone" [label="Customer phone\nBrowser / PWA optional", shape=box, fillcolor="#eef2ff"];
+"Barista" [label="Barista device", shape=box, fillcolor="#eef2ff"];
+"Edge" [label="Production HTTPS ingress / CDN (proposed Render)", shape=box, fillcolor="#dbeafe"];
+"Web" [label="Next.js Web Service :3000", shape=box, fillcolor="#dbeafe"];
+"Api" [label="NestJS API :3001", shape=box, fillcolor="#dbeafe"];
+"DB" [label="Managed Postgres :5432\npersistent private storage", shape=box, fillcolor="#dbeafe"];
+"VN" [label="VNPay Sandbox", shape=box, fillcolor="#fff7ed"];
+"Secrets" [label="Secret store: JWT/DB/VNPay", shape=box, fillcolor="#eff6ff"];
+"Logs" [label="Logs + /health", shape=box, fillcolor="#eff6ff"];
+"CI" [label="GitHub Actions CI/CD", shape=box, fillcolor="#dbeafe"];
+"Registry" [label="GHCR container registry", shape=box, fillcolor="#dbeafe"];
+"Local" [label="Local Docker Compose\nWeb + API + DB volume", shape=box, fillcolor="#dbeafe"];
+"Phone" -> "Edge" [label="HTTPS 443"];
+"Barista" -> "Edge" [label="HTTPS 443"];
+"Edge" -> "Web" [label="HTTPS"];
+"Web" -> "Api" [label="HTTPS API"];
+"Api" -> "DB" [label="private TCP 5432"];
+"Api" -> "VN" [label="HTTPS pay/refund/query"];
+"VN" -> "Api" [label="signed IPN HTTPS"];
+"Secrets" -> "Api" [label="env"];
+"Secrets" -> "Web" [label="env"];
+"Api" -> "Logs" [label="health/logs"];
+"CI" -> "Registry" [label="push SHA-tag"];
+"Registry" -> "Web" [label="pull image"];
+"Registry" -> "Api" [label="pull image"];
+"Local" -> "CI" [label="separate boundary"];
+
+ }
