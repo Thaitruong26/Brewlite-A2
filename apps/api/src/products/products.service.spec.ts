@@ -155,6 +155,27 @@ describe('ProductsService', () => {
     });
   });
 
+    it('phân trang trang 2 với limit 5', async () => {
+      prismaMock.product.count.mockResolvedValue(21);
+      prismaMock.product.findMany.mockResolvedValue([]);
+
+      const result = await service.findAll({ page: 2, limit: 5 });
+
+      expect(prismaMock.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 5,
+          take: 5,
+        }),
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.meta).toEqual({
+        page: 2,
+        limit: 5,
+        total: 21,
+        totalPages: 5,
+      });
+    });
   describe('findOne', () => {
     it('trả về chi tiết sản phẩm kèm sizes, toppings có available, maxCups và limitedBy', async () => {
       prismaMock.product.findFirst.mockResolvedValue(sampleProducts[0]);
