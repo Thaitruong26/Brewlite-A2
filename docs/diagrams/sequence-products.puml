@@ -1,0 +1,67 @@
+﻿@startuml BrewLite_Product_Menu_Sequence
+title BrewLite - Sequence Diagram: Xem menu và chi tiết sản phẩm
+autonumber
+
+actor Customer as C
+boundary "Next.js Web UI" as UI
+control "ProductsController" as PC
+control "ProductsService" as PS
+control "RecipeService" as RS
+database "PostgreSQL / Prisma" as DB
+
+== Xem danh sách menu ==
+C -> UI: Mở trang menu
+UI -> PC: GET /api/products?page=1&limit=20
+PC -> PS: findAll(query)
+PS -> DB: count({ isActive: true, ...filters })
+DB --> PS: total
+PS -> DB: findMany(where, skip, take, productRecipes)
+DB --> PS: Danh sách sản phẩm
+PS -> DB: findMany(ingredients: id, name, stock)
+DB --> PS: Nguyên liệu và tồn kho
+loop Với mỗi sản phẩm
+  PS -> RS: maxCups(product, size S, stockMap)
+  RS --> PS: Số ly tối đa
+end
+PS --> PC: data + meta phân trang
+PC --> UI: 200 OK
+UI --> C: Hiển thị menu và trạng thái còn/hết hàng
+
+opt Có bộ lọc hoặc từ khóa
+  UI -> PC: GET /api/products?search=...&category=...
+  PC -> PS: findAll(query)
+  note right of PS: Chỉ lấy sản phẩm isActive = true.\nTìm kiếm tên và lọc category không phân biệt hoa thường.
+  PS --> PC: Danh sách đã lọc + meta
+  PC --> UI: 200 OK
+  UI --> C: Hiển thị kết quả
+end
+
+== Xem chi tiết sản phẩm ==
+C -> UI: Chọn một sản phẩm
+UI -> PC: GET /api/products/:id
+PC -> PS: findOne(id)
+par Lấy dữ liệu sản phẩm
+  PS -> DB: findFirst(id, isActive=true, productRecipes)
+  DB --> PS: Product hoặc null
+else Lấy topping đang hoạt động
+  PS -> DB: findMany(toppings, toppingRecipes)
+  DB --> PS: Danh sách toppings
+else Lấy tồn kho nguyên liệu
+  PS -> DB: findMany(ingredients)
+  DB --> PS: Nguyên liệu và tồn kho
+end
+alt Không tìm thấy hoặc sản phẩm ngừng bán
+  PS --> PC: 404 PRODUCT_NOT_FOUND
+  PC --> UI: 404 Not Found
+  UI --> C: Hiển thị thông báo không tìm thấy sản phẩm
+else Tìm thấy sản phẩm
+  PS -> RS: Tính stock, bottleneck, maxCups theo size
+  RS --> PS: Tồn kho, giới hạn, sizes
+  PS -> RS: isToppingAvailable() cho từng topping
+  RS --> PS: Trạng thái available
+  PS --> PC: Chi tiết sản phẩm + sizes + toppings
+  PC --> UI: 200 OK
+  UI --> C: Hiển thị chi tiết và tùy chọn sản phẩm
+end
+
+@enduml
