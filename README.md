@@ -17,6 +17,7 @@
 | 4 | **Lê Khánh Linh** | `khlink06@gmail.com` | Quản lý tài liệu kỹ thuật, Hướng dẫn sử dụng, Ma trận truy vết (Task 4.2) |
 | 5 | **Kiều Ngọc Nghĩa** | `kieungocnghia1142006@gmail.com` | Sơ đồ luồng Activity Diagram thanh toán VNPAY & hoàn tiền (Task 2.1) |
 | 6 | **Trần Quang Huy** | `tranquanghuy2k6.no.pro@gmail.com` | Dịch vụ thanh toán, Kiểm thử dịch vụ và tối ưu giao dịch |
+| 7 | **Khánh Huy** | `khanhhuy2006huy@gmail.com` | Thiết kế giao diện Barista, Kiểm thử luồng xử lý đơn hàng |
 
 ---
 
