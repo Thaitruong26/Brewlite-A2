@@ -1,0 +1,71 @@
+@startuml
+' Adapted from Thaitruong26/brewlite3, docs/diagrams/activity-checkout.puml (ACT-01).
+title BrewLite A2 — ACT-01 · Luồng đặt hàng
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam backgroundColor #FFFFFF
+
+start
+:Xem menu, chọn món, size, topping và số lượng;
+:Kiểm tra và chỉnh sửa giỏ hàng;
+if (Đã đăng nhập?) then (Có)
+else (Chưa)
+  :Đăng nhập hoặc đăng ký;
+  if (Xác thực thành công?) then (Có)
+    :Quay lại checkout;
+  else (Không)
+    :Báo lỗi đăng nhập;
+    stop
+  endif
+endif
+
+:Xác nhận đặt hàng;
+:Tính giá từ DB và kiểm tra giỏ;
+if (Tạo đơn thành công?) then (Có)
+  :Tạo đơn PENDING, lưu snapshot và giữ kho\ntrong cùng transaction;
+else (Không)
+  :Rollback, báo lỗi hết hàng hoặc giỏ không hợp lệ;
+  :Khách chỉnh giỏ;
+  stop
+endif
+
+repeat
+  :Khởi tạo lần thanh toán VNPay Sandbox;
+  :Nhận kết quả từ IPN hoặc đối soát đã xác thực;
+  if (Kết quả chưa xác định?) then (Có)
+    :Hiển thị đang chờ và tiếp tục đối soát;
+    stop
+  endif
+  if (Thanh toán bị từ chối?) then (Có)
+    :Ghi PAYMENT_FAILED, cho khách thử lại;
+  else (Đã xác minh thành công)
+    :Ghi SUCCESS và chuyển đơn sang PAID đúng một lần;
+  endif
+repeat while (Đã thất bại và khách chọn thử lại?) is (Dùng khóa mới) not (Kết thúc lần thử)
+:Xem trạng thái đơn từ Backend;
+
+if (Khách yêu cầu hủy?) then (Có)
+  if (Đơn PENDING hoặc PAYMENT_FAILED?) then (Có)
+    :Hủy đơn và giải phóng phần đã giữ đúng một lần;
+  elseif (Đơn PAID và chưa pha chế?) then (Có)
+    :Khóa thao tác pha chế và yêu cầu hoàn tiền qua VNPay;
+    if (Kết quả hoàn tiền đã xác định?) then (Có)
+      if (Hoàn tiền thất bại xác nhận?) then (Có)
+        :Ghi điểm bù đúng một lần;
+      endif
+      :Chốt CANCELLED và giải phóng phần đã giữ;
+    else (Chưa)
+      :Chờ đối soát, vẫn khóa pha chế;
+    endif
+  else (Đã bắt đầu pha chế)
+    :Từ chối hủy và giữ trạng thái hiện tại;
+  endif
+else (Không)
+  if (Đơn PAID?) then (Có)
+    :Barista pha chế, báo sẵn sàng và giao món;
+    :Khi COMPLETED, cộng điểm thưởng đúng một lần;
+  endif
+endif
+:Khách theo dõi trạng thái mới nhất;
+stop
+@enduml
