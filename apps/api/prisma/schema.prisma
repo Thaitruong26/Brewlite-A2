@@ -334,4 +334,3 @@ model StockMovement {
   @@index([ingredientId, createdAt])
   @@index([orderId])
 }
-
