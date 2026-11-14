@@ -1,26 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
 import { SiteHeader } from "@/components/layout/site-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { CartBar } from "@/components/layout/cart-bar";
 
-/* ── Google Fonts qua next/font (zero layout shift, tự host) ── */
-const inter = Inter({
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin", "vietnamese"],
-  weight: ["600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-playfair",
-  display: "swap",
-});
+/* ── Font variables ── */
+const inter = { variable: "--font-inter" };
+const playfair = { variable: "--font-playfair" };
 
 export const metadata: Metadata = {
   title: {

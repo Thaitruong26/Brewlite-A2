@@ -81,7 +81,7 @@ export class VnpayService {
       vnp_OrderType: 'other',
       vnp_Amount: String(amount),
       vnp_ReturnUrl: returnUrl,
-      vnp_IpAddr: ipAddr.includes(':') ? '127.0.0.1' : ipAddr,
+      vnp_IpAddr: (ipAddr.split(',')[0] || '127.0.0.1').trim().includes(':') ? '127.0.0.1' : (ipAddr.split(',')[0] || '127.0.0.1').trim(),
       vnp_CreateDate: createDate,
     };
 

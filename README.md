@@ -1,89 +1,93 @@
-# ☕ BrewLite — Hệ Thống Đặt Cà Phê & Quản Lý Quầy Không Dùng Tiền Mặt
+# ☕ BrewLite — Hệ Thống Đặt Cà Phê & Quản Lý Quầy Không Dùng Tiền Mặt (Assignment 2)
 
 > **Trường Đại học Sài Gòn (SGU) — Khoa Công nghệ Thông tin**  
 > **Môn học:** Công nghệ Phần mềm | **Học kỳ:** I, Năm học 2026–2027  
+> **Đồ án:** Assignment 2 — Hệ thống BrewLite Monorepo (Next.js 16 + NestJS + PostgreSQL)  
 > **Quy trình phát triển:** Agile Scrum
 
 ---
 
-##  1. Giới thiệu tổng quan (Project Overview)
+## 👥 Danh sách thành viên nhóm phát triển (Assignment 2)
 
-**BrewLite** là nền tảng ứng dụng đặt đồ uống và quản lý vận hành quầy pha chế theo định hướng **không dùng tiền mặt (cashless)**. Hệ thống giải quyết bài toán quá tải, giảm thiểu thời gian xếp hàng chờ đợi vào các khung giờ cao điểm tại quầy cà phê khuôn viên trường học/văn phòng.
+| STT | Họ và tên | GitHub / Email | Vai trò & Đóng góp chính |
+|:---:|---|---|---|
+| 1 | **Thái Trương** (Trưởng nhóm) | `Truongquocthai627@gmail.com` | Quản lý kiến trúc, Backend Core, tích hợp thanh toán VNPAY & VietQR, tối ưu hiệu năng |
+| 2 | **Anh Khôi** | `anhkhoi05082006@gmail.com` | Đặc tả yêu cầu SRS (Task 1.2), Thiết kế Class Diagram (Task 2.3), E2E Test (Task 5.2) |
+| 3 | **Nguyễn Thị Loan** | `nt-loan` | Giao diện Web Mobile-first, Trang chi tiết món, Layout & UX giỏ hàng (Task 1.1) |
+| 4 | **Lê Khánh Linh** | `khlink06@gmail.com` | Quản lý tài liệu kỹ thuật, Hướng dẫn sử dụng, Ma trận truy vết (Task 4.2) |
+| 5 | **Kiều Ngọc Nghĩa** | `kieungocnghia1142006@gmail.com` | Sơ đồ luồng Activity Diagram thanh toán VNPAY & hoàn tiền (Task 2.1) |
+| 6 | **Trần Quang Huy** | `tranquanghuy2k6.no.pro@gmail.com` | Dịch vụ thanh toán, Kiểm thử dịch vụ và tối ưu giao dịch |
 
-### 🎯 Sứ mệnh & Tầm nhìn (Product Vision)
+---
+
+## 📌 1. Giới thiệu tổng quan (Project Overview)
+
+**BrewLite** là nền tảng ứng dụng đặt đồ uống và quản lý vận hành quầy pha chế theo định hướng **không dùng tiền mặt (cashless)**, giải quyết bài toán quá tải và giảm thiểu thời gian chờ đợi vào các khung giờ cao điểm tại quầy cà phê khuôn viên trường học/văn phòng.
+
+### 🎯 Sứ mệnh & Tầm nhìn
 > *"BrewLite giúp khách hàng đặt và thanh toán đồ uống không dùng tiền mặt chỉ trong vài chạm, giảm thời gian xếp hàng và nhận đơn nhanh tại quầy; đồng thời cung cấp công cụ quản lý hàng đợi và kiểm soát kho nguyên liệu chính xác cho Barista."*
 
-### 👥 Đối tượng người dùng & Phạm vi
-* **Khách hàng (Customer):** Tự đặt đồ uống qua điện thoại/máy tính, tùy chỉnh size/topping, áp dụng mã giảm giá, sử dụng điểm tích lũy, quét mã QR thanh toán và theo dõi tiến độ đơn hàng theo thời gian thực.
-* **Nhân viên pha chế (Barista):** Sử dụng hệ thống màn hình điều phối quầy (KDS - Kitchen Display System), nhận đơn thanh toán QR, chuyển bước pha chế, theo dõi định lượng công thức và giám sát tồn kho nguyên liệu.
+### 📱 Đối tượng & Phân hệ
+* **Khách hàng (Customer Web Mobile-First):** Xem thực đơn tức thì (0s delay), chọn size/topping, áp mã voucher, dùng điểm thưởng, thanh toán qua cổng VNPAY Sandbox hoặc mã VietQR Napas247, theo dõi đơn và gửi yêu cầu hủy đơn nhận hoàn tiền.
+* **Nhân viên pha chế (Barista KDS & Kho):** Tiếp nhận đơn tự động theo thời gian thực, chuyển trạng thái pha chế, kiểm soát tồn kho theo định lượng công thức, và xử lý hoàn tiền tại quầy qua mã QR khi đơn bị hủy.
 
 ---
 
 ## 🛠️ 2. Kiến trúc & Công nghệ (Tech Stack)
 
-Hệ thống được thiết kế theo kiến trúc phân lớp hiện đại, tách biệt hoàn toàn giữa Frontend (Client-side) và Backend (Server-side):
-
+Hệ thống cấu trúc Monorepo phân tách rõ rệt:
 ```
-Client (Next.js App Router) ──[REST API / JWT]──> Controller (NestJS) ──> Service (Business Logic) ──> Prisma ORM ──> PostgreSQL 16
+apps/web (Next.js 16 App Router) ──[REST API / JWT]──> apps/api (NestJS) ──> Prisma ORM ──> PostgreSQL 16
 ```
 
-### 💻 Công nghệ cốt lõi
-* **Frontend:** 
-  * [Next.js 16](https://nextjs.org/) (App Router, Turbopack) & [React 19](https://react.dev/)
-  * [Tailwind CSS v4](https://tailwindcss.com/) — Giao diện responsive, hiện đại
-  * [Zustand](https://github.com/pmndrs/zustand) — Quản lý state giỏ hàng, thông tin phiên đăng nhập
-  * [TanStack Query](https://tanstack.com/query) — Caching và đồng bộ trạng thái server
-  * [Lucide React](https://lucide.dev/) — Hệ thống icon trực quan
-* **Backend:** 
+* **Frontend (`apps/web`):**
+  * [Next.js 16](https://nextjs.org/) (App Router, Turbopack/Webpack) & [React 19](https://react.dev/)
+  * [Tailwind CSS v4](https://tailwindcss.com/) — Thiết kế giao diện mobile-first tối ưu trải nghiệm chạm
+  * [Zustand](https://github.com/pmndrs/zustand) — Quản lý State giỏ hàng, thông tin phiên đăng nhập
+  * [TanStack Query](https://tanstack.com/query) — Caching thông minh (StaleTime 60s), loại bỏ độ trễ skeleton menu
+  * [Lucide React](https://lucide.dev/) — Icon trực quan
+* **Backend (`apps/api`):**
   * [NestJS 12](https://nestjs.com/) (Node.js/TypeScript, chuẩn ESM)
-  * [Prisma ORM 7](https://www.prisma.io/) — Quản lý schema, migration và tương tác CSDL
-  * [PostgreSQL 16](https://www.postgresql.org/) — Hệ quản trị cơ sở dữ liệu quan hệ
-  * [class-validator](https://github.com/typestack/class-validator) & [class-transformer](https://github.com/typestack/class-transformer) — Validation DTO tự động
-  * [Passport.js](http://www.passportjs.org/) & [JWT](https://jwt.io/) — Xác thực và phân quyền (RBAC)
-  * [Swagger / OpenAPI](https://swagger.io/) — Tài liệu hóa API tương tác
+  * [Prisma ORM 7](https://www.prisma.io/) — Schema, migration và truy vấn CSDL
+  * [PostgreSQL 16](https://www.postgresql.org/) — CSDL quan hệ chính
+  * [VNPAY SDK & Napas247 VietQR Standard](https://sandbox.vnpayment.vn/) — Cổng thanh toán trực tuyến
 * **DevOps & Testing:**
-  * [Docker & Docker Compose](https://www.docker.com/) — Container hóa toàn bộ CSDL và ứng dụng
-  * [Vitest](https://vitest.dev/) — Chạy toàn bộ Unit Tests & End-to-End (E2E) Tests siêu tốc
+  * [Docker & Docker Compose](https://www.docker.com/) — Container hóa đa nền tảng
+  * [Vitest](https://vitest.dev/) — Bộ Unit Test (86 tests) và Concurrency E2E Test (11 tests)
+  * [GitHub Actions](https://github.com/features/actions) — Pipeline CI/CD tự động kiểm tra Lint, Test, Build
 
 ---
 
 ## 🌟 3. Các tính năng nổi bật (Key Features)
 
-### 3.1. Phân hệ Khách hàng (Customer Web Portal)
-* **Thực đơn trực quan & Đa dạng:** 20 món đồ uống tiêu chuẩn chia thành các nhóm (Trà sữa, Trà trái cây, Trà nguyên vị, Matcha, Cà phê đặc biệt).
-* **Tùy biến món linh hoạt:** Chọn kích cỡ (Size S / M / L) và lựa chọn thêm topping (Trân châu đen, Trân châu đường đen, Thạch củ năng, Kem cheese...) kèm ghi chú đặc biệt cho barista.
-* **Giỏ hàng & Khuyến mãi:** Tự động tính toán giá tiền, hỗ trợ áp dụng mã giảm giá (Promo Code) và dùng điểm tích lũy thành viên (Loyalty Points) giảm trực tiếp vào hóa đơn.
-* **Thanh toán MoMo QR tiện lợi:** Sinh mã QR thanh toán động kèm mã đơn hàng, bộ đếm ngược 15 phút, tự động hủy nếu quá hạn và tự động chuyển màn hình lấy nước ngay khi Barista xác nhận.
-* **Theo dõi đơn hàng:** Xem trạng thái đơn từ lúc chờ thanh toán, đang pha chế đến khi sẵn sàng nhận nước.
+### 3.1. Trải nghiệm Khách hàng (Customer Portal)
+* **Menu tải tức thì (Instant 0s Loading):** Caching sản phẩm thông minh, hiển thị ngay danh mục đồ uống nổi bật mà không bị nhấp nháy skeleton xám trên thiết bị di động.
+* **Tùy biến món & Giỏ hàng:** Chọn kích cỡ (S/M/L), thêm topping (Trân châu, Thạch củ năng, Kem cheese...), kèm ghi chú khẩu vị cho barista.
+* **Thanh toán chuẩn kép:**
+  * **Cổng VNPAY Sandbox chính thức:** Tích hợp kiểm thử thẻ nội địa NCB, thẻ quốc tế, quét mã VNPAY-QR.
+  * **Mã VietQR Napas247:** Quét nhanh bằng 100% ứng dụng ngân hàng thật tại Việt Nam (Vietcombank, MB, Techcombank, VPBank,...) với số tiền và nội dung đơn được điền tự động.
+* **Hủy đơn & Hoàn tiền minh bạch:** Cho phép khách hàng hủy đơn khi ở trạng thái `PAID` và nhập thông tin tài khoản để Barista hoàn tiền.
 
-### 3.2. Phân hệ Quầy pha chế (Barista KDS & Quản lý Kho)
-* **Màn hình điều phối đơn (KDS):** Phân loại tab thông minh (`Chờ thanh toán`, `Đang làm`, `Làm xong`, `Lịch sử`, `Đã hủy`).
-* **Xác nhận thanh toán một chạm:** Nút bấm `✓ Xác nhận đã nhận tiền (PAID)` giúp Barista xác nhận tiền vào tài khoản và tự động đẩy đơn sang hàng đợi làm món.
-* **Quản lý kho theo nguyên liệu:** Theo dõi chính xác 34 nguyên liệu (sữa, cà phê, cốt trà, muối, kem whipping...) thay vì đếm số ly đơn thuần. Cảnh báo tự động nguyên liệu *Sắp hết* hoặc *Tạm hết*.
-* **Công thức định lượng & Dự báo:** Xem chi tiết công thức chuẩn size M của từng món, tự động tính số ly tối đa có thể pha được dựa theo lượng nguyên liệu tồn thực tế.
-* **Đồng bộ thực đơn tức thì:** Bật/tắt trạng thái món bán hoặc tạm hết để ẩn/hiển thị ngay trên menu khách hàng.
-
-### 3.3. Điểm nhấn kỹ thuật Backend
-1. **Optimistic Locking (`version`):** Ngăn chặn race condition khi nhiều khách hàng cùng đặt một món có nguyên liệu sắp cạn kho cùng một thời điểm.
-2. **State Machine chặt chẽ:** Kiểm soát vòng đời đơn hàng không thể nhảy cóc (`PENDING → PAID → PREPARING → READY → COMPLETED / CANCELLED`).
-3. **Nguồn chân lý duy nhất (Single Source of Truth):** Giá tiền, phụ thu size/topping và lượng nguyên liệu tiêu thụ luôn do Server tính lại độc lập, không tin tưởng giá từ client gửi lên.
-4. **Idempotency & Rollback an toàn:** Hỗ trợ khóa Idempotency Key chống thanh toán trùng lặp; tự động hoàn trả nguyên liệu (dựa theo snapshot tiêu thụ) và hoàn điểm loyalty khi đơn bị hủy.
+### 3.2. Quầy pha chế & Vận hành (Barista KDS)
+* **Bảng điều phối đơn thông minh:** Phân loại theo hàng đợi (`Chờ TT`, `Đã hủy`, `Đang làm`, `Làm xong`, `Lịch sử`).
+* **Hộp thoại hoàn tiền nhanh (`Refund Modal`):** Banner cảnh báo đỏ nổi bật khi có đơn hủy, tích hợp nút **"💸 Trả lại tiền cho khách (Hiện mã QR)"** để Barista quét mã VietQR và hoàn tiền ngay tại quầy.
+* **Quản lý kho theo định lượng công thức:** Giám sát 34 loại nguyên liệu theo gam/ml, tự động cảnh báo nguyên liệu sắp hết và tính toán số ly tối đa có thể phục vụ.
 
 ---
 
-## 🚀 4. Hướng dẫn khởi chạy (Getting Started)
+## 🚀 4. Hướng dẫn khởi chạy hệ thống (Getting Started)
 
 ### Cách 1: Chạy trọn gói qua Docker Compose (Khuyên dùng khi chấm bài)
 
-Chỉ với **một lệnh duy nhất**, toàn bộ PostgreSQL, Backend (NestJS) và Frontend (Next.js) sẽ tự động build, migrate schema, nạp dữ liệu mẫu và khởi chạy đồng bộ:
+Chỉ với **1 lệnh duy nhất**, toàn bộ PostgreSQL, Backend và Frontend sẽ tự động build, migrate schema, nạp dữ liệu mẫu và chạy đồng bộ:
 
 ```bash
 docker compose up --build
 ```
 
 Sau khi khởi chạy thành công:
-* 🌐 **Website khách hàng:** [http://localhost:3000](http://localhost:3000)
-* 🍵 **Quầy pha chế Barista:** [http://localhost:3000/barista](http://localhost:3000/barista)
+* 🌐 **Giao diện Khách hàng:** [http://localhost:3000](http://localhost:3000) (hoặc `http://localhost:3001` nếu dùng cấu hình port mapping)
+* 🍵 **Màn hình quầy Barista:** [http://localhost:3000/barista](http://localhost:3000/barista)
 * 🔌 **Backend API:** [http://localhost:4000/api](http://localhost:4000/api)
 * 📚 **Swagger API Docs:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
 
@@ -91,16 +95,16 @@ Sau khi khởi chạy thành công:
 
 ### Cách 2: Chạy môi trường Development (Thủ công)
 
-#### Yêu cầu trước khi chạy:
-* Cài đặt **Node.js** v22 trở lên.
-* Bật sẵn **Docker Desktop** để chạy Database PostgreSQL.
+#### Yêu cầu:
+* **Node.js** v22 trở lên.
+* Bật **Docker Desktop** để chạy Database PostgreSQL.
 
-#### 1. Khởi động Cơ sở dữ liệu:
+#### Bước 1: Khởi động Database:
 ```bash
 docker compose up -d db
 ```
 
-#### 2. Khởi động Backend (Terminal 1):
+#### Bước 2: Khởi động Backend (`apps/api`):
 ```bash
 cd apps/api
 cp .env.example .env
@@ -110,7 +114,7 @@ npx prisma db seed
 npm run start:dev
 ```
 
-#### 3. Khởi động Frontend (Terminal 2):
+#### Bước 3: Khởi động Frontend (`apps/web`):
 ```bash
 cd apps/web
 cp .env.example .env.local
@@ -120,70 +124,95 @@ npm run dev
 
 ---
 
-## 🔑 5. Tài khoản kiểm thử có sẵn (Demo Accounts)
+## 💳 5. Hướng dẫn thử nghiệm Luồng Thanh toán & Hoàn tiền (Test Payment Guide)
 
-Hệ thống đã nạp sẵn dữ liệu mẫu (`seed data`) để kiểm thử ngay:
+### 5.1. Thử nghiệm Thanh toán VNPAY Sandbox (Thẻ thử nghiệm)
 
-| Vai trò | Email đăng nhập | Mật khẩu | Quyền hạn & Chức năng |
-|---|---|---|---|
-| **Barista (Nhân viên quầy)** | `barista@brewlite.com` | `Barista@123` | Toàn quyền quầy Barista: xác nhận tiền QR, đổi trạng thái pha chế, quản lý kho nguyên liệu, nhập hàng |
-| **Khách hàng thân thiết** | `demo@brewlite.com` | `Demo@1234` | Đặt hàng, áp mã giảm giá, sử dụng điểm tích lũy thành viên, xem lịch sử |
-| **Mã giảm giá mẫu** | `WELCOME50` (Giảm 50%, tối đa 25.000đ), `FREESHIP` (Giảm 15.000đ) |
+Khi đặt đơn và chọn phương thức **Cổng VNPAY (Sandbox)**, bạn sẽ được chuyển hướng tới trang thanh toán chính thức của VNPAY. Sử dụng thông tin thẻ thử nghiệm sau để thanh toán:
 
-### 5.1. Kịch bản Demo Luồng Thanh toán Ví điện tử MoMo QR (Chờ Barista xác nhận)
-Khác với phương thức **Thẻ ngân hàng (CARD)** đi qua cổng API trực tiếp `POST /payments` được chuyển thẳng sang `PAID`, phương thức **Ví điện tử (WALLET / MoMo QR)** mô phỏng sát thực tế nghiệp vụ quán cà phê:
-1. **Khách đặt món & Chọn Ví điện tử:** Tại trang Checkout, khách chọn phương thức *Ví điện tử (MoMo)* rồi nhấn *Xác nhận đặt hàng*. Hệ thống gọi `POST /orders` tạo đơn ở trạng thái ban đầu là `PENDING`.
-2. **Trang thanh toán QR:** Khách được chuyển tới `/payment?orderId={id}` với mã QR động (chứa nội dung chuyển khoản mã đơn hàng), bộ đếm ngược 15 phút, và dòng trạng thái: *"Chờ Barista xác nhận tiền vào tài khoản"*.
-3. **Barista đối soát tại màn hình KDS:** Barista mở màn hình điều phối [`/barista`](http://localhost:3000/barista), chuyển sang tab **"Chờ thanh toán"**, kiểm tra giao dịch tiền về trên app MoMo Merchant và bấm **"✓ Xác nhận đã nhận tiền (PAID)"**.
-4. **Tự động chuyển tiếp Real-time:** Màn hình khách hàng tự động thăm dò (polling mỗi 2-3s) nhận diện đơn đã sang `PAID` và tự động điều hướng sang trang xác nhận đơn [`/orders/{id}`](http://localhost:3000/orders) để khách theo dõi Barista pha chế.
+| Trường thông tin | Giá trị kiểm thử VNPAY Sandbox |
+|---|---|
+| **Ngân hàng** | `NCB` |
+| **Số thẻ** | `9704198526191432198` |
+| **Tên chủ thẻ** | `NGUYEN VAN A` |
+| **Ngày phát hành** | `07/15` |
+| **Mật khẩu OTP** | `123456` |
+
+*Sau khi bấm "Xác nhận", VNPAY sẽ chuyển về màn hình thông báo thanh toán thành công, cộng điểm tích lũy thành viên và chuyển đơn sang hàng đợi Barista.*
 
 ---
 
-## 📁 6. Cấu trúc thư mục dự án (Project Structure - Assignment 2 Monorepo)
+### 5.2. Thử nghiệm Thanh toán VietQR Napas247 (Tài khoản thật)
+
+Nếu muốn trải nghiệm quét mã qua ứng dụng ngân hàng thật trên điện thoại:
+1. Tại trang thanh toán, hệ thống hiển thị mã **VietQR Napas247**.
+2. Mở bất kỳ ứng dụng ngân hàng nào (Vietcombank, MB Bank, Techcombank, TPBank,...) và chọn tính năng **Quét mã QR**.
+3. Ứng dụng ngân hàng sẽ tự động nhận diện:
+   * **Ngân hàng thụ hưởng:** Vietcombank (VCB)
+   * **Số tài khoản:** `1040263376` (BREWLITE)
+   * **Số tiền:** Điền đúng theo tổng tiền đơn hàng.
+   * **Nội dung chuyển khoản:** `BREWLITE DH{Mã_Đơn_Hàng}` (hiện rõ mã đơn hàng).
+4. **Quy tắc bắt buộc:** Mọi thanh toán phải có xác nhận đã nhận được tiền mới chuyển trang cho khách:
+   * Barista tại màn hình [`/barista`](http://localhost:3000/barista) kiểm tra tài khoản và bấm **"✓ Xác nhận đã nhận tiền (PAID)"**, hoặc trên màn hình thanh toán bấm **"⚡ Xác nhận đã nhận tiền (Dành cho Barista / Demo)"**.
+   * Hệ thống xác nhận trạng thái `PAID` thành công, hiển thị thông báo nhận tiền và tự động chuyển khách sang trang nhận nước [`/orders/{id}`].
+
+---
+
+### 5.3. Thử nghiệm Luồng Hủy đơn & Barista Hoàn tiền
+
+1. **Khách hàng hủy đơn:**
+   * Tại trang theo dõi đơn hàng [`/orders/{id}`](http://localhost:3000/orders), khi đơn ở trạng thái `PAID` (Đã thanh toán), bấm nút **"Hủy đơn hàng"**.
+   * Nhập lý do hủy và thông tin nhận hoàn tiền (Ngân hàng & Số tài khoản).
+2. **Barista xử lý hoàn tiền:**
+   * Barista mở màn hình [`/barista`](http://localhost:3000/barista), tab **"Đã hủy"** sẽ có cờ đỏ cảnh báo: *🚨 Có X đơn đã hủy cần hoàn trả tiền*.
+   * Barista bấm **"💸 Trả lại tiền cho khách (Hiện mã QR)"**.
+   * Cửa sổ QR hoàn tiền bật lên với đúng số tiền và thông tin tài khoản khách, Barista dùng app ngân hàng quét mã để chuyển trả tiền cho khách ngay lập tức.
+
+---
+
+## 🔑 6. Tài khoản kiểm thử có sẵn (Demo Accounts)
+
+| Vai trò | Email đăng nhập | Mật khẩu | Chức năng kiểm thử |
+|---|---|---|---|
+| **Nhân viên Barista** | `barista@brewlite.com` | `Barista@123` | Quản lý quầy KDS, xác nhận đơn, xử lý hoàn tiền QR, quản lý kho |
+| **Khách hàng mẫu** | `demo@brewlite.com` | `Demo@1234` | Đặt hàng, đổi size/topping, dùng điểm thưởng, hủy đơn |
+| **Mã giảm giá mẫu** | `WELCOME50` (Giảm 50%, tối đa 25.000đ), `FREESHIP` (Giảm 15.000đ) |
+
+---
+
+## 📁 7. Cấu trúc thư mục Monorepo
 
 ```
 brewlite/
 ├── apps/
-│   ├── api/                  # Backend API (NestJS + Prisma + PostgreSQL)
-│   │   ├── prisma/           # Schema CSDL, migrations và seed.ts
-│   │   ├── src/              # Các modules (auth, orders, payments, products...)
-│   │   └── test/             # Vitest unit test & real DB concurrency e2e test
-│   └── web/                  # Frontend Web App (Next.js 16 App Router + Tailwind CSS)
-│       ├── public/           # Tài nguyên tĩnh (ảnh đồ uống, icons)
-│       └── src/              # UI pages, components, Zustand stores
-├── docs/                     # Tài liệu & Tạo phẩm Assignment 2
-│   ├── requirements/         # Task 1: Bối cảnh, stakeholder, SRS, use-case specs
-│   ├── diagrams/             # Task 2: Activity, Sequence, Class diagrams
-│   ├── architecture/         # Task 3: Quyết định kiến trúc (ADR), Deployment diagram
-│   ├── traceability-matrix.md # Bảng ma trận truy vết (FR -> UC/US -> Diagram -> Code -> Test)
-│   └── deployment.md         # Hướng dẫn và mô hình triển khai
-├── tests/                    # Task 5: Integration & E2E tests
-├── .github/workflows/        # CI/CD pipelines (GitHub Actions)
-│   ├── ci.yml                # CI: Lint, unit test, build, docker compose check
-│   └── cd.yml                # CD: Build & publish Docker images to GHCR
-├── docker-compose.yml        # Orchestration DB, Backend & Frontend local
-├── .env.example              # Mẫu biến môi trường
-└── README.md
-```
-│   └── src/
-│       ├── app/              # App Router (/, /menu, /cart, /checkout, /payment, /barista...)
-│       ├── components/       # Các UI Component dùng chung (Header, Footer, Dialog, Modal)
-│       ├── lib/              # Client API, hàm tiện ích, cấu hình kết nối Backend
-│       └── store/            # Quản lý trạng thái toàn cục với Zustand (Auth, Cart, Stock)
-├── api.md                    # Tài liệu đặc tả chi tiết toàn bộ các REST API
-├── .github/
-│   └── workflows/            # Quy trình tự động hóa CI/CD (GitHub Actions)
-│       ├── ci.yml            # Tự động lint, test & build Backend/Frontend/Docker khi push PR
-│       └── cd.yml            # Tự động build & publish Docker Image lên GHCR khi merge main
-├── docker-compose.yml        # Cấu hình khởi chạy trọn gói các dịch vụ
-└── README.md                 # Tài liệu giới thiệu và hướng dẫn đồ án
+│   ├── api/                      # Backend Service (NestJS 12 + Prisma 7)
+│   │   ├── prisma/               # Schema PostgreSQL, Migrations và Seed
+│   │   ├── src/                  # Modules: auth, orders, payments, products, ingredients
+│   │   └── test/                 # Bộ kiểm thử Unit & Concurrency E2E
+│   └── web/                      # Frontend Web App (Next.js 16 + Tailwind CSS v4)
+│       ├── public/               # Tài nguyên tĩnh và hình ảnh đồ uống
+│       └── src/
+│           ├── app/              # Next.js App Router (menu, cart, checkout, payment, barista)
+│           ├── components/       # UI Components (Header, Footer, Modals, QR generator)
+│           ├── lib/              # API Client, Dev Products Fallback, Utils
+│           └── store/            # Quản lý Global State (Zustand: Cart, Auth, Stock)
+├── docs/                         # Toàn bộ tạo phẩm thiết kế & tài liệu Assignment 2
+│   ├── requirements/             # Task 1: Bối cảnh, SRS, Use-case specifications
+│   ├── diagrams/                 # Task 2: Activity, Sequence, Class Diagrams
+│   ├── architecture/             # Task 3: 8 ADRs, Logical & Deployment Diagrams
+│   ├── traceability-matrix.md     # Ma trận truy vết từ yêu cầu đến mã nguồn và kiểm thử
+│   └── user-guide.md             # Hướng dẫn chi tiết người dùng và Barista
+├── tests/                        # Task 5: Integration & E2E Tests mở rộng
+├── .github/workflows/            # CI/CD Pipelines
+│   ├── ci.yml                    # Tự động hóa Lint, Unit Test, Build khi có PR
+│   └── cd.yml                    # Tự động đóng gói & phát hành Docker Image
+├── docker-compose.yml            # Khởi chạy một chạm Database, Backend và Frontend
+└── README.md                     # Tài liệu hướng dẫn đồ án
 ```
 
 ---
 
-## 🧪 7. Kiểm thử tự động (Automated Testing)
-
-Toàn bộ các quy tắc nghiệp vụ trọng yếu (tính giá, trừ tồn kho đồng thời, idempotent thanh toán, state machine) đều được kiểm thử tự động với Vitest:
+## 🧪 8. Kiểm thử tự động (Automated Testing)
 
 ```bash
 # Chạy Unit Tests Backend (86 tests)
@@ -192,26 +221,16 @@ npm --prefix apps/api run test
 # Chạy End-to-End Tests Backend (11 tests)
 npm --prefix apps/api run test:e2e
 
-# Kiểm tra build Frontend
+# Kiểm tra build ứng dụng Web Frontend
 npm --prefix apps/web run build
 ```
 
 ---
-## 🔄 8. Quy trình CI/CD (GitHub Actions)
 
-Dự án tích hợp sẵn quy trình CI/CD tự động qua GitHub Actions:
+## 🔄 9. Quy trình CI/CD (GitHub Actions)
 
 1. **Continuous Integration (`ci.yml`):**
-   * Kích hoạt khi có `push` hoặc `pull_request` vào 2 nhánh `main` và `develop`.
-   * **Backend Job:** Khởi tạo container PostgreSQL 16 dịch vụ, chạy Prisma migrations, nạp seed data, chạy linter (Oxlint), chạy toàn bộ 86 Unit Tests, 11 E2E Tests và build NestJS.
-   * **Frontend Job:** Cài đặt dependencies, chạy linter (ESLint) và build ứng dụng Next.js.
-   * **Docker Check Job:** Kiểm tra tính hợp lệ của `docker-compose.yml` và build thử nghiệm các Docker containers.
+   * Tự động kích hoạt khi có commit/pull request vào nhánh `main` và `develop`.
+   * Chạy song song: Lint (ESLint, Oxlint) -> Unit Tests -> E2E Tests -> Build NestJS & Next.js -> Docker Compose Validation.
 2. **Continuous Deployment (`cd.yml`):**
-   * Kích hoạt tự động khi merge vào nhánh `main`.
-   * Đóng gói Docker Images cho cả Backend và Frontend, gắn thẻ version theo commit SHA & `latest`, tự động phát hành lên **GitHub Container Registry (GHCR)**.
-
----
-
-## 📄 9. Tài liệu tham khảo
-* Tài liệu đặc tả API chi tiết: [`api.md`](./api.md)
-* Giao diện tương tác Swagger UI: `http://localhost:4000/api/docs`
+   * Đóng gói Docker Image tự động khi merge vào nhánh `main` và đẩy lên GitHub Container Registry (GHCR).

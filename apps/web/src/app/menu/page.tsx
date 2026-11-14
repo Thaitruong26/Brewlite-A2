@@ -117,7 +117,7 @@ function SearchBar({ value, onChange }: { value: string; onChange: (v: string) =
 }
 
 // ─── Mobile Product Card ───────────────────────────────────────────────────────
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const badge = Object.entries(BADGES).find(([k]) => product.name.includes(k))?.[1];
 
   return (
@@ -138,6 +138,7 @@ function ProductCard({ product }: { product: Product }) {
         <ProductImage
           src={product.imageUrl}
           alt={product.name}
+          priority={priority}
           className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]"
         />
         <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5">
@@ -166,11 +167,12 @@ function ProductCard({ product }: { product: Product }) {
             )}
           </div>
           <p className="mt-1 line-clamp-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-            {product.category === "Cà phê"
-              ? "Hạt Robusta Đắk Lắk chọn lọc, rang mộc đậm vị, pha phin truyền thống."
-              : product.category === "Trà"
-                ? "Nguyên liệu tươi tự nhiên, vị thanh mát, không chất bảo quản."
-                : "Kem tươi mát lạnh, hoà quyện cùng hương thơm đặc trưng."}
+            {product.description ||
+              (product.category === "Cà phê"
+                ? "Hạt Robusta Đắk Lắk chọn lọc, rang mộc đậm vị, pha phin truyền thống."
+                : product.category === "Trà"
+                  ? "Nguyên liệu tươi tự nhiên, vị thanh mát, không chất bảo quản."
+                  : "Hương vị thơm ngon mát lạnh, nguyên liệu chất lượng cao.")}
           </p>
         </div>
         <div className="mt-2 flex items-center justify-between">
@@ -280,8 +282,8 @@ function MenuContent() {
   const query = useQuery({
     queryKey: ["products", { category, page: 1, limit: 20 }],
     queryFn: () => getProducts({ category: category || undefined, page: 1, limit: 20 }),
-    placeholderData: (previousData) => previousData ?? getDevelopmentProducts(category || undefined),
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     enabled: !showFixtures,
   });
 
@@ -446,8 +448,8 @@ function MenuContent() {
       {/* ── Product list (Chuẩn danh sách 1 cột dọc Mobile) ── */}
       {result && products.length > 0 && (
         <div className="mt-4 space-y-3">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+          {products.map((product, idx) => (
+            <ProductCard key={product.id} product={product} priority={idx < 2} />
           ))}
         </div>
       )}

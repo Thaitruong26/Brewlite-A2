@@ -70,7 +70,7 @@ export default function LoginPage() {
       <div className="mt-4 flex flex-wrap gap-2 text-xs">
         <span className="text-stone-500 py-1">Tài khoản mẫu:</span>
         <button type="button" onClick={fillCustomer} className="rounded-lg bg-stone-100 px-2.5 py-1 font-medium text-stone-800 hover:bg-stone-200 cursor-pointer">
-          👤 Khách hàng (demo)
+          👤 Khách hàng
         </button>
         <button type="button" onClick={fillBarista} className="rounded-lg bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800 hover:bg-emerald-200 cursor-pointer">
           ☕ Barista

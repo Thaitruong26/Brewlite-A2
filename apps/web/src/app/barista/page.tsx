@@ -179,7 +179,7 @@ const defaultMenuStock: StockItem[] = [
   { id: 17, sku: "SP-017", name: "Matcha Đậu Đỏ", description: "Matcha đậm vị kết hợp topping đậu đỏ bùi ngọt truyền thống", category: "Matcha", price: 52000, stock: 22, target: 50 },
   { id: 18, sku: "SP-018", name: "Cà Phê Sữa", description: "Cà phê phin truyền thống pha sữa đặc đậm đà", category: "Cà phê và món đặc biệt", price: 35000, stock: 50, target: 50 },
   { id: 19, sku: "SP-019", name: "Bạc Xỉu", description: "Nhiều sữa ít cà phê, ngọt béo thơm lừng", category: "Cà phê và món đặc biệt", price: 38000, stock: 45, target: 50 },
-  { id: 20, sku: "SP-020", name: "Cà Phê Muối", description: "Lớp kem béo mặn độc đáo trên nền cà phê phin đậm đặc", category: "Cà phê và món đặc biệt", price: 42000, stock: 35, target: 50 },
+  { id: 20, sku: "SP-020", name: "Cà Phê Muối", description: "Lớp kem béo mặn độc đáo trên nền cà phê phin đậm đặc", category: "Cà phê và món đặc biệt", price: 42000, stock: 5, target: 15 },
 ];
 
 const defaultIngredients: IngredientItem[] = [
@@ -270,9 +270,20 @@ export default function BaristaPage() {
   const [dynamicRecipe, setDynamicRecipe] = useState<RecipeIngredient[] | null>(null);
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [refundOrder, setRefundOrder] = useState<BaristaOrder | null>(null);
-  const [refundBank, setRefundBank] = useState("MB");
+  const [refundBank, setRefundBank] = useState("VCB");
   const [refundAccount, setRefundAccount] = useState("");
   const [refundedOrders, setRefundedOrders] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("brewlite_refunded_orders");
+        if (saved) {
+          setRefundedOrders(JSON.parse(saved));
+        }
+      } catch {}
+    }
+  }, []);
 
   const openRefundModal = (order: BaristaOrder) => {
     setRefundOrder(order);
@@ -285,7 +296,15 @@ export default function BaristaPage() {
   };
 
   const handleConfirmRefund = (orderId: number) => {
-    setRefundedOrders((prev) => [...prev, orderId]);
+    setRefundedOrders((prev) => {
+      const next = Array.from(new Set([...prev, orderId]));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("brewlite_refunded_orders", JSON.stringify(next));
+        } catch {}
+      }
+      return next;
+    });
     setRefundOrder(null);
     setNotice(`Đã xác nhận hoàn tiền thành công cho đơn #${orderId}!`);
   };
@@ -378,8 +397,9 @@ export default function BaristaPage() {
 
   const loadRealIngredients = async () => {
     try {
-      const res = await getIngredientsStock(1, 50);
-      const list = Array.isArray(res) ? res : (res as any)?.data;
+      const res: any = await getIngredientsStock(1, 50);
+      const raw = res?.data ?? res;
+      const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
       if (Array.isArray(list) && list.length > 0) {
         setIngredientStock(
           list.map((item: any) => ({
@@ -389,7 +409,7 @@ export default function BaristaPage() {
             detail: `Nguyên liệu pha chế tiêu chuẩn · Mã DB #${item.id}`,
             unit: item.unit ? item.unit.toLowerCase() : "ml",
             stock: item.stock,
-            minimum: item.lowThreshold || 2000,
+            minimum: item.lowThreshold || 500,
           }))
         );
       }
@@ -400,19 +420,20 @@ export default function BaristaPage() {
 
   const loadRealStock = async () => {
     try {
-      const res = await getProductsStock();
-      const list = Array.isArray(res) ? res : (res as any)?.data;
+      const res: any = await getProductsStock();
+      const raw = res?.data ?? res;
+      const list = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
       if (Array.isArray(list) && list.length > 0) {
         setStock(
-          list.map((item) => ({
+          list.map((item: any) => ({
             id: item.id,
             sku: `SP-${String(item.id).padStart(3, "0")}`,
             name: item.name,
             description: item.category,
             category: item.category,
             price: item.price,
-            stock: item.stock ?? 50,
-            target: 50,
+            stock: item.stock ?? 0,
+            target: Math.max(item.stock ?? 0, 20),
           })),
         );
       }
@@ -440,6 +461,12 @@ export default function BaristaPage() {
     history: orders.filter((order) => order.stage === "completed").length,
   }), [orders]);
 
+  const needingRefundCount = useMemo(() => {
+    return orders.filter(
+      (order) => order.stage === "cancelled" && !refundedOrders.includes(order.id)
+    ).length;
+  }, [orders, refundedOrders]);
+
   async function moveOrder(id: number, nextStatus: "PAID" | "PREPARING" | "READY" | "COMPLETED") {
     const stage: OrderStage =
       nextStatus === "COMPLETED"
@@ -450,17 +477,60 @@ export default function BaristaPage() {
         ? "preparing"
         : "pending";
     try {
+      // Khi Barista bấm "Bắt đầu pha chế" (PREPARING):
+      // Trừ trực tiếp nguyên liệu của đơn hàng vào tồn kho quầy ngay lập tức,
+      // tự động kéo theo việc giảm số ly pha được của các món liên quan trên giao diện!
+      if (nextStatus === "PREPARING") {
+        const orderToPrepare = orders.find((o) => o.id === id);
+        if (orderToPrepare) {
+          setIngredientStock((prevIngredients) => {
+            const nextList = prevIngredients.map((item) => ({ ...item }));
+            for (const line of orderToPrepare.items) {
+              const recipe = getRecipeForProduct(line.name);
+              const qty = line.quantity || 1;
+              for (const rec of recipe) {
+                const normalize = (s: string) => s.toLowerCase().trim();
+                const recName = normalize(rec.ingredient);
+                const targetIng = nextList.find((i) => {
+                  const iName = normalize(i.name);
+                  return iName === recName || iName.includes(recName) || recName.includes(iName);
+                });
+                if (targetIng) {
+                  targetIng.stock = Math.max(0, targetIng.stock - rec.quantity * qty);
+                }
+              }
+              if (Array.isArray(line.options)) {
+                for (const opt of line.options) {
+                  const optName = opt.replace(/^\+\s*/, "").toLowerCase().trim();
+                  const targetTop = nextList.find((i) => {
+                    const iName = i.name.toLowerCase().trim();
+                    return iName === optName || iName.includes(optName) || optName.includes(iName);
+                  });
+                  if (targetTop) {
+                    targetTop.stock = Math.max(0, targetTop.stock - 30 * qty);
+                  }
+                }
+              }
+            }
+            return nextList;
+          });
+        }
+      }
+
       await updateOrderStatus(id, nextStatus);
       setOrders((current) => current.map((order) => order.id === id ? { ...order, stage, rawStatus: nextStatus } : order));
       setNotice(
         nextStatus === "PAID"
           ? `Đơn #${id} đã xác nhận nhận tiền thành công (PAID). Màn hình khách đang được chuyển sang Chờ lấy nước.`
           : nextStatus === "PREPARING"
-          ? `Đơn #${id} đã chuyển sang Bắt đầu pha chế (PREPARING).`
+          ? `Đơn #${id} đã bắt đầu pha chế (PREPARING). Đã trừ nguyên liệu và tự động cập nhật giảm số ly tồn quầy!`
           : nextStatus === "READY"
           ? `Đơn #${id} đã làm xong và chuyển sang mục Làm xong (READY).`
           : `Đơn #${id} đã ghi nhận giao thành công (COMPLETED).`,
       );
+      // Tải lại dữ liệu mới nhất từ CSDL máy chủ để đồng bộ
+      await loadRealIngredients();
+      await loadRealStock();
     } catch (err: unknown) {
       console.error("Lỗi cập nhật trạng thái đơn hàng:", err);
       const errMsg = err instanceof Error ? err.message : "Lỗi máy chủ";
@@ -481,7 +551,7 @@ export default function BaristaPage() {
     }
     await loadRealStock();
     await loadRealIngredients();
-    setNotice("Đã đồng bộ đơn hàng và tồn kho mới nhất từ CSDL máy chủ.");
+    setNotice("Đã đồng bộ đơn hàng và tồn kho mới nhất.");
   }
 
   function toggleAvailability(sku: string) {
@@ -548,6 +618,28 @@ export default function BaristaPage() {
       { ingredient: "Sữa tươi thanh trùng", quantity: 100, unit: "ml" },
       { ingredient: "Sữa đặc", quantity: 20, unit: "ml" },
     ];
+  }
+
+  function calculateProductMaxCups(productName: string, currentIngredients: IngredientItem[]): number {
+    const recipe = getRecipeForProduct(productName);
+    if (!recipe || recipe.length === 0) return 0;
+    const normalize = (s: string) => s.toLowerCase().trim();
+    let minCups = 999999;
+    for (const rec of recipe) {
+      const recName = normalize(rec.ingredient);
+      const ing = currentIngredients.find((i) => {
+        const iName = normalize(i.name);
+        return iName === recName || iName.includes(recName) || recName.includes(iName);
+      });
+      if (!ing || ing.stock <= 0) {
+        return 0;
+      }
+      const cups = Math.floor(ing.stock / rec.quantity);
+      if (cups < minCups) {
+        minCups = cups;
+      }
+    }
+    return minCups === 999999 ? 0 : Math.max(0, minCups);
   }
 
   const visibleOrders = orders.filter((order) => order.stage === (queueTab === "history" ? "completed" : queueTab));
@@ -674,7 +766,7 @@ export default function BaristaPage() {
           )}
 
           {/* Cảnh báo đơn đã hủy cần hoàn tiền nếu có */}
-          {counts.cancelled > 0 && (
+          {needingRefundCount > 0 ? (
             <button
               type="button"
               onClick={() => setQueueTab("cancelled")}
@@ -683,7 +775,7 @@ export default function BaristaPage() {
               <div className="flex items-center gap-2">
                 <span className="text-base animate-pulse">🚨</span>
                 <div>
-                  <p className="font-extrabold text-red-700">Có {counts.cancelled} đơn đã hủy cần hoàn trả tiền!</p>
+                  <p className="font-extrabold text-red-700">Có {needingRefundCount} đơn đã hủy cần hoàn trả tiền!</p>
                   <p className="text-[11px] font-normal text-stone-600">Bấm vào đây để mở tab Đã hủy & hiện mã QR chuyển lại tiền cho khách</p>
                 </div>
               </div>
@@ -691,7 +783,15 @@ export default function BaristaPage() {
                 Xử lý ngay →
               </span>
             </button>
-          )}
+          ) : counts.cancelled > 0 ? (
+            <div className="w-full rounded-xl bg-emerald-50 border border-emerald-300 p-3 flex items-center gap-2 text-xs font-bold text-emerald-800 shadow-sm">
+              <span className="text-base">✅</span>
+              <div>
+                <p className="font-extrabold text-emerald-800">Tất cả {counts.cancelled} đơn đã hủy đều đã hoàn tiền xong!</p>
+                <p className="text-[11px] font-normal text-emerald-700">Không còn đơn nào nợ tiền khách hàng.</p>
+              </div>
+            </div>
+          ) : null}
 
           {/* Status Filter Tabs (Flex Wrap để điện thoại hiển thị đủ tất cả tab) */}
           <div className="flex flex-wrap gap-1.5 pb-1 -mx-1 px-1" role="tablist" aria-label="Trạng thái đơn hàng">
@@ -707,7 +807,7 @@ export default function BaristaPage() {
                   ? "Làm xong"
                   : "Lịch sử";
               const isActive = queueTab === tab;
-              const isAlert = tab === "cancelled" && counts.cancelled > 0;
+              const isAlert = tab === "cancelled" && needingRefundCount > 0;
               return (
                 <button
                   key={tab}
@@ -735,7 +835,9 @@ export default function BaristaPage() {
                         : "bg-[#edece5] text-[#445248]"
                     }`}
                   >
-                    {counts[tab]}
+                    {tab === "cancelled"
+                      ? (needingRefundCount > 0 ? `${needingRefundCount}` : `${counts.cancelled} xong`)
+                      : counts[tab]}
                   </span>
                 </button>
               );
@@ -812,8 +914,17 @@ export default function BaristaPage() {
                           <span className="font-bold text-stone-700">Cần trả lại: {money(order.total)}</span>
                         </div>
                         {refundedOrders.includes(order.id) ? (
-                          <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-2.5 text-center text-xs font-bold text-emerald-800">
-                            ✓ Đã hoàn tiền cho khách thành công
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 rounded-xl bg-emerald-50 border border-emerald-300 p-2 text-center text-xs font-bold text-emerald-800 flex items-center justify-center gap-1.5">
+                              <span>✅</span> Đã hoàn tiền cho khách thành công
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => openRefundModal(order)}
+                              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition cursor-pointer shrink-0"
+                            >
+                              Xem lại QR
+                            </button>
                           </div>
                         ) : (
                           <button
@@ -933,8 +1044,10 @@ export default function BaristaPage() {
               </p>
               <div className="flex flex-col gap-3 w-full">
                 {stock.map((item) => {
-                  const percentage = Math.round((item.stock / item.target) * 100);
-                  const isAvailable = availability[item.name] ?? availability[item.sku] ?? item.stock > 0;
+                  const currentCups = calculateProductMaxCups(item.name, ingredientStock);
+                  const targetCups = Math.max(item.target || 20, currentCups);
+                  const percentage = targetCups > 0 ? Math.round((currentCups / targetCups) * 100) : 0;
+                  const isAvailable = (availability[item.name] ?? availability[item.sku] ?? true) && currentCups > 0;
                   return (
                     <div key={item.sku} className="rounded-2xl border border-[#e6e5dd] bg-white p-4 shadow-2xs space-y-3">
                       <div className="flex items-start justify-between gap-2">
@@ -956,13 +1069,13 @@ export default function BaristaPage() {
                         <div className="flex items-center justify-between text-xs mb-1.5">
                           <span className="text-[#647066] font-medium">Tồn tại quầy:</span>
                           <span className="font-bold text-[#1e3429]">
-                            {item.stock} / {item.target} ly <span className="font-normal text-[#737970]">({percentage}%)</span>
+                            {currentCups} / {targetCups} ly <span className="font-normal text-[#737970]">({percentage}%)</span>
                           </span>
                         </div>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-[#e3e2dc]">
                           <div
                             className={`h-full rounded-full transition-all ${
-                              item.stock === 0 ? "bg-[#bd3d34]" : item.stock <= 10 ? "bg-[#bc8a2f]" : "bg-[#168451]"
+                              currentCups === 0 ? "bg-[#bd3d34]" : currentCups <= 5 ? "bg-[#bc8a2f]" : "bg-[#168451]"
                             }`}
                             style={{ width: `${Math.min(percentage, 100)}%` }}
                           />
@@ -984,12 +1097,14 @@ export default function BaristaPage() {
                           onClick={() => toggleAvailability(item.sku)}
                           aria-label={`Chuyển ${item.name} sang ${isAvailable ? "Tạm hết" : "Đang bán"}`}
                           className={`rounded-xl px-3.5 py-2 text-xs font-bold transition active:scale-95 cursor-pointer ${
-                            isAvailable
+                            currentCups === 0
+                              ? "bg-[#fde4e1] text-[#a5332a] hover:bg-[#fbd3cf]"
+                              : isAvailable
                               ? "bg-[#daf4e0] text-[#1e7141] hover:bg-[#cbf0d3]"
                               : "bg-[#fde4e1] text-[#a5332a] hover:bg-[#fbd3cf]"
                           }`}
                         >
-                          {isAvailable ? "● Đang bán" : "● Tạm hết (Ẩn menu)"}
+                          {currentCups === 0 ? "● Hết hàng" : isAvailable ? "● Đang bán" : "● Tạm hết (Ẩn menu)"}
                         </button>
                       </div>
                     </div>

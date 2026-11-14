@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api, formatVND } from "@/lib/api";
-import { getDevelopmentProducts } from "@/lib/api/dev-products";
 import { MAX_QTY_PER_ITEM, MAX_TOPPINGS, type Size, itemUnitPrice, useCartStore } from "@/store/cart";
 import { useStockStore, checkIsAvailable } from "@/store/stock-store";
 import { useAuthStore } from "@/store/auth-store";
@@ -36,24 +35,6 @@ function ProductDetailContent() {
     queryFn: () => api<ProductDetail>(`/products/${id}`),
     staleTime: 60 * 1000,
     retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
-    placeholderData: () => {
-      const dev = getDevelopmentProducts().data.find((p) => p.id === Number(id));
-      if (!dev) return undefined;
-      return {
-        ...dev,
-        sizes: [
-          { size: "S", surcharge: 0 },
-          { size: "M", surcharge: 5000 },
-          { size: "L", surcharge: 10000 },
-        ],
-        toppings: [
-          { id: 1, name: "Trân châu đen", price: 5000 },
-          { id: 2, name: "Trân châu đường đen", price: 7000 },
-          { id: 3, name: "Thạch dừa", price: 5000 },
-          { id: 4, name: "Pudding trứng", price: 7000 },
-        ],
-      } as ProductDetail;
-    },
   });
 
   if (isPending) return <DetailSkeleton />;

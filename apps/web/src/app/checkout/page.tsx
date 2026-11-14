@@ -178,43 +178,16 @@ export default function CheckoutPage() {
         setStepStatus("PROCESSING_PAYMENT");
         const { paymentUrl, simulatorUrl } = await createVnpayUrlApi(orderToPay.id);
         clearCart();
-        window.location.href = simulatorUrl || paymentUrl;
+        window.location.href = simulatorUrl || paymentUrl || "/payment";
         return;
       }
 
-      // Nếu chọn Ví điện tử / Quét mã QR MoMo:
-      // Chuyển hướng sang trang mã QR để khách quét mã và Barista đối soát
-      if (paymentMethod === "WALLET") {
-        clearCart();
-        router.push(`/payment?orderId=${orderToPay.id}`);
-        return;
-      }
-
-      // Bước 2: Gọi POST /payments kèm header Idempotency-Key (dành cho CARD hoặc thanh toán trực tiếp)
-      setStepStatus("PROCESSING_PAYMENT");
-      setLastUsedKey(activeKey);
-
-      const paymentDto: CreatePaymentDto = {
-        orderId: orderToPay.id,
-        method: paymentMethod,
-        ...(mockResult ? { mockResult } : {}),
-      };
-
-      // Gọi API thật POST /payments
-      const { data: paymentRes, replayed } = await createPaymentApi(
-        paymentDto,
-        activeKey
-      );
-
-      if (replayed) {
-        setReplayNotice(
-          `Phản hồi Idempotent Replay (Idempotent-Replayed: true) cho key ${activeKey}.`
-        );
-      }
-
-      // Thành công -> xóa giỏ hàng và sang trang xác nhận đơn
+      // Nếu chọn Ví điện tử / Quét mã QR Vietcombank hoặc Thẻ ngân hàng tại quầy:
+      // Chuyển hướng sang trang chờ thanh toán /payment để khách quét mã hoặc quẹt thẻ,
+      // Barista tại quầy đối soát và bấm "Xác nhận đã nhận tiền (PAID)" thì màn hình khách mới chuyển tiếp!
       clearCart();
-      router.push(`/orders/${paymentRes.order.id}`);
+      router.push(`/payment?orderId=${orderToPay.id}&method=${paymentMethod}`);
+      return;
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorState({
@@ -284,20 +257,15 @@ export default function CheckoutPage() {
               Giỏ hàng của bạn đang trống
             </h2>
             <p className="text-sm text-stone-600 mt-2">
-              Vui lòng chọn đồ uống từ thực đơn hoặc nạp giỏ hàng mẫu theo tài liệu{" "}
-              <code className="font-mono text-xs bg-stone-100 px-1.5 py-0.5 rounded">
-                docs/api.md
-              </code>{" "}
-              để thử nghiệm thanh toán.
+              Vui lòng chọn đồ uống từ thực đơn để tiếp tục đặt hàng và thanh toán.
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 href="/menu"
-                className="px-5 py-2.5 rounded-xl bg-amber-800 text-white text-sm font-semibold hover:bg-amber-900 transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-[#183d2c] text-white text-sm font-semibold hover:bg-[#133023] transition-colors"
               >
-                Quay lại Thực đơn
+                Khám phá Thực đơn
               </Link>
-
             </div>
           </div>
         ) : (
@@ -450,14 +418,10 @@ export default function CheckoutPage() {
                       })}
                 </div>
 
-                {/* Khôi phục / đặt lại giỏ mẫu để dễ test */}
                 <div className="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
                   <span>
-                    Giỏ hàng được lưu trong{" "}
-                    <code className="font-mono">localStorage</code> (giữ nguyên
-                    nếu thanh toán lỗi 402).
+                    Giỏ hàng được tự động lưu an toàn trong suốt quá trình đặt món.
                   </span>
-
                 </div>
               </section>
             </div>
@@ -498,20 +462,20 @@ export default function CheckoutPage() {
                         <span className="font-bold text-stone-900 flex items-center gap-1.5 flex-wrap">
                           VNPay Sandbox
                           <span className="text-[10px] font-bold bg-[#183d2c] text-white px-2 py-0.5 rounded-full shrink-0">
-                            Bắt buộc A2
+                            Cổng trực tuyến
                           </span>
                         </span>
                         <span className="text-xl">🏦</span>
                       </div>
                       <p className="text-xs text-stone-600 mt-1">
-                        Cổng thanh toán quốc dân: Quét mã QR ngân hàng hoặc thẻ ATM nội địa NCB (Sandbox test).
+                        Cổng thanh toán quốc dân: Quét mã QR ngân hàng hoặc thẻ ATM nội địa NCB.
                       </p>
                       {paymentMethod === "VNPAY" && (
                         <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-100/70 text-[11px] text-emerald-950 border border-emerald-200 space-y-1">
-                          <p className="font-bold">💳 Thẻ test mẫu (Ngân hàng NCB):</p>
+                          <p className="font-bold">💳 Thông tin thẻ thử nghiệm (Ngân hàng NCB):</p>
                           <p>Số thẻ: <span className="font-mono font-bold">9704198526191432198</span></p>
                           <p>Tên chủ thẻ: <span className="font-bold">NGUYEN VAN A</span> | Ngày phát hành: <span className="font-bold">07/15</span></p>
-                          <p>Mã OTP test: <span className="font-mono font-bold">123456</span></p>
+                          <p>Mã OTP xác thực: <span className="font-mono font-bold">123456</span></p>
                         </div>
                       )}
                     </div>
@@ -536,12 +500,12 @@ export default function CheckoutPage() {
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-stone-900">
-                          Chuyển khoản QR MoMo (Khuyên dùng)
+                          Chuyển khoản VietQR (Vietcombank 1040263376)
                         </span>
                         <span className="text-xl">📱</span>
                       </div>
                       <p className="text-xs text-stone-600 mt-1">
-                        Quét mã QR MoMo, chuyển khoản kèm mã đơn và chờ Barista xác nhận.
+                        Quét mã VietQR qua mọi ứng dụng ngân hàng, nội dung tự động điền mã đơn BREWLITE và chờ quầy xác nhận nhận tiền mới chuyển trang.
                       </p>
                     </div>
                   </label>
@@ -577,7 +541,7 @@ export default function CheckoutPage() {
                         <div className="mt-3 pt-3 border-t border-amber-200/60">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[11px] font-semibold text-amber-950 uppercase tracking-wider">
-                              🧪 Chế độ giả lập thẻ (US-05 Demo):
+                              Kịch bản quẹt thẻ thử nghiệm:
                             </span>
                           </div>
                           <div className="flex gap-2">
@@ -595,7 +559,7 @@ export default function CheckoutPage() {
                                   : "bg-white text-stone-600 border border-stone-300 hover:bg-stone-50"
                               }`}
                             >
-                              ✓ Thành công (PAID ngay)
+                              ✓ Quẹt thẻ thành công
                             </button>
                             <button
                               type="button"
@@ -742,7 +706,7 @@ export default function CheckoutPage() {
                               }
                               className="px-3 py-2 rounded-lg border border-red-300 bg-white text-red-800 text-xs font-semibold hover:bg-red-100 transition-colors cursor-pointer"
                             >
-                              🔁 Gửi lại cùng Key cũ (Test Replay)
+                              🔁 Thử lại giao dịch
                             </button>
                           )}
                         </div>
@@ -774,14 +738,14 @@ export default function CheckoutPage() {
                       <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       <span>
                         {stepStatus === "CREATING_ORDER"
-                          ? "Đang tạo đơn hàng (POST /orders)..."
-                          : "Đang xử lý thanh toán (POST /payments)..."}
+                          ? "Đang khởi tạo đơn hàng..."
+                          : "Đang xử lý thanh toán..."}
                       </span>
                     </>
                   ) : (
                     <>
                       <span>
-                        {paymentMethod === "WALLET" ? "Quét mã QR chuyển khoản" : "Xác nhận trả"}
+                        {paymentMethod === "WALLET" ? "Quét mã VietQR chuyển khoản" : "Xác nhận trả"}
                       </span>
                       <span>•</span>
                       <span>{formatVND(displayTotal)}</span>

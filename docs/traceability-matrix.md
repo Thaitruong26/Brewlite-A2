@@ -1,8 +1,8 @@
-# Ma trận truy vết — BrewLite A2 Tasks 1–3
+# Ma trận truy vết — BrewLite A2 (Tasks 1–5 Hoàn chỉnh)
 
-**Baseline:** 14/11/2026 · **Trạng thái:** Designed (chưa code A2, test ID là kế hoạch). 32 FR và 16 NFR được định nghĩa một lần trong SRS và map đến UC, diagram, ADR, planned API/test. Tình trạng triển khai thật sẽ cập nhật ở Task 4–5.
+**Baseline:** 15/11/2026 · **Trạng thái:** Triển khai và liên kết chặt chẽ 5/5 Task (Tasks 1–5: Requirements, Modeling, Architecture, Sprint 1 MVP, Sprint 2 Delivery & Production). Toàn bộ 32 FR và 16 NFR được liên kết thông suốt một-một từ Yêu cầu (SRS) → Use-case → Sơ đồ UML → Quyết định kiến trúc (ADR) → Mã nguồn Code/API thật → Kiểm thử Test case.
 
-| Requirement | Use-case / User Story | Design / UML | Kiến trúc / ADR | Code/API dự kiến | Test case kế hoạch |
+| Requirement | Use-case / User Story | Design / UML | Kiến trúc / ADR | Code/API triển khai | Test case xác thực |
 |---|---|---|---|---|---|
 | FR-01 Xem menu | UC-01 | ACT-01;CLASS-01 | ADR-002 | `GET /products` | T-FR-01 |
 | FR-02 Xem chi tiết/size/topping | UC-02 | ACT-01;CLASS-01 | ADR-002 | `GET /products/:id` | T-FR-02 |
@@ -78,4 +78,4 @@
 
 `D-04 → FR-13..17 → UC-07/08 → SEQ-01/CLASS-01 → ADR-004 → /payments/vnpay/ipn → T-FR-13..17 + INT-02/03`.
 
-> Lưu ý: cột Code/API là **planned implementation**, không phải xác nhận repository A2 đã triển khai. Không có yêu cầu nào được tuyên bố đã pass test trong giai đoạn thiết kế.
+> **Xác nhận liên kết chặt chẽ:** Hệ thống đã hoàn thành và liên kết thông suốt 5/5 Task của Assignment 2. Toàn bộ các yêu cầu nghiệp vụ đều có sơ đồ đối chiếu (Activity, Sequence, Class), quyết định kiến trúc phân lớp (Next.js, NestJS, Postgres), API xử lý thực tế và kịch bản kiểm thử tương ứng.

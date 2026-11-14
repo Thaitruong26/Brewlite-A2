@@ -1,7 +1,7 @@
 import { clearAuth, getAccessToken } from "./auth-storage";
 import type { ApiErrorBody } from "./types";
 
-const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001/api").replace(/\/$/, "");
+const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
   status: number;
