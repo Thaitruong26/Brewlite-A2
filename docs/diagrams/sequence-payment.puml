@@ -1,0 +1,117 @@
+@startuml BrewLite_Payment_Sequence
+ title BrewLite - Sequence Diagram UC-01: Đặt & Thanh toán đơn hàng
+ autonumber
+
+ actor Customer as C
+ boundary "Next.js Web UI" as UI
+ control "NestJS PaymentsController" as PC
+ control "JwtAuthGuard" as AUTH
+ control "PaymentsService" as PS
+ control "OrdersService" as OS
+ database "PostgreSQL / Prisma" as DB
+ control "LoyaltyService" as LS
+
+ C -> UI: Chọn thanh toán cho đơn hàng
+ UI -> UI: Sinh Idempotency-Key (UUID)
+ UI -> PC: POST /api/payments\nAuthorization: Bearer JWT\nIdempotency-Key\n{ orderId, method, mockResult? }
+ activate PC
+ PC -> AUTH: Xác thực JWT
+ activate AUTH
+ alt JWT không hợp lệ / hết hạn
+   AUTH --> PC: 401 Unauthorized
+   PC --> UI: 401 Unauthorized
+   UI --> C: Yêu cầu đăng nhập lại
+ else JWT hợp lệ
+   AUTH --> PC: CurrentUser
+   deactivate AUTH
+   PC -> PS: createPayment(dto, key, user)
+   activate PS
+
+   PS -> DB: Tìm Payment theo idempotencyKey
+   alt Đã có key và requestHash khác
+     DB --> PS: Payment hiện có
+     PS --> PC: 422 IDEMPOTENCY_KEY_REUSED
+     PC --> UI: 422 Unprocessable Entity
+     UI --> C: Thông báo yêu cầu thanh toán không hợp lệ
+   else Đã có key và requestHash giống
+     DB --> PS: Payment + responseSnapshot
+     note right of PS: Nếu FAILED: trả lại lỗi 402 đã lưu.\nNếu khác: replay responseSnapshot.
+     PS --> PC: Kết quả đã lưu
+     PC --> UI: Kết quả replay\n(Idempotent-Replayed: true)
+     UI --> C: Hiển thị kết quả thanh toán
+   else Key chưa được sử dụng
+     PS -> DB: Tìm Order theo orderId
+     alt Không tìm thấy đơn
+       DB --> PS: null
+       PS --> PC: 404 Order not found
+       PC --> UI: 404 Not Found
+       UI --> C: Không tìm thấy đơn hàng
+     else Có đơn hàng
+       DB --> PS: Order
+       PS -> PS: Kiểm tra quyền sở hữu và trạng thái đơn
+       alt Không có quyền / trạng thái không hợp lệ
+         PS --> PC: 403 hoặc 400
+         PC --> UI: Lỗi nghiệp vụ
+         UI --> C: Hiển thị thông báo lỗi
+       else Đơn hợp lệ
+         PS -> PS: Kiểm tra thời hạn thanh toán 15 phút
+         alt Đơn đã hết hạn
+           opt OrdersService khả dụng
+             PS -> OS: cancelOrderInternal(orderId)
+             OS -> DB: Hủy đơn và xử lý tồn kho
+             DB --> OS: Kết quả cập nhật
+             OS --> PS: Hoàn tất hủy
+           end
+           PS --> PC: 400 ORDER_EXPIRED
+           PC --> UI: 400 Bad Request
+           UI --> C: Thông báo đơn đã hết hạn
+         else Còn hạn thanh toán
+           PS -> DB: Tìm giao dịch PROCESSING/SUCCESS của đơn
+           alt Đã có giao dịch đang xử lý hoặc thành công
+             DB --> PS: Active payment
+             PS --> PC: 409 Conflict
+             PC --> UI: 409 Conflict
+             UI --> C: Thông báo đơn đã/đang được thanh toán
+           else Chưa có giao dịch đang hoạt động
+             PS -> DB: Tạo Payment trạng thái PROCESSING
+             DB --> PS: Payment mới
+             PS -> PS: Xác định kết quả mô phỏng\n(mockResult != FAILED)
+             note right of PS
+               Hiện tại source dùng mockResult để mô phỏng kết quả.
+               Chưa thấy lời gọi cổng thanh toán bên ngoài trong
+               PaymentsService.createPayment.
+             end note
+             PS -> DB: BEGIN TRANSACTION
+             PS -> DB: Cập nhật Payment SUCCESS/FAILED\n+ responseSnapshot
+             alt Order trước đó PAYMENT_FAILED
+               PS -> DB: Chuyển Order PAYMENT_FAILED -> PENDING
+             end
+             alt Thanh toán thành công
+               PS -> DB: Chuyển Order PENDING -> PAID
+               PS -> LS: award(tx, order)
+               LS -> DB: Cộng điểm thưởng trong transaction
+               DB --> LS: Kết quả cộng điểm
+               LS --> PS: Hoàn tất
+             else Thanh toán thất bại
+               PS -> DB: Chuyển Order PENDING -> PAYMENT_FAILED
+             end
+             PS -> DB: COMMIT TRANSACTION
+             DB --> PS: Kết quả transaction
+             alt Thành công
+               PS --> PC: responseSnapshot (SUCCESS)
+               PC --> UI: 200 OK + thông tin Payment/Order
+               UI --> C: Hiển thị thanh toán thành công
+             else Thất bại
+               PS --> PC: HTTP 402 + response
+               PC --> UI: 402 Payment Required
+               UI --> C: Hiển thị thanh toán thất bại
+             end
+           end
+         end
+       end
+     end
+   end
+   deactivate PS
+ end
+ deactivate PC
+ @enduml
