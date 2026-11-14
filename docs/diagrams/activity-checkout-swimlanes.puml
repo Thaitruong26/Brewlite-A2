@@ -1,0 +1,126 @@
+@startuml
+' Adapted from Thaitruong26/brewlite3, docs/diagrams/activity-checkout.puml (ACT-01).
+' Reviewed against UC-CHK-01 and ADR-006. This is the proposed A2 design.
+title BrewLite A2 — ACT-01 · Thành phần tham gia
+skinparam defaultFontName "Segoe UI"
+skinparam backgroundColor #FFFFFF
+skinparam swimlaneBorderColor #B8C8BF
+skinparam shadowing false
+|#F1F8F4|Customer|
+|#F3F7FC|Frontend|
+|#FAF7EE|Backend|
+|#F5F1FA|VNPay Sandbox|
+|#F1F8F4|Barista|
+|Customer|
+start
+:Xem menu và chọn món;
+:Chọn size, topping và số lượng;
+:Kiểm tra giỏ hàng và xác nhận checkout;
+|Frontend|
+if (Có JWT hợp lệ?) then (Có)
+else (Không)
+  |Customer|
+  :Đăng nhập / đăng ký;
+  |Backend|
+  :Xác minh thông tin đăng nhập;
+  if (Thông tin hợp lệ?) then (Có)
+    :Phát JWT;
+    |Frontend|
+    :Quay về checkout;
+  else (Không)
+    |Frontend|
+    :Báo lỗi đăng nhập;
+    stop
+  endif
+endif
+|Frontend|
+:Gửi POST /orders;
+|Backend|
+:Kiểm tra JWT và lựa chọn, tính giá từ DB;
+:Mở transaction tạo đơn;
+if (Đủ kho và promo?) then (Có)
+  :Tạo Order PENDING và lưu snapshot;
+  :Giữ kho, hạn mức ưu đãi và điểm nếu có;
+  :COMMIT;
+else (Không)
+  :Rollback và trả 409;
+  |Frontend|
+  :Báo hết kho hoặc hết lượt ưu đãi, cho sửa giỏ;
+  stop
+endif
+|Customer|
+:Chọn VNPay Sandbox;
+repeat
+  |Frontend|
+  :Gửi yêu cầu thanh toán với Idempotency-Key;
+  |Backend|
+  :Tạo hoặc lấy lại PaymentAttempt, ký URL;
+  |Frontend|
+  :Điều hướng đến VNPay Sandbox;
+  |VNPay Sandbox|
+  :Xử lý giao dịch và gửi IPN;
+  |Backend|
+  :Kiểm tra chữ ký, mã giao dịch, số tiền và merchant;
+  if (IPN sai hoặc chưa có?) then (Có)
+    :Ghi audit nếu IPN sai, giữ trạng thái hiện tại;
+    :Đối soát qua QueryDr khi cần;
+  endif
+  if (Đã xác minh kết quả cuối?) then (Có)
+  else (Chưa)
+    |Frontend|
+    :Hiển thị đang chờ và đọc lại trạng thái Backend;
+    stop
+  endif
+  |Backend|
+  if (Giao dịch thành công?) then (Có)
+    :Ghi SUCCESS và chuyển PAID đúng một lần;
+  else (Thất bại)
+    :Payment FAILED, Order PAYMENT_FAILED;
+    |Frontend|
+    :Hiển thị lỗi và cho khách thử lại;
+  endif
+repeat while (Thất bại và khách chọn thử lại?) is (Dùng khóa mới) not (Kết thúc lần thử)
+|Frontend|
+:Khi trình duyệt quay lại, đọc trạng thái đơn từ Backend;
+|Customer|
+:Xem trạng thái / có thể yêu cầu hủy;
+if (Yêu cầu hủy?) then (Có)
+  |Backend|
+  if (Đơn PAID và chưa pha chế?) then (Có)
+    :Khóa PREPARING, tạo Refund;
+    |VNPay Sandbox|
+    :Thực thi refund;
+    |Backend|
+    if (Refund SUCCESS?) then (Có)
+       :Chốt CANCELLED và giải phóng phần đã giữ một lần;
+    else (Không)
+       if (Refund confirmed FAILED?) then (Có)
+          :Chốt CANCELLED, giải phóng phần đã giữ và ghi điểm bù một lần;
+       else (UNKNOWN)
+          :WAITING_RECONCILIATION;
+          :Giữ PAID và khóa pha chế, chưa cấp điểm bù;
+       endif
+    endif
+  else (Không)
+    if (Đơn PENDING hoặc PAYMENT_FAILED?) then (Có)
+      :Hủy và giải phóng phần đã giữ đúng một lần;
+    else (Không)
+      :Trả 409 nếu trạng thái không cho phép hủy;
+    endif
+  endif
+  |Frontend|
+  :Hiển thị trạng thái hủy lấy từ Backend;
+  stop
+else (Không)
+  |Backend|
+  if (Đơn PAID và không bị khóa pha chế?) then (Có)
+    |Barista|
+    :PAID → PREPARING → READY → COMPLETED;
+    |Backend|
+    :Khi COMPLETED, ghi điểm EARNED một lần;
+  endif
+  |Customer|
+  :Theo dõi kết quả;
+  stop
+endif
+@enduml
