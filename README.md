@@ -102,7 +102,7 @@ docker compose up -d db
 
 #### 2. Khởi động Backend (Terminal 1):
 ```bash
-cd backend
+cd apps/api
 cp .env.example .env
 npm install
 npx prisma migrate dev
@@ -112,7 +112,7 @@ npm run start:dev
 
 #### 3. Khởi động Frontend (Terminal 2):
 ```bash
-cd frontend
+cd apps/web
 cp .env.example .env.local
 npm install
 npm run dev
@@ -139,25 +139,32 @@ Khác với phương thức **Thẻ ngân hàng (CARD)** đi qua cổng API tr�
 
 ---
 
-## 📁 6. Cấu trúc thư mục dự án (Project Structure)
+## 📁 6. Cấu trúc thư mục dự án (Project Structure - Assignment 2 Monorepo)
 
 ```
 brewlite/
-├── backend/                  # Mã nguồn Backend (NestJS)
-│   ├── prisma/               # Schema CSDL, migrations và file nạp dữ liệu mẫu seed.ts
-│   ├── src/
-│   │   ├── auth/             # Module xác thực JWT, đăng ký, đăng nhập & phân quyền Roles
-│   │   ├── common/           # Bộ lọc lỗi AllExceptionsFilter, PricingService, RecipeService
-│   │   ├── ingredients/      # Quản lý 34 nguyên liệu, tồn kho, xuất nhập kho
-│   │   ├── loyalty/          # Tích điểm thành viên và lịch sử giao dịch điểm
-│   │   ├── orders/           # Tạo đơn, State Machine, Optimistic Locking trừ kho
-│   │   ├── payments/         # Xử lý giao dịch thanh toán Idempotent
-│   │   ├── products/         # Danh mục 20 sản phẩm và công thức đồ uống
-│   │   ├── promotions/       # Quản lý và kiểm tra tính hợp lệ của mã giảm giá
-│   │   └── toppings/         # Danh mục topping và công thức tiêu thụ
-│   └── test/                 # Bộ kiểm thử tích hợp End-to-End (E2E)
-├── frontend/                 # Mã nguồn Frontend (Next.js 16 + Tailwind CSS)
-│   ├── public/               # Tài nguyên tĩnh (Logo, hình ảnh đồ uống, mã QR)
+├── apps/
+│   ├── api/                  # Backend API (NestJS + Prisma + PostgreSQL)
+│   │   ├── prisma/           # Schema CSDL, migrations và seed.ts
+│   │   ├── src/              # Các modules (auth, orders, payments, products...)
+│   │   └── test/             # Vitest unit test & real DB concurrency e2e test
+│   └── web/                  # Frontend Web App (Next.js 16 App Router + Tailwind CSS)
+│       ├── public/           # Tài nguyên tĩnh (ảnh đồ uống, icons)
+│       └── src/              # UI pages, components, Zustand stores
+├── docs/                     # Tài liệu & Tạo phẩm Assignment 2
+│   ├── requirements/         # Task 1: Bối cảnh, stakeholder, SRS, use-case specs
+│   ├── diagrams/             # Task 2: Activity, Sequence, Class diagrams
+│   ├── architecture/         # Task 3: Quyết định kiến trúc (ADR), Deployment diagram
+│   ├── traceability-matrix.md # Bảng ma trận truy vết (FR -> UC/US -> Diagram -> Code -> Test)
+│   └── deployment.md         # Hướng dẫn và mô hình triển khai
+├── tests/                    # Task 5: Integration & E2E tests
+├── .github/workflows/        # CI/CD pipelines (GitHub Actions)
+│   ├── ci.yml                # CI: Lint, unit test, build, docker compose check
+│   └── cd.yml                # CD: Build & publish Docker images to GHCR
+├── docker-compose.yml        # Orchestration DB, Backend & Frontend local
+├── .env.example              # Mẫu biến môi trường
+└── README.md
+```
 │   └── src/
 │       ├── app/              # App Router (/, /menu, /cart, /checkout, /payment, /barista...)
 │       ├── components/       # Các UI Component dùng chung (Header, Footer, Dialog, Modal)

@@ -35,7 +35,7 @@ jobs:
       - name: Build & Push Backend Image
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: ./apps/api
           push: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/backend:latest
@@ -44,7 +44,7 @@ jobs:
       - name: Build & Push Frontend Image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
+          context: ./apps/web
           push: true
           build-args: |
             NEXT_PUBLIC_API_URL=http://localhost:4000/api

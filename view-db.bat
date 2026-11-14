@@ -8,7 +8,7 @@ echo Ban co the xem toan bo cac bang (User, Order, Payment, Product, Ingredient.
 echo.
 echo Nhan Ctrl+C de tat giao dien khi xem xong.
 echo ========================================================
-cd /d "%~dp0backend"
+cd /d "%~dp0apps\api"
 start http://localhost:5555
 npx prisma studio --port 5555
 

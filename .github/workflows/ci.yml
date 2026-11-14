@@ -36,44 +36,44 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: apps/api/package-lock.json
 
       - name: Install Backend Dependencies
-        working-directory: ./backend
+        working-directory: ./apps/api
         run: npm ci
 
       - name: Run Prisma Database Migrations
-        working-directory: ./backend
+        working-directory: ./apps/api
         env:
           DATABASE_URL: postgresql://brewlite:brewlite@localhost:5432/brewlite
         run: npx prisma migrate deploy
 
       - name: Seed Database
-        working-directory: ./backend
+        working-directory: ./apps/api
         env:
           DATABASE_URL: postgresql://brewlite:brewlite@localhost:5432/brewlite
         run: npx prisma db seed
 
       - name: Run Backend Linter (Oxlint)
-        working-directory: ./backend
+        working-directory: ./apps/api
         run: npm run lint
 
       - name: Run Unit Tests (Vitest)
-        working-directory: ./backend
+        working-directory: ./apps/api
         env:
           DATABASE_URL: postgresql://brewlite:brewlite@localhost:5432/brewlite
           JWT_SECRET: brewlite-test-jwt-secret-key-2026
         run: npm run test
 
       - name: Run E2E Integration Tests (Vitest)
-        working-directory: ./backend
+        working-directory: ./apps/api
         env:
           DATABASE_URL: postgresql://brewlite:brewlite@localhost:5432/brewlite
           JWT_SECRET: brewlite-test-jwt-secret-key-2026
         run: npm run test:e2e
 
       - name: Build Backend (NestJS)
-        working-directory: ./backend
+        working-directory: ./apps/api
         run: npm run build
 
   frontend-ci:
@@ -89,18 +89,18 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: apps/web/package-lock.json
 
       - name: Install Frontend Dependencies
-        working-directory: ./frontend
+        working-directory: ./apps/web
         run: npm ci
 
       - name: Run Frontend Linter (ESLint)
-        working-directory: ./frontend
+        working-directory: ./apps/web
         run: npm run lint
 
       - name: Build Frontend (Next.js)
-        working-directory: ./frontend
+        working-directory: ./apps/web
         env:
           NEXT_PUBLIC_API_URL: http://localhost:4000/api
         run: npm run build || npm run build
