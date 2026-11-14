@@ -1,0 +1,36 @@
+@startuml
+left to right direction
+skinparam shadowing false
+actor "Customer" as C
+actor "Barista" as B
+actor "Manager" as M
+actor "VNPay Sandbox" as V
+rectangle "BrewLite A2" {
+  usecase "UC-01 Xem menu" as uc01
+  usecase "UC-02 Tùy chỉnh món" as uc02
+  usecase "UC-03 Giỏ hàng" as uc03
+  usecase "UC-05 Tạo đơn" as uc05
+  usecase "UC-07 Khởi tạo VNPay/Mock" as uc07
+  usecase "UC-08 Xác thực IPN" as uc08
+  usecase "UC-09 Hủy chưa trả tiền" as uc09
+  usecase "UC-10 Hủy PAID/refund/bù điểm" as uc10
+  usecase "UC-12 Theo dõi đơn" as uc12
+  usecase "UC-13 Pha chế" as uc13
+  usecase "UC-14 Tích điểm" as uc14
+  usecase "UC-15 Quản lý kho" as uc15
+}
+C --> uc01
+C --> uc02
+C --> uc03
+C --> uc05
+C --> uc07
+C --> uc09
+C --> uc10
+C --> uc12
+B --> uc13
+M --> uc15
+V --> uc08
+V --> uc10
+uc07 ..> uc08 : <<uses notification>>
+uc10 ..> uc14 : <<compensates if failed>>
+@enduml

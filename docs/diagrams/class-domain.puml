@@ -1,0 +1,154 @@
+@startuml
+skinparam classAttributeIconSize 0
+hide empty methods
+left to right direction
+class User {
+  +id: UUID
++email: String
++role: Role
+}
+class Product {
+  +id: UUID
++name: String
++active: Boolean
+}
+class ProductVariant {
+  +id: UUID
++size: String
++priceVnd: Long
+}
+class Order {
+  +id: UUID
++status: OrderStatus
++totalVnd: Long
++version: Int
+}
+class OrderItem {
+  +id: UUID
++qty: Int
++unitPriceSnapshotVnd: Long
++optionsSnapshot: JSON
+}
+class Payment {
+  +id: UUID
++status: PaymentStatus
++provider: PaymentProviderType
+}
+class PaymentAttempt {
+  +id: UUID
++idempotencyKey: String
++requestHash: String
++providerTxnRef: String
+}
+class Refund {
+  +id: UUID
++status: RefundStatus
++amountVnd: Long
++providerRequestId: String
+}
+class CancellationRequest {
+  +id: UUID
++state: CancellationStatus
++requestedAt: DateTime
+}
+class Promotion {
+  +id: UUID
++code: String
++quota: Int
+}
+class PromotionRedemption {
+  +id: UUID
++status: ReservationStatus
+}
+class LoyaltyTransaction {
+  +id: UUID
++type: LoyaltyType
++points: Decimal
++amountVndEquivalent: Long
++originRefundId: UUID?
+}
+class InventoryReservation {
+  +id: UUID
++status: ReservationStatus
++releasedAt: DateTime?
+}
+interface PaymentProvider {
+  +createPaymentIntent(...)
++verifyNotification(...)
++queryPayment(...)
++refund(...)
+}
+class VNPaySandboxAdapter
+class MockPaymentAdapter
+PaymentProvider <|.. VNPaySandboxAdapter
+PaymentProvider <|.. MockPaymentAdapter
+User "1" -- "0..*" Order : places
+User "1" -- "0..*" LoyaltyTransaction : has
+Product "1" -- "0..*" ProductVariant
+Order "1" *-- "1..*" OrderItem
+ProductVariant "1" -- "0..*" OrderItem : snapshot source
+Order "1" -- "0..*" Payment
+Payment "1" *-- "1..*" PaymentAttempt
+Payment "1" -- "0..*" Refund
+Order "1" -- "0..1" CancellationRequest
+Order "1" -- "0..*" InventoryReservation
+Promotion "1" -- "0..*" PromotionRedemption
+Order "1" -- "0..*" PromotionRedemption
+Order "1" -- "0..*" LoyaltyTransaction
+Refund "1" -- "0..1" LoyaltyTransaction : compensation unique
+Payment ..> PaymentProvider : calls
+enum OrderStatus {
+  PENDING
+  PAYMENT_FAILED
+  PAID
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  UNKNOWN
+}
+enum RefundStatus {
+  REQUESTED
+  SUCCESS
+  FAILED
+  UNKNOWN
+}
+enum CancellationStatus {
+  WAITING_PROVIDER
+  WAITING_RECONCILIATION
+  SETTLED
+}
+enum LoyaltyType {
+  EARNED
+  REDEEMED
+  RETURNED
+  CREDIT_COMPENSATION
+}
+enum ReservationStatus {
+  HELD
+  CONFIRMED
+  RELEASED
+}
+enum Role {
+  CUSTOMER
+  BARISTA
+  MANAGER
+}
+enum PaymentProviderType {
+  VNPAY
+  MOCK
+}
+Order ..> OrderStatus
+Payment ..> PaymentStatus
+Refund ..> RefundStatus
+CancellationRequest ..> CancellationStatus
+LoyaltyTransaction ..> LoyaltyType
+InventoryReservation ..> ReservationStatus
+User ..> Role
+Payment ..> PaymentProviderType
+@enduml
