@@ -8,7 +8,7 @@ import { PrismaClient } from '../src/generated/prisma/client.js';
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
-// Ảnh nằm trong frontend/public/img/<tên>.jpg
+// Ảnh nằm trong apps/web/public/img/<tên>.jpg
 const products = [
   // Nhóm 1 — Trà sữa (6 món)
   { name: 'Trà Sữa Truyền Thống', price: 35000, category: 'Trà sữa', imageUrl: '/img/tra-sua-truyen-thong.jpg', description: 'Trà đen đậm đà kết hợp sữa thơm béo' },

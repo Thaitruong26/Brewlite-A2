@@ -187,13 +187,13 @@ Toàn bộ các quy tắc nghiệp vụ trọng yếu (tính giá, trừ tồn k
 
 ```bash
 # Chạy Unit Tests Backend (86 tests)
-npm --prefix backend run test
+npm --prefix apps/api run test
 
 # Chạy End-to-End Tests Backend (11 tests)
-npm --prefix backend run test:e2e
+npm --prefix apps/api run test:e2e
 
 # Kiểm tra build Frontend
-npm --prefix frontend run build
+npm --prefix apps/web run build
 ```
 
 ---

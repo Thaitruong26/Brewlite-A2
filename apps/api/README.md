@@ -41,7 +41,7 @@ Postgres lắng nghe tại `localhost:5433` (ánh xạ từ port 5432 bên trong
 ## Bước 1 — Cài đặt & Cấu hình
 
 ```bash
-cd backend
+cd apps/api
 
 # 1. Sao chép file biến môi trường
 cp .env.example .env
@@ -120,7 +120,7 @@ Sau khi khởi động:
 ## Bước 5 — Chạy Frontend (Terminal riêng)
 
 ```bash
-cd frontend
+cd apps/web
 
 cp .env.example .env.local
 npm install
