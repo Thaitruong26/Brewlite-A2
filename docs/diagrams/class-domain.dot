@@ -1,0 +1,41 @@
+digraph G {
+ graph [label="class-domain — BrewLite A2 design", labelloc="t",fontsize=19, fontname="DejaVu Sans", bgcolor="white",pad="0.5",rankdir="LR",nodesep="0.4",ranksep="0.75",splines="spline"];
+ node [style="rounded,filled",fontname="DejaVu Sans",fontsize=11,margin="0.20,0.13",penwidth=1.3,color="#64748b"];
+ edge [color="#475569",fontname="DejaVu Sans",fontsize=10,arrowsize=0.7];
+ "User" [label="User | id: UUID | email | role", shape=record, fillcolor="#f8fafc"];
+"Product" [label="Product | id | active | name", shape=record, fillcolor="#f8fafc"];
+"Variant" [label="ProductVariant | id | priceVnd", shape=record, fillcolor="#f8fafc"];
+"Order" [label="Order | id | status: OrderStatus | totalVnd | version", shape=record, fillcolor="#f8fafc"];
+"Item" [label="OrderItem | id | qty | optionsSnapshot", shape=record, fillcolor="#f8fafc"];
+"Payment" [label="Payment | id | status | provider", shape=record, fillcolor="#f8fafc"];
+"Attempt" [label="PaymentAttempt | id | idempotencyKey | providerTxnRef", shape=record, fillcolor="#f8fafc"];
+"Refund" [label="Refund | id | amountVnd | status", shape=record, fillcolor="#f8fafc"];
+"Cancel" [label="CancellationRequest | id | state", shape=record, fillcolor="#f8fafc"];
+"Promo" [label="Promotion | id | code | quota", shape=record, fillcolor="#f8fafc"];
+"Redeem" [label="PromotionRedemption | id | status", shape=record, fillcolor="#f8fafc"];
+"Loyalty" [label="LoyaltyTransaction | id | type | points | originRefundId", shape=record, fillcolor="#f8fafc"];
+"Inventory" [label="InventoryReservation | orderId | qty | status", shape=record, fillcolor="#f8fafc"];
+"Provider" [label="«interface» PaymentProvider | pay | verify | refund | query", shape=record, fillcolor="#f8fafc"];
+"VN" [label="VNPaySandboxAdapter", shape=record, fillcolor="#f8fafc"];
+"Mock" [label="MockPaymentAdapter", shape=record, fillcolor="#f8fafc"];
+"Enum" [label="Enums: OrderStatus / PaymentStatus / RefundStatus / LoyaltyType", shape=record, fillcolor="#f8fafc"];
+"User" -> "Order" [label="1 to 0..*"];
+"User" -> "Loyalty" [label="1 to 0..*"];
+"Product" -> "Variant" [label="1 to 0..*"];
+"Variant" -> "Item" [label="1 to 0..*"];
+"Order" -> "Item" [label="1 to 1..*"];
+"Order" -> "Payment" [label="1 to 0..*"];
+"Payment" -> "Attempt" [label="1 to 1..*"];
+"Payment" -> "Refund" [label="1 to 0..*"];
+"Order" -> "Cancel" [label="1 to 0..1"];
+"Order" -> "Inventory" [label="1 to 0..*"];
+"Promo" -> "Redeem" [label="1 to 0..*"];
+"Order" -> "Redeem" [label="1 to 0..*"];
+"Refund" -> "Loyalty" [label="1 to 0..1 (comp unique)"];
+"Payment" -> "Provider" [label="uses"];
+"Provider" -> "VN" [label="implements"];
+"Provider" -> "Mock" [label="implements"];
+"Order" -> "Enum" [label="status"];
+"Refund" -> "Enum" [label="status"];
+
+ }

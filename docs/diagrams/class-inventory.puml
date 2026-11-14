@@ -1,0 +1,48 @@
+@startuml
+hide empty methods
+skinparam classAttributeIconSize 0
+class Ingredient {
+  +id: UUID
++name: String
++unit: String
+}
+class InventoryStock {
+  +ingredientId: UUID
++availableQty: Decimal
++reservedQty: Decimal
++version: Int
+}
+class RecipeItem {
+  +productVariantId: UUID
++ingredientId: UUID
++quantity: Decimal
+}
+class ProductVariant {
+  +id: UUID
++size: String
+}
+class Order {
+  +id: UUID
++status: OrderStatus
+}
+class InventoryReservation {
+  +id: UUID
++orderId: UUID
++ingredientId: UUID
++quantity: Decimal
++status: ReservationStatus
+}
+class InventoryLedger {
+  +id: UUID
++ingredientId: UUID
++delta: Decimal
++reason: String
++sourceKey: String
+}
+ProductVariant "1" -- "0..*" RecipeItem
+Ingredient "1" -- "0..*" RecipeItem
+Ingredient "1" -- "1" InventoryStock
+Ingredient "1" -- "0..*" InventoryReservation
+Ingredient "1" -- "0..*" InventoryLedger
+Order "1" -- "0..*" InventoryReservation
+@enduml

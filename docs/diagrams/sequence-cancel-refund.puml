@@ -1,0 +1,48 @@
+@startuml
+hide footbox
+autonumber
+actor Customer as C
+participant "Next.js UI" as Web
+participant "NestJS API" as API
+database "PostgreSQL" as DB
+participant "Payment Service\n(PaymentProvider)" as Pay
+participant "VNPay Sandbox" as VN
+C -> Web : Yêu cầu hủy Order
+Web -> API : POST /orders/{id}/cancel (JWT, Idempotency-Key)
+API -> API : Validate JWT + owner
+API -> DB : Lock Order, check state/cancellation unique
+alt PREPARING/READY/COMPLETED/CANCELLED
+  API --> Web : HTTP 409
+  Web --> C : Hủy không khả dụng
+else PENDING or PAYMENT_FAILED
+  API -> DB : TX: CANCELLED; release stock/promo/points once
+  API --> Web : CANCELLED; refund not needed
+  Web --> C : Đã hủy
+else PAID
+  API -> DB : TX: CancellationRequest WAITING_PROVIDER + Refund REQUESTED
+  note right of API : Lock preparation while cancel pending
+  API -> Pay : refund(paymentRef, amountVnd, unique requestId)
+  Pay -> VN : refund API signed request
+  VN --> Pay : SUCCESS / FAILED / UNKNOWN
+  Pay --> API : Verified refund result
+  alt Confirmed SUCCESS
+    API -> DB : TX: Refund SUCCESS; CANCELLED; release once
+    note right of DB : No compensation points
+    API --> Web : CANCELLED + refund successful
+  else Confirmed FAILED
+    API -> DB : TX: Refund FAILED; CANCELLED; release once
+    API -> DB : INSERT LoyaltyTransaction CREDIT_COMPENSATION\nunique(originRefundId,type), points=amount/R
+    API --> Web : CANCELLED + compensated points
+  else Timeout/UNKNOWN
+    API -> DB : Refund UNKNOWN; WAITING_RECONCILIATION
+    API -> Pay : queryRefund/queryPayment and reconcile
+    API --> Web : Chờ đối soát; no credit yet
+  end
+  Web --> C : Show server outcome
+end
+opt Repeat same key / concurrent cancel
+  Web -> API : Retry cancel
+  API -> DB : Read same cancellation/refund/ledger
+  API --> Web : Same result, no duplicate side effect
+end
+@enduml

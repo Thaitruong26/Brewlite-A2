@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1350" height="3892" viewBox="0 0 1350 3892">
+<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 z" fill="#334155"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<text x="36" y="42" font-size="23" fill="#0f172a" font-family="DejaVu Sans" font-weight="700">SEQ-01 — Create order + VNPay payment + IPN</text>
+<text x="36" y="67" font-family="DejaVu Sans" fill="#64748b" font-size="13">BrewLite A2 — UML sequence overview | complete logic in the .puml source</text>
+<rect x="28" y="83" width="154" height="46" rx="9" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="105" y="110" font-family="DejaVu Sans" font-size="12" text-anchor="middle" fill="#0f172a">Customer</text>
+<path d="M105 130 V3867" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5,5"/>
+<rect x="238" y="83" width="154" height="46" rx="9" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="315" y="110" font-family="DejaVu Sans" font-size="12" text-anchor="middle" fill="#0f172a">Next.js UI</text>
+<path d="M315 130 V3867" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5,5"/>
+<rect x="448" y="83" width="154" height="46" rx="9" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="525" y="110" font-family="DejaVu Sans" font-size="12" text-anchor="middle" fill="#0f172a">NestJS API</text>
+<path d="M525 130 V3867" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5,5"/>
+<rect x="658" y="83" width="154" height="46" rx="9" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="735" y="110" font-family="DejaVu Sans" font-size="12" text-anchor="middle" fill="#0f172a">PostgreSQL</text>
+<path d="M735 130 V3867" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5,5"/>
+<rect x="868" y="83" width="154" height="46" rx="9" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="945" y="110" font-family="DejaVu Sans" font-size="12" text-anchor="middle" fill="#0f172a">PaymentProvider</text>
+<path d="M945 130 V3867" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5,5"/>
+<rect x="1078" y="83" width="154" height="46" rx="9" fill="#e0f2fe" stroke="#94a3b8"/>
+<text x="1155" y="110" font-family="DejaVu Sans" font-size="12" text-anchor="middle" fill="#0f172a">VNPay Sandbox</text>
+<path d="M1155 130 V3867" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5,5"/>
+<path d="M105 166 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="125.0" y="136" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="210.0" y="152" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Menu → cart → checkout</text>
+<path d="M315 240 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="293.2" y="210" width="253.6" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="226" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">POST /orders (JWT, items, promotion)</text>
+<path d="M525 303 H580 V334 H525" stroke="#334155" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
+<rect x="478.4" y="284" width="293.2" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="625" y="300" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Verify JWT / validate DTO / server pricing</text>
+<path d="M525 388 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="513.1" y="358" width="233.8" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="374" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">BEGIN; lock/reserve stock + promo</text>
+<rect x="23" y="411" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="435" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ALT: Out of stock / invalid</text>
+<path d="M735 536 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="545.0" y="506" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="522" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Error</text>
+<path d="M525 610 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="545.0" y="580" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="596" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">ROLLBACK</text>
+<path d="M525 684 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="335.0" y="654" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="670" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">409/422</text>
+<path d="M315 758 H105" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="125.0" y="728" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="210.0" y="744" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Sửa giỏ</text>
+<rect x="23" y="781" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="805" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ELSE: Valid</text>
+<path d="M525 906 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="486.7" y="876" width="286.6" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="892" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">INSERT Order PENDING + OrderItem snapshot</text>
+<path d="M525 980 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="545.0" y="950" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="966" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">COMMIT</text>
+<path d="M525 1054 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="335.0" y="1024" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="1040" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">201 orderId, totalVnd</text>
+<path d="M105 1128 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="125.0" y="1098" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="210.0" y="1114" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Chọn VNPay</text>
+<path d="M315 1202 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="266.8" y="1172" width="306.4" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="1188" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">POST /orders/{id}/payments (Idempotency-Key)</text>
+<path d="M525 1265 H580 V1296 H525" stroke="#334155" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
+<rect x="508.1" y="1246" width="233.8" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="625" y="1262" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Verify JWT/ownership/order status</text>
+<path d="M525 1350 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="516.4" y="1320" width="227.2" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="1336" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Lookup unique key + request hash</text>
+<rect x="23" y="1373" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="1397" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ALT: Same key and body replay</text>
+<path d="M735 1498 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="545.0" y="1468" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="1484" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Original result</text>
+<path d="M525 1572 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="322.9" y="1542" width="194.2" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="1558" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Original payment URL/status</text>
+<rect x="23" y="1595" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="1619" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ELSE: New attempt</text>
+<path d="M525 1720 H945" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="614.8" y="1690" width="240.4" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="735.0" y="1706" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">createPaymentIntent(order, amount)</text>
+<path d="M945 1794 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="650.0" y="1764" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="735.0" y="1780" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">URL + providerTxnRef</text>
+<path d="M525 1868 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="529.6" y="1838" width="200.8" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="1854" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Store PaymentAttempt PENDING</text>
+<path d="M525 1942 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="335.0" y="1912" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="1928" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Signed URL</text>
+<path d="M315 2016 H105" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="125.0" y="1986" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="210.0" y="2002" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">HTTP redirect URL</text>
+<path d="M105 2090 H1155" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="513.1" y="2060" width="233.8" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="2076" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Browser opens signed payment page</text>
+<path d="M1155 2164 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="680.2" y="2134" width="319.6" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="840.0" y="2150" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">IPN(vnp_TxnRef, vnp_Amount, status, signature)</text>
+<path d="M525 2238 H945" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="637.9" y="2208" width="194.2" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="735.0" y="2224" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">verifyNotification(payload)</text>
+<path d="M945 2312 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="650.0" y="2282" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="735.0" y="2298" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Verified data / invalid</text>
+<path d="M525 2386 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="473.5" y="2356" width="313.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="2372" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Check txnRef, amount, status, idempotent lock</text>
+<rect x="23" y="2409" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="2433" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ALT: Verified SUCCESS</text>
+<path d="M525 2534 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="486.7" y="2504" width="286.6" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="2520" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Payment SUCCESS; Order PAID (transaction)</text>
+<path d="M525 2608 H1155" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="755.0" y="2578" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="840.0" y="2594" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">IPN success response</text>
+<rect x="23" y="2631" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="2655" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ELSE: Verified FAILED</text>
+<path d="M525 2756 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="503.2" y="2726" width="253.6" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="2742" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Payment FAILED; Order PAYMENT_FAILED</text>
+<path d="M525 2830 H1155" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="755.0" y="2800" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="840.0" y="2816" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">IPN acknowledged</text>
+<rect x="23" y="2853" width="1295" height="40" rx="6" fill="#f1f5f9" stroke="#e2e8f0"/>
+<text x="42" y="2877" font-size="14" font-family="DejaVu Sans" fill="#334155" font-weight="700">ELSE: Invalid or UNKNOWN</text>
+<path d="M525 2978 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="499.9" y="2948" width="260.2" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="2964" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Do not mark PAID; store audit/UNKNOWN</text>
+<path d="M525 3052 H945" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="641.2" y="3022" width="187.6" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="735.0" y="3038" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">queryPayment() when needed</text>
+<path d="M945 3126 H1155" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="965.0" y="3096" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="1050.0" y="3112" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">QueryDr request</text>
+<path d="M1155 3200 H945" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="965.0" y="3170" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="1050.0" y="3186" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">QueryDr result</text>
+<path d="M945 3274 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="650.0" y="3244" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="735.0" y="3260" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Verified result</text>
+<path d="M1155 3348 H105" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="476.8" y="3318" width="306.4" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="3334" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Browser redirect to ReturnUrl (display only)</text>
+<path d="M105 3422 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="125.0" y="3392" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="210.0" y="3408" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">View status</text>
+<path d="M315 3496 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="335.0" y="3466" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="3482" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">GET /orders/{id}</text>
+<path d="M525 3570 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="523.0" y="3540" width="214.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="3556" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Read authoritative Order state</text>
+<path d="M735 3644 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="545.0" y="3614" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="630.0" y="3630" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Order/Payment state</text>
+<path d="M525 3718 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="303.1" y="3688" width="233.8" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="420.0" y="3704" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">PENDING / FAILED / PAID / UNKNOWN</text>
+<path d="M315 3792 H105" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
+<rect x="109.6" y="3762" width="200.8" height="24" rx="4" fill="#fff" opacity=".93"/>
+<text x="210.0" y="3778" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Display authoritative status</text>
+</svg>

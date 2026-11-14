@@ -1,0 +1,95 @@
+@startuml
+skinparam shadowing false
+|Customer|
+start
+:Xem menu, chọn size/topping;
+:Giỏ hàng / xác nhận checkout;
+|Next.js UI|
+if (Có JWT hợp lệ?) then (Có)
+else (Không)
+  |Customer|
+  :Đăng nhập / đăng ký;
+  |NestJS API|
+  :Xác minh credential, phát JWT;
+endif
+|Next.js UI|
+:Gửi POST /orders;
+|NestJS API + DB|
+:Validate, tính giá từ DB;
+if (Đủ kho và promo?) then (Có)
+  :BEGIN transaction;
+  :Tạo Order PENDING + snapshot;
+  :Reserve stock và promo;
+  :COMMIT;
+else (Không)
+  :Rollback / 409 conflict;
+  |Next.js UI|
+  :Báo hết hàng, sửa giỏ;
+  stop
+endif
+|Customer|
+:Chọn VNPay Sandbox;
+|Next.js UI|
+:Gửi payment intent + idempotency key;
+|NestJS API + DB|
+:Tạo PaymentAttempt, ký URL;
+|VNPay Sandbox|
+:Thanh toán sandbox;
+:Callback IPN;
+|NestJS API + DB|
+:Xác minh chữ ký, amount, txnRef;
+if (IPN hợp lệ và thành công?) then (Có)
+  :Payment SUCCESS, Order PAID;
+else (Không)
+  if (Không xác định / timeout?) then (Có)
+    :Payment UNKNOWN, QueryDr;
+    if (Đối soát success?) then (Có)
+       :Payment SUCCESS, Order PAID;
+    else (Không)
+       :Payment FAILED / chờ thử lại;
+       |Next.js UI|
+       :Hiển thị thất bại / chờ kết quả;
+       stop
+    endif
+  else (Thất bại)
+    :Payment FAILED, Order PAYMENT_FAILED;
+    |Next.js UI|
+    :Hiển thị thử lại với key mới;
+    stop
+  endif
+endif
+|Next.js UI|
+:GET order status từ backend;
+|Customer|
+:Xem trạng thái / có thể yêu cầu hủy;
+if (Yêu cầu hủy?) then (Có)
+  |NestJS API + DB|
+  if (Order PAID?) then (Có)
+    :Khóa PREPARING, tạo Refund;
+    |VNPay Sandbox|
+    :Thực thi refund;
+    |NestJS API + DB|
+    if (Refund SUCCESS?) then (Có)
+       :CANCELLED + release resources;
+    else (Không)
+       if (Refund confirmed FAILED?) then (Có)
+          :CANCELLED + release + points compensation once;
+       else (UNKNOWN)
+          :WAITING_RECONCILIATION;
+          :Không cấp điểm cho đến khi có kết quả;
+       endif
+    endif
+  else (Không)
+    :Hủy PENDING/FAILED hoặc 409 nếu PREPARING+;
+  endif
+  stop
+else (Không)
+  |Barista|
+  :PAID -> PREPARING -> READY -> COMPLETED;
+  |NestJS API + DB|
+  :Ghi điểm EARNED một lần;
+  |Customer|
+  :Theo dõi kết quả;
+  stop
+endif
+@enduml
