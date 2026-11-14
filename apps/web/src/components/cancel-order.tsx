@@ -19,6 +19,8 @@ export function CancelOrder({ order, disabled, compact = false, onRefresh, onCan
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [cancelled, setCancelled] = useState(false);
+  const [bank, setBank] = useState("MB");
+  const [account, setAccount] = useState("");
   const cache = useQueryClient();
   const allowed = ["PENDING", "PAYMENT_FAILED", "PAID"].includes(order.status);
   const processing = order.payments?.some((p) => p.status === "PROCESSING");
@@ -30,6 +32,10 @@ export function CancelOrder({ order, disabled, compact = false, onRefresh, onCan
     setPending(true);
     setMessage("");
     try {
+      if (account && typeof window !== "undefined") {
+        localStorage.setItem(`refund_account_${order.id}`, account);
+        localStorage.setItem(`refund_bank_${order.id}`, bank);
+      }
       await apiRequest(`/orders/${order.id}/cancel`, { method: "POST" });
       setCancelled(true);
       dialog.current?.close();
@@ -59,6 +65,32 @@ export function CancelOrder({ order, disabled, compact = false, onRefresh, onCan
           <p className="text-sm font-bold text-[var(--forest-hover)]">Hãy kiểm tra trước khi xác nhận</p>
           <p>Đơn hàng sẽ ngừng xử lý. Bạn không thể khôi phục đơn sau khi hủy.</p>
           <p>Tổng thanh toán<br /><strong>{formatVND(order.total)}</strong></p>
+          <div className="space-y-2 rounded-xl bg-amber-50/70 border border-amber-200 p-3 text-left">
+            <p className="text-xs font-bold text-amber-900">Thông tin nhận hoàn tiền (Để Barista quét mã QR chuyển trả lại):</p>
+            <div className="grid grid-cols-1 gap-2">
+              <select
+                value={bank}
+                onChange={(e) => setBank(e.target.value)}
+                className="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs font-semibold"
+              >
+                <option value="MB">MB Bank (Quân Đội)</option>
+                <option value="VCB">Vietcombank</option>
+                <option value="TCB">Techcombank</option>
+                <option value="TPB">TPBank</option>
+                <option value="VPB">VPBank</option>
+                <option value="ACB">ACB</option>
+                <option value="ICB">VietinBank</option>
+                <option value="BIDV">BIDV</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Số tài khoản ngân hàng của bạn..."
+                value={account}
+                onChange={(e) => setAccount(e.target.value)}
+                className="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs font-semibold"
+              />
+            </div>
+          </div>
           {order.status === "PAID" && <p className="text-sm text-[var(--muted)]">Đơn đã thanh toán: hệ thống sẽ ghi nhận hoàn tiền giả lập và thu hồi điểm thưởng của đơn.</p>}
           {!canCancel && <p role="alert" className="text-sm text-red-700">Đơn hiện không thể hủy. Hãy quay lại để xem trạng thái mới nhất.</p>}
           {message && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{message}</p>}

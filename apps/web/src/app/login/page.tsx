@@ -59,9 +59,8 @@ export default function LoginPage() {
     setFormError("");
   }
 
-  return <section className="mx-auto grid min-h-[calc(100vh-140px)] max-w-6xl items-center gap-10 px-5 py-10 md:grid-cols-2 md:px-10">
-    <div className="hidden rounded-[2rem] bg-[#e9f0e9] p-10 md:block"><p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">BrewLite · Chào mừng trở lại</p><h1 className="mt-5 text-4xl font-semibold leading-tight text-[#183d2c]">Khoảnh khắc cà phê tiếp theo đang chờ bạn.</h1><p className="mt-4 leading-7 text-[#66736a]">Đăng nhập để tiếp tục hành trình thưởng thức cùng BrewLite hoặc quản lý quầy pha chế.</p><div className="mt-9 flex items-center gap-3"><span className="grid size-12 place-items-center rounded-full bg-[#183d2c] text-xl text-white">☕</span><span className="text-sm font-semibold text-[#31553e]">Thơm lành mỗi ngày</span></div></div>
-    <div className="mx-auto w-full max-w-md">
+  return <section className="w-full px-4 py-6 flex flex-col gap-6">
+    <div className="w-full">
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">Tài khoản BrewLite</p>
       <h2 className="mt-3 text-3xl font-semibold text-[#183d2c]">Đăng nhập</h2>
       <p className="mt-2 text-sm text-[#66736a]">Nhập thông tin tài khoản của bạn để tiếp tục.</p>

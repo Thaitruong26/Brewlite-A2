@@ -62,57 +62,31 @@ function SiteHeaderContent() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#e5e7dc] bg-[#f5f7f2]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-10">
+    <header className="sticky top-0 z-30 border-b border-[#e5e7dc] bg-[#f5f7f2]/95 backdrop-blur-md shrink-0 pt-[env(safe-area-inset-top,0px)]">
+      <div className="flex h-14 w-full items-center justify-between px-3.5">
 
         {/* ── Logo ─────────────────────────────────────────── */}
         <Link
           href="/"
           aria-label="BrewLite — Trang chủ"
-          className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#183d2c]"
+          className="flex items-center gap-2 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-[#183d2c]"
         >
           <span
-            className="grid size-9 place-items-center rounded-full bg-[#183d2c] text-lg text-[#fbf8ef]"
+            className="grid size-8 place-items-center rounded-full bg-[#183d2c] text-base text-[#fbf8ef]"
             aria-hidden="true"
           >
             ☕
           </span>
           <div className="leading-tight">
-            <p className="text-base font-bold tracking-tight text-[#183d2c]">BrewLite</p>
-            <p className="hidden text-[10px] font-medium text-[#66736a] sm:block">
-              Campus Artisan Coffee
+            <p className="text-sm font-bold tracking-tight text-[#183d2c]">BrewLite</p>
+            <p className="text-[9px] font-medium text-[#66736a]">
+              Artisan Coffee
             </p>
           </div>
         </Link>
 
-        {/* ── Desktop nav ──────────────────────────────────── */}
-        <nav aria-label="Điều hướng chính" className="hidden items-center gap-0.5 md:flex">
-          {NAV_LINKS.map(({ href, label, hasCart }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={[
-                  "relative rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-[#e9f0e9] font-semibold text-[#183d2c]"
-                    : "text-[#4a6155] hover:bg-[#eef2ec] hover:text-[#183d2c]",
-                ].join(" ")}
-              >
-                {label}
-                {hasCart && totalItems > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-[#183d2c] text-[9px] font-bold text-white">
-                    {totalItems > 9 ? "9+" : totalItems}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
         {/* ── Auth ─────────────────────────────────────────── */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {user?.role === "BARISTA" && (
             <Link
               href="/barista"

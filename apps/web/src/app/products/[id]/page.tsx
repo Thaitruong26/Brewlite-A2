@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ApiError, api, formatVND } from "@/lib/api";
+import { getDevelopmentProducts } from "@/lib/api/dev-products";
 import { MAX_QTY_PER_ITEM, MAX_TOPPINGS, type Size, itemUnitPrice, useCartStore } from "@/store/cart";
 import { useStockStore, checkIsAvailable } from "@/store/stock-store";
 import { useAuthStore } from "@/store/auth-store";
@@ -33,14 +34,33 @@ function ProductDetailContent() {
   const { data: product, isPending, error, refetch } = useQuery({
     queryKey: ["product", id],
     queryFn: () => api<ProductDetail>(`/products/${id}`),
+    staleTime: 60 * 1000,
     retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
+    placeholderData: () => {
+      const dev = getDevelopmentProducts().data.find((p) => p.id === Number(id));
+      if (!dev) return undefined;
+      return {
+        ...dev,
+        sizes: [
+          { size: "S", surcharge: 0 },
+          { size: "M", surcharge: 5000 },
+          { size: "L", surcharge: 10000 },
+        ],
+        toppings: [
+          { id: 1, name: "Trân châu đen", price: 5000 },
+          { id: 2, name: "Trân châu đường đen", price: 7000 },
+          { id: 3, name: "Thạch dừa", price: 5000 },
+          { id: 4, name: "Pudding trứng", price: 7000 },
+        ],
+      } as ProductDetail;
+    },
   });
 
   if (isPending) return <DetailSkeleton />;
   if (error || !product) {
     const notFound = error instanceof ApiError && (error.status === 404 || error.status === 400);
     return (
-      <main className="mx-auto max-w-3xl px-5 py-16">
+      <div className="w-full px-4 py-8">
         <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
           <h1 className="text-lg font-bold">{notFound ? "Không tìm thấy sản phẩm" : "Không tải được sản phẩm"}</h1>
           <p className="mt-1 text-sm">{notFound ? "Sản phẩm không tồn tại hoặc đã ngừng bán." : error?.message}</p>
@@ -53,7 +73,7 @@ function ProductDetailContent() {
         <Link href="/menu" className="mt-5 inline-block font-semibold text-amber-900 hover:underline">
           ← Quay lại thực đơn
         </Link>
-      </main>
+      </div>
     );
   }
   // key = id: đổi sang sản phẩm khác thì lựa chọn size/topping được đặt lại.
@@ -125,13 +145,13 @@ function ProductOptions({ product }: { product: ProductDetail }) {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-      <Link href="/menu" className="text-sm font-semibold text-amber-900 hover:underline">
+    <div className="w-full px-3.5 py-4">
+      <Link href="/menu" className="inline-flex items-center gap-1 text-xs font-semibold text-amber-900 hover:underline">
         ← Quay lại thực đơn
       </Link>
-      <div className="mt-5 grid gap-8 rounded-3xl border border-stone-200/80 bg-white p-6 shadow-sm md:grid-cols-2 md:p-10 md:items-start">
-        {/* Cột trái: Khung ảnh nghệ thuật chuẩn tỷ lệ & Bảng cam kết */}
-        <div className="space-y-6 md:sticky md:top-24">
+      <div className="mt-3 flex flex-col gap-5 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm">
+        {/* Khung ảnh nghệ thuật */}
+        <div className="space-y-4">
           <div className="relative aspect-4/3 sm:aspect-square w-full overflow-hidden rounded-2xl bg-stone-100 shadow-inner group border border-stone-200/80">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -319,13 +339,13 @@ function ProductOptions({ product }: { product: ProductDetail }) {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
 function DetailSkeleton() {
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6" aria-busy="true" aria-label="Đang tải chi tiết sản phẩm">
+    <div className="w-full px-4 py-8" aria-busy="true" aria-label="Đang tải chi tiết sản phẩm">
       <div className="mt-9 grid animate-pulse gap-8 rounded-3xl border border-stone-200 bg-white p-5 md:grid-cols-2 md:p-8">
         <div className="h-72 rounded-2xl bg-stone-200" />
         <div className="space-y-4">
@@ -340,7 +360,7 @@ function DetailSkeleton() {
           <div className="h-32 rounded-xl bg-stone-200" />
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 

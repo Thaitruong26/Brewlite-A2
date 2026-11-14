@@ -1,16 +1,15 @@
 @echo off
 echo ========================================================
-echo    DANG KHOI CHAY BREWLITE (BACKEND + FRONTEND)
+echo    DANG KHOI CHAY BREWLITE A2 (BACKEND + FRONTEND)
 echo ========================================================
-REM Dam bao khong bi xung dot cong voi Docker container
-docker stop brewlite-frontend brewlite-backend >nul 2>&1
-docker start brewlite-db >nul 2>&1
+REM Khoi dong container DB cua Assignment 2 (Port 5434)
+docker start brewlite-a2-db >nul 2>&1 || docker compose up -d db
 
-start "BrewLite Backend (Port 4000)" cmd /k "cd apps\api && npm run start:dev"
-start "BrewLite Frontend (Port 3000)" cmd /k "cd apps\web && npm run dev"
+start "BrewLite A2 Backend (Port 4001)" cmd /k "cd apps\api && npm run start:dev"
+start "BrewLite A2 Frontend (Port 3001)" cmd /k "cd apps\web && npm run dev"
 echo.
-echo Backend dang chay tai:   http://localhost:4000/api
-echo Frontend dang chay tai:  http://localhost:3000
-echo Quay Barista:            http://localhost:3000/barista
-echo Xem Database truc quan:  http://localhost:5555 (chay view-db.bat)
+echo Backend A2 dang chay tai:   http://localhost:4001/api
+echo Frontend A2 dang chay tai:  http://localhost:3001
+echo Quay Barista A2:            http://localhost:3001/barista
+echo Xem Database truc quan:     http://localhost:5556 (chay view-db.bat)
 echo ========================================================

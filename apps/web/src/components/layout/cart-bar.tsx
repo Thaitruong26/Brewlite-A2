@@ -1,25 +1,24 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCartStore, selectTotalItems, selectTotalAmount } from "@/store/cart-store";
 
 const formatVnd = (amount: number) => new Intl.NumberFormat("vi-VN").format(amount);
 
-/**
- * Thanh tóm tắt giỏ hàng sticky — hiện phía trên BottomNav khi giỏ có ít nhất 1 món.
- * Chỉ hiển thị trên mobile (md:hidden), desktop dùng header cart link thay thế.
- */
-export function CartBar() {
+function CartBarContent() {
+  const pathname = usePathname();
   const totalItems = useCartStore(selectTotalItems);
   const totalAmount = useCartStore(selectTotalAmount);
 
-  if (totalItems === 0) return null;
+  if (pathname?.startsWith("/barista") || totalItems === 0) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-16 z-30 px-3 pb-2 md:hidden">
+    <div className="fixed bottom-16 left-0 right-0 z-30 mx-auto w-full max-w-[440px] px-3 pb-2 mb-[env(safe-area-inset-bottom,0px)] pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-200">
       <Link
         href="/cart"
-        className="flex items-center justify-between rounded-2xl bg-[#183d2c] px-4 py-3 shadow-lg transition hover:bg-[#24563e] active:scale-[0.98]"
+        className="pointer-events-auto flex items-center justify-between rounded-2xl bg-[#183d2c] px-4 py-3 shadow-xl transition-all duration-200 hover:bg-[#24563e] active:scale-[0.98]"
       >
         <div className="flex items-center gap-3">
           {/* Cart icon */}
@@ -32,17 +31,28 @@ export function CartBar() {
             </span>
           </span>
           <div className="leading-tight">
-            <p className="text-xs text-white/70">{totalItems} món trong giỏ</p>
+            <p className="text-xs text-white/75">{totalItems} món trong giỏ</p>
             <p className="text-sm font-bold text-white">{formatVnd(totalAmount)} đ</p>
           </div>
         </div>
-        <span className="flex items-center gap-1 rounded-xl bg-white px-4 py-2 text-sm font-bold text-[#183d2c]">
-          Xem giỏ hàng
-          <svg viewBox="0 0 20 20" fill="currentColor" className="size-4">
+        <span className="flex items-center gap-1 rounded-xl bg-white px-3.5 py-1.5 text-xs font-bold text-[#183d2c] shadow-sm">
+          Xem giỏ
+          <svg viewBox="0 0 20 20" fill="currentColor" className="size-3.5">
             <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd" />
           </svg>
         </span>
       </Link>
     </div>
+  );
+}
+
+/**
+ * Thanh tóm tắt giỏ hàng nổi — hiển thị phía trên BottomNav khi giỏ có ít nhất 1 món.
+ */
+export function CartBar() {
+  return (
+    <Suspense fallback={null}>
+      <CartBarContent />
+    </Suspense>
   );
 }

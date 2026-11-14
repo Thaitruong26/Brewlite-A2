@@ -9,6 +9,7 @@ import {
   ApiError,
   createOrderApi,
   createPaymentApi,
+  createVnpayUrlApi,
   formatVND,
   getAccessToken,
   saveSession,
@@ -172,6 +173,15 @@ export default function CheckoutPage() {
         queryClient.invalidateQueries({ queryKey: ["me"] });
       }
 
+      // Nếu chọn Cổng VNPay Sandbox (Bắt buộc theo ADR-004):
+      if (paymentMethod === "VNPAY") {
+        setStepStatus("PROCESSING_PAYMENT");
+        const { paymentUrl, simulatorUrl } = await createVnpayUrlApi(orderToPay.id);
+        clearCart();
+        window.location.href = simulatorUrl || paymentUrl;
+        return;
+      }
+
       // Nếu chọn Ví điện tử / Quét mã QR MoMo:
       // Chuyển hướng sang trang mã QR để khách quét mã và Barista đối soát
       if (paymentMethod === "WALLET") {
@@ -253,42 +263,19 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col">
-      {/* Header */}
-      <header className="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-2 font-bold text-xl tracking-tight text-amber-900"
-            >
-              <span className="text-2xl">☕</span>
-              <span>BrewLite</span>
-            </Link>
-            <span className="text-stone-300">/</span>
-            <span className="text-sm font-semibold text-stone-700">
-              Thanh toán đơn hàng
-            </span>
-          </div>
+    <div className="w-full px-4 py-4 flex flex-col gap-5">
+      {/* Tiêu đề trang */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-[#183d2c]">Thanh toán</h1>
+        <Link
+          href="/cart"
+          className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-200"
+        >
+          Giỏ hàng ({items.reduce((sum, i) => sum + i.quantity, 0)})
+        </Link>
+      </div>
 
-          <nav className="flex items-center gap-3 text-sm font-medium">
-            <Link
-              href="/menu"
-              className="text-stone-600 hover:text-amber-800 transition-colors"
-            >
-              Thực đơn
-            </Link>
-            <Link
-              href="/cart"
-              className="px-3 py-1.5 rounded-lg border border-stone-200 bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors"
-            >
-              Giỏ hàng ({items.reduce((sum, i) => sum + i.quantity, 0)})
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
+      <main className="w-full">
         {/* Nếu giỏ hàng trống và chưa có đơn */}
         {items.length === 0 && !currentOrder ? (
           <div className="bg-white rounded-2xl border border-stone-200 p-10 text-center max-w-lg mx-auto shadow-sm">
@@ -314,9 +301,9 @@ export default function CheckoutPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Cột trái: Danh sách món & Thông tin đơn */}
-            <div className="lg:col-span-7 space-y-6">
+          <div className="flex flex-col gap-6 w-full">
+            {/* Khối trên: Danh sách món & Thông tin đơn */}
+            <div className="space-y-6 w-full">
               <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-stone-100 pb-4 mb-4">
                   <div>
@@ -475,20 +462,61 @@ export default function CheckoutPage() {
               </section>
             </div>
 
-            {/* Cột phải: Chọn phương thức Ví / Thẻ & Tổng tiền & Nút Xác nhận trả */}
-            <div className="lg:col-span-5 space-y-6">
+            {/* Khối dưới: Chọn phương thức Ví / Thẻ & Tổng tiền & Nút Xác nhận trả */}
+            <div className="space-y-6 w-full">
               <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-stone-900">
                     Phương thức thanh toán
                   </h2>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold">
-                    💳 Không dùng tiền mặt
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold shrink-0">
+                    💳 Không tiền mặt
                   </span>
                 </div>
 
-                {/* Chọn Ví điện tử (WALLET) hoặc Thẻ ngân hàng (CARD) */}
+                {/* Chọn VNPay Sandbox (Bắt buộc ADR-004), Ví điện tử hoặc Thẻ */}
                 <div className="space-y-3" role="radiogroup" aria-label="Phương thức thanh toán">
+                  {/* Cổng VNPay Sandbox */}
+                  <label
+                    onClick={() => handleSelectMethod("VNPAY")}
+                    className={`flex items-start gap-3.5 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                      paymentMethod === "VNPAY"
+                        ? "border-[#183d2c] bg-emerald-50/70 shadow-xs"
+                        : "border-stone-200 hover:border-stone-300 bg-white"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="VNPAY"
+                      checked={paymentMethod === "VNPAY"}
+                      onChange={() => handleSelectMethod("VNPAY")}
+                      className="mt-1 accent-[#183d2c]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-stone-900 flex items-center gap-1.5 flex-wrap">
+                          VNPay Sandbox
+                          <span className="text-[10px] font-bold bg-[#183d2c] text-white px-2 py-0.5 rounded-full shrink-0">
+                            Bắt buộc A2
+                          </span>
+                        </span>
+                        <span className="text-xl">🏦</span>
+                      </div>
+                      <p className="text-xs text-stone-600 mt-1">
+                        Cổng thanh toán quốc dân: Quét mã QR ngân hàng hoặc thẻ ATM nội địa NCB (Sandbox test).
+                      </p>
+                      {paymentMethod === "VNPAY" && (
+                        <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-100/70 text-[11px] text-emerald-950 border border-emerald-200 space-y-1">
+                          <p className="font-bold">💳 Thẻ test mẫu (Ngân hàng NCB):</p>
+                          <p>Số thẻ: <span className="font-mono font-bold">9704198526191432198</span></p>
+                          <p>Tên chủ thẻ: <span className="font-bold">NGUYEN VAN A</span> | Ngày phát hành: <span className="font-bold">07/15</span></p>
+                          <p>Mã OTP test: <span className="font-mono font-bold">123456</span></p>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+
                   <label
                     onClick={() => handleSelectMethod("WALLET")}
                     className={`flex items-start gap-3.5 p-4 rounded-xl border-2 transition-all cursor-pointer ${

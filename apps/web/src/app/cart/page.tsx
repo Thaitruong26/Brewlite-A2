@@ -220,9 +220,9 @@ export default function CartPage() {
   };
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 py-8">
+    <div className="w-full px-3.5 py-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-extrabold text-[#183d2c]">Giỏ hàng</h1>
+        <h1 className="text-2xl font-extrabold text-[#183d2c]">Giỏ hàng</h1>
         {items.length > 0 && (
           <button
             type="button"
@@ -256,10 +256,10 @@ export default function CartPage() {
           </Link>
         </section>
       ) : (
-        <div className="mt-8 grid gap-8 lg:grid-cols-3">
+        <div className="mt-6 flex flex-col gap-6 w-full">
           <section
             aria-label="Danh sách món trong giỏ"
-            className="space-y-4 lg:col-span-2"
+            className="space-y-4 w-full"
           >
             {items.map((item) => (
               <CartRow
@@ -409,7 +409,7 @@ export default function CartPage() {
           </aside>
         </div>
       )}
-    </main>
+    </div>
   );
 }
 

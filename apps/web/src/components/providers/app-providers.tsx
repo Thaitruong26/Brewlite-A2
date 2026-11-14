@@ -43,9 +43,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 5_000,
+            staleTime: 60_000, // Cache dữ liệu 60s để chuyển trang mượt mà tức thì
+            gcTime: 10 * 60_000, // Giữ bộ nhớ đệm 10 phút
             retry: 1,
-            refetchOnWindowFocus: true,
+            refetchOnWindowFocus: false, // Không tải lại liên tục mỗi khi đổi app/tab trên điện thoại
           },
         },
       }),

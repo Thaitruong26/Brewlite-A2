@@ -1,0 +1,304 @@
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { createHmac } from 'node:crypto';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { LoyaltyService } from '../loyalty/loyalty.service.js';
+
+export interface VnpayConfig {
+  tmnCode: string;
+  hashSecret: string;
+  vnpUrl: string;
+  returnUrl: string;
+}
+
+@Injectable()
+export class VnpayService {
+  private readonly logger = new Logger(VnpayService.name);
+
+  // Cấu hình VNPay Sandbox chính thức (Môi trường thử nghiệm công khai)
+  private readonly config: VnpayConfig = {
+    tmnCode: process.env.VNPAY_TMN_CODE || '2QXUI4J4',
+    hashSecret: process.env.VNPAY_HASH_SECRET || 'RAIQUIVYHUZLWDTCARBMONSGNUDQGNTK',
+    vnpUrl: process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+    returnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:3001/payment/vnpay-return',
+  };
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly loyaltyService: LoyaltyService,
+  ) {}
+
+  private getVnpayDateFormat(d: Date = new Date()): string {
+    const vnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+    const year = vnTime.getUTCFullYear();
+    const month = String(vnTime.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(vnTime.getUTCDate()).padStart(2, '0');
+    const hours = String(vnTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(vnTime.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(vnTime.getUTCSeconds()).padStart(2, '0');
+    return `${year}${month}${day}${hours}${minutes}${seconds}`;
+  }
+
+  private sortObject(obj: Record<string, any>): Record<string, string> {
+    const sorted: Record<string, string> = {};
+    const keys = Object.keys(obj).sort();
+    for (const key of keys) {
+      if (obj[key] !== null && obj[key] !== undefined && obj[key] !== '') {
+        sorted[key] = encodeURIComponent(String(obj[key])).replace(/%20/g, '+');
+      }
+    }
+    return sorted;
+  }
+
+  /**
+   * Sinh URL chuyển hướng sang cổng thanh toán VNPay Sandbox
+   */
+  async createPaymentUrl(orderId: number, ipAddr: string = '127.0.0.1', baseUrl?: string): Promise<string> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Đơn hàng không tồn tại');
+    }
+
+    if (order.status !== 'PENDING' && order.status !== 'PAYMENT_FAILED') {
+      throw new BadRequestException('Đơn hàng không ở trạng thái chờ thanh toán');
+    }
+
+    const createDate = this.getVnpayDateFormat();
+    const txnRef = `${order.id}_${Date.now()}`;
+    const amount = order.total * 100; // VNPay tính theo đơn vị hào (nhân 100)
+    const returnUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/payment/vnpay-return` : this.config.returnUrl;
+
+    const vnpParams: Record<string, string> = {
+      vnp_Version: '2.1.0',
+      vnp_Command: 'pay',
+      vnp_TmnCode: this.config.tmnCode,
+      vnp_Locale: 'vn',
+      vnp_CurrCode: 'VND',
+      vnp_TxnRef: txnRef,
+      vnp_OrderInfo: `Thanh toan don hang ${order.id} BrewLite`,
+      vnp_OrderType: 'other',
+      vnp_Amount: String(amount),
+      vnp_ReturnUrl: returnUrl,
+      vnp_IpAddr: ipAddr.includes(':') ? '127.0.0.1' : ipAddr,
+      vnp_CreateDate: createDate,
+    };
+
+    const sortedParams = this.sortObject(vnpParams);
+    const signData = Object.entries(sortedParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&');
+
+    const hmac = createHmac('sha512', this.config.hashSecret);
+    const secureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    const paymentUrl = `${this.config.vnpUrl}?${signData}&vnp_SecureHash=${secureHash}`;
+    this.logger.log(`Tạo URL thanh toán VNPay cho đơn #${order.id}: ${paymentUrl}`);
+
+    return paymentUrl;
+  }
+
+  /**
+   * Sinh URL cho cổng giả lập VNPay Sandbox Mock Simulator
+   * Dùng cho demo hoặc kiểm thử khi chưa đăng ký tài khoản Sandbox với VNPay
+   */
+  async createSimulatorUrl(orderId: number): Promise<string> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Đơn hàng không tồn tại');
+    }
+
+    const createDate = this.getVnpayDateFormat();
+    const txnRef = `${order.id}_${Date.now()}`;
+    const amount = order.total * 100;
+
+    const vnpParams: Record<string, string> = {
+      vnp_Version: '2.1.0',
+      vnp_Command: 'pay',
+      vnp_TmnCode: this.config.tmnCode,
+      vnp_Locale: 'vn',
+      vnp_CurrCode: 'VND',
+      vnp_TxnRef: txnRef,
+      vnp_OrderInfo: `Thanh toan don hang ${order.id} BrewLite`,
+      vnp_OrderType: 'other',
+      vnp_Amount: String(amount),
+      vnp_ReturnUrl: this.config.returnUrl,
+      vnp_CreateDate: createDate,
+    };
+
+    const sortedParams = this.sortObject(vnpParams);
+    const signData = Object.entries(sortedParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&');
+
+    const hmac = createHmac('sha512', this.config.hashSecret);
+    const secureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    return `/payment/vnpay-sandbox-mock?${signData}&vnp_SecureHash=${secureHash}`;
+  }
+
+  /**
+   * Tạo query callback thành công có ký HMAC-SHA512 hợp lệ từ Simulator
+   */
+  generateSignedCallback(
+    orderId: number,
+    txnRef: string,
+    amount: number,
+    responseCode: string = '00',
+  ): string {
+    const payDate = this.getVnpayDateFormat();
+    const transactionNo = `SIM_${Date.now()}`;
+    const vnpParams: Record<string, string> = {
+      vnp_Amount: String(amount),
+      vnp_BankCode: 'NCB',
+      vnp_BankTranNo: `VNP${Date.now()}`,
+      vnp_CardType: 'ATM',
+      vnp_OrderInfo: `Thanh toan don hang ${orderId} BrewLite`,
+      vnp_PayDate: payDate,
+      vnp_ResponseCode: responseCode,
+      vnp_TmnCode: this.config.tmnCode,
+      vnp_TransactionNo: transactionNo,
+      vnp_TransactionStatus: responseCode,
+      vnp_TxnRef: txnRef,
+    };
+
+    const sortedParams = this.sortObject(vnpParams);
+    const signData = Object.entries(sortedParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&');
+
+    const hmac = createHmac('sha512', this.config.hashSecret);
+    const secureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    return `${signData}&vnp_SecureHashType=SHA512&vnp_SecureHash=${secureHash}`;
+  }
+
+  /**
+   * Xác thực kết quả trả về từ VNPay (Return URL / IPN)
+   */
+  async verifyReturnUrl(query: Record<string, string>): Promise<{
+    isSuccess: boolean;
+    orderId: number;
+    amount: number;
+    responseCode: string;
+    message: string;
+    transactionNo?: string;
+  }> {
+    const secureHash = query['vnp_SecureHash'];
+    if (!secureHash) {
+      return {
+        isSuccess: false,
+        orderId: 0,
+        amount: 0,
+        responseCode: '99',
+        message: 'Thiếu chữ ký bảo mật VNPay (vnp_SecureHash)',
+      };
+    }
+
+    const cleanQuery: Record<string, string> = { ...query };
+    delete cleanQuery['vnp_SecureHash'];
+    delete cleanQuery['vnp_SecureHashType'];
+
+    const sortedParams = this.sortObject(cleanQuery);
+    const signData = Object.entries(sortedParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&');
+
+    const hmac = createHmac('sha512', this.config.hashSecret);
+    const calculatedHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    if (calculatedHash.toLowerCase() !== secureHash.toLowerCase()) {
+      this.logger.error('Chữ ký VNPay không khớp!');
+      return {
+        isSuccess: false,
+        orderId: 0,
+        amount: 0,
+        responseCode: '97',
+        message: 'Chữ ký VNPay không hợp lệ (Sai checksum)',
+      };
+    }
+
+    const txnRef = query['vnp_TxnRef'] || '';
+    const orderId = parseInt(txnRef.split('_')[0], 10);
+    const responseCode = query['vnp_ResponseCode'] || '';
+    const amount = parseInt(query['vnp_Amount'] || '0', 10) / 100;
+    const transactionNo = query['vnp_TransactionNo'];
+
+    if (isNaN(orderId) || orderId <= 0) {
+      return {
+        isSuccess: false,
+        orderId: 0,
+        amount,
+        responseCode,
+        message: 'Mã đơn hàng không hợp lệ',
+      };
+    }
+
+    const isSuccess = responseCode === '00';
+
+    if (isSuccess) {
+      // Cập nhật trạng thái đơn sang PAID và ghi nhận Payment
+      await this.prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+        });
+
+        if (order && order.status !== 'PAID' && order.status !== 'COMPLETED') {
+          await tx.order.update({
+            where: { id: orderId },
+            data: { status: 'PAID' },
+          });
+
+          await tx.payment.create({
+            data: {
+              orderId,
+              amount: order.total,
+              method: 'CARD', // Lưu dạng thẻ qua cổng thanh toán
+              status: 'SUCCESS',
+              idempotencyKey: `vnpay-${txnRef}`,
+              requestHash: `vnpay-${transactionNo || txnRef}`,
+              responseSnapshot: {
+                provider: 'VNPAY',
+                transactionNo,
+                bankCode: query['vnp_BankCode'],
+                cardType: query['vnp_CardType'],
+                payDate: query['vnp_PayDate'],
+              },
+            },
+          });
+
+          // Tích điểm thưởng cho khách (1 điểm / 1.000đ)
+          try {
+            await this.loyaltyService.award(tx, order);
+          } catch {
+            // Bỏ qua nếu đơn đã được tích điểm
+          }
+        }
+      });
+
+      return {
+        isSuccess: true,
+        orderId,
+        amount,
+        responseCode,
+        transactionNo,
+        message: 'Thanh toán VNPay thành công',
+      };
+    }
+
+    // Nếu không thành công (Hủy hoặc lỗi giao dịch)
+    return {
+      isSuccess: false,
+      orderId,
+      amount,
+      responseCode,
+      transactionNo,
+      message: responseCode === '24' ? 'Khách hàng đã hủy giao dịch trên cổng VNPay' : 'Thanh toán VNPay không thành công',
+    };
+  }
+}
+

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { Suspense, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ApiError } from "@/lib/api/client";
 import { getProducts } from "@/lib/api/products";
 import { getDevelopmentProducts } from "@/lib/api/dev-products";
@@ -196,6 +196,7 @@ function DesktopProductCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/products/${product.id}`}
+      prefetch={true}
       className="group overflow-hidden rounded-[1.4rem] transition duration-200 hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2"
       style={{
         background: "var(--card)",
@@ -258,7 +259,7 @@ function DesktopProductCard({ product }: { product: Product }) {
 }
 
 // ─── Trang Menu ───────────────────────────────────────────────────────────────
-export default function MenuPage() {
+function MenuContent() {
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
   const [showFixtures, setShowFixtures] = useState(false);
@@ -279,6 +280,8 @@ export default function MenuPage() {
   const query = useQuery({
     queryKey: ["products", { category, page: 1, limit: 20 }],
     queryFn: () => getProducts({ category: category || undefined, page: 1, limit: 20 }),
+    placeholderData: (previousData) => previousData ?? getDevelopmentProducts(category || undefined),
+    staleTime: 60 * 1000,
     enabled: !showFixtures,
   });
 
@@ -313,7 +316,7 @@ export default function MenuPage() {
   const isError = !showFixtures && query.isError;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-4 md:max-w-7xl md:px-10 md:py-8">
+    <div className="w-full px-3.5 py-3">
 
       {/* ── Hero ── */}
       <HeroBanner />
@@ -440,24 +443,28 @@ export default function MenuPage() {
         </div>
       )}
 
-      {/* ── Product list ── */}
+      {/* ── Product list (Chuẩn danh sách 1 cột dọc Mobile) ── */}
       {result && products.length > 0 && (
-        <>
-          {/* Mobile: danh sách dọc */}
-          <div className="mt-4 space-y-3 md:hidden">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-
-          {/* Desktop: lưới 2–4 cột */}
-          <div className="mt-6 hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
-              <DesktopProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        </>
+        <div className="mt-4 space-y-3">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
       )}
     </div>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center p-6 text-sm text-[#4a6155]">
+          Đang tải thực đơn...
+        </div>
+      }
+    >
+      <MenuContent />
+    </Suspense>
   );
 }

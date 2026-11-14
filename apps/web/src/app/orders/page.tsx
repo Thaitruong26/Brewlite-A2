@@ -108,7 +108,7 @@ export default function OrdersPage() {
   const meta = data?.page.meta;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div className="w-full px-3.5 py-4">
       {/* Tiêu đề & thanh công cụ */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -395,6 +395,6 @@ export default function OrdersPage() {
           </button>
         </nav>
       )}
-    </main>
+    </div>
   );
 }

@@ -40,9 +40,8 @@ export default function RegisterPage() {
 
   if (createdUser) return <section className="mx-auto flex min-h-[calc(100vh-140px)] max-w-xl items-center px-5 py-10"><div role="status" className="w-full rounded-[2rem] border border-[#dbe5d9] bg-white p-8 text-center shadow-sm sm:p-12"><span className="mx-auto grid size-14 place-items-center rounded-full bg-[#e9f0e9] text-2xl text-[#24563e]" aria-hidden="true">✓</span><h1 className="mt-5 text-3xl font-semibold text-[#183d2c]">Tài khoản đã sẵn sàng</h1><p className="mt-3 leading-7 text-[#66736a]">Chào mừng, {createdUser.fullName}. Bạn có thể đăng nhập bằng email đã đăng ký.</p><Link href="/login" className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full bg-[#183d2c] px-7 font-semibold text-white hover:bg-[#24563e]">Đến đăng nhập</Link></div></section>;
 
-  return <section className="mx-auto grid min-h-[calc(100vh-140px)] max-w-6xl items-center gap-10 px-5 py-10 md:grid-cols-2 md:px-10">
-    <div className="hidden rounded-[2rem] bg-[#e9f0e9] p-10 md:block"><p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">Góc nhỏ của riêng bạn</p><h1 className="mt-5 text-4xl font-semibold leading-tight text-[#183d2c]">Bắt đầu ngày mới với điều bạn yêu thích.</h1><p className="mt-4 leading-7 text-[#66736a]">Tạo tài khoản BrewLite để đồng hành cùng những hương vị quen thuộc.</p></div>
-    <div className="mx-auto w-full max-w-md">
+  return <section className="w-full px-4 py-6 flex flex-col gap-6">
+    <div className="w-full">
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">Tài khoản BrewLite</p><h2 className="mt-3 text-3xl font-semibold text-[#183d2c]">Tạo tài khoản</h2><p className="mt-2 text-sm text-[#66736a]">Điền thông tin cơ bản để đăng ký.</p>
       {formError && <div role="alert" className="mt-5 rounded-xl border border-[#e8c5b5] bg-[#fff8f3] px-4 py-3 text-sm text-[#713d2a]">{formError}</div>}
       <form onSubmit={handleSubmit} noValidate className="mt-7 space-y-4">

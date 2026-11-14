@@ -1,4 +1,3 @@
-
 "use client";
 
 import { Suspense } from "react";
@@ -49,10 +48,15 @@ function BottomNavContent() {
   const pathname = usePathname();
   const totalItems = useCartStore(selectTotalItems);
 
+  // Không hiển thị thanh điều hướng khách hàng trên màn hình Barista
+  if (pathname?.startsWith("/barista")) {
+    return null;
+  }
+
   return (
     <nav
       aria-label="Điều hướng chính"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e5e7dc] bg-white/95 backdrop-blur-sm md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 mx-auto w-full max-w-[440px] border-t border-[#e5e7dc] bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]"
     >
       <div className="flex h-16 items-stretch">
         {NAV_ITEMS.map(({ href, label, icon }) => {
@@ -72,14 +76,14 @@ function BottomNavContent() {
               <span className="relative">
                 {icon(active)}
                 {isCart && totalItems > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-[#183d2c] text-[9px] font-bold text-white">
+                  <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-[#183d2c] text-[9px] font-bold text-white shadow-sm">
                     {totalItems > 9 ? "9+" : totalItems}
                   </span>
                 )}
               </span>
               <span>{label}</span>
               {active && (
-                <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-[#183d2c]" />
+                <span className="absolute bottom-1 left-1/2 h-0.5 w-6 -translate-x-1/2 rounded-full bg-[#183d2c]" />
               )}
             </Link>
           );
