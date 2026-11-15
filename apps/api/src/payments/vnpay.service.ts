@@ -417,4 +417,144 @@ export class VnpayService {
       message: responseCode === '24' ? 'Khách hàng đã hủy giao dịch trên cổng VNPay' : 'Thanh toán VNPay không thành công',
     };
   }
+
+  /**
+   * Xử lý IPN từ Server VNPay theo chuẩn tài liệu chính thức của VNPay
+   * Trả về JSON: { RspCode: '00', Message: 'Confirm Success' }
+   * Mã RspCode chuẩn:
+   *  - 00: Giao dịch thành công
+   *  - 01: Đơn hàng không tìm thấy (Order not found)
+   *  - 02: Đơn hàng đã được xác nhận trước đó (Order already confirmed)
+   *  - 04: Số tiền không hợp lệ (Invalid amount)
+   *  - 97: Chữ ký không hợp lệ (Invalid Checksum)
+   *  - 99: Lỗi không xác định
+   */
+  async verifyIpn(query: Record<string, string>): Promise<{ RspCode: string; Message: string }> {
+    const secureHash = query['vnp_SecureHash'];
+    if (!secureHash) {
+      return { RspCode: '99', Message: 'Missing Checksum' };
+    }
+
+    const tmnCode = this.getTmnCode();
+    const hashSecret = this.getHashSecret();
+
+    // 1. Kiểm tra đối tác
+    if (query['vnp_TmnCode'] && query['vnp_TmnCode'] !== tmnCode) {
+      this.logger.error(`Sai mã merchant VNPay trong IPN: ${query['vnp_TmnCode']}`);
+      return { RspCode: '97', Message: 'Invalid Merchant' };
+    }
+
+    // 2. Kiểm tra chữ ký HMAC
+    const cleanQuery: Record<string, string> = { ...query };
+    delete cleanQuery['vnp_SecureHash'];
+    delete cleanQuery['vnp_SecureHashType'];
+
+    const sortedParams = this.sortObject(cleanQuery);
+    const signData = Object.entries(sortedParams)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('&');
+
+    const hmac = createHmac('sha512', hashSecret);
+    const calculatedHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    if (calculatedHash.toLowerCase() !== secureHash.toLowerCase()) {
+      this.logger.error('Chữ ký IPN VNPay không khớp!');
+      return { RspCode: '97', Message: 'Invalid Checksum' };
+    }
+
+    const txnRef = query['vnp_TxnRef'] || '';
+    const orderId = parseInt(txnRef.split('_')[0], 10);
+    const responseCode = query['vnp_ResponseCode'] || '';
+    const amount = parseInt(query['vnp_Amount'] || '0', 10) / 100;
+    const transactionNo = query['vnp_TransactionNo'];
+
+    if (isNaN(orderId) || orderId <= 0) {
+      return { RspCode: '01', Message: 'Order not found' };
+    }
+
+    // 3. Tìm đơn hàng
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payments: true },
+    });
+
+    if (!order) {
+      return { RspCode: '01', Message: 'Order not found' };
+    }
+
+    // 4. Kiểm tra số tiền
+    if (Math.round(amount) !== Math.round(order.total)) {
+      this.logger.error(`Số tiền IPN ${amount} không khớp đơn #${order.id} (${order.total})`);
+      return { RspCode: '04', Message: 'Invalid amount' };
+    }
+
+    // 5. Kiểm tra trạng thái đơn (Idempotency)
+    if (
+      order.status === 'PAID' ||
+      order.status === 'PREPARING' ||
+      order.status === 'READY' ||
+      order.status === 'COMPLETED'
+    ) {
+      return { RspCode: '02', Message: 'Order already confirmed' };
+    }
+
+    if (order.status === 'CANCELLED') {
+      return { RspCode: '02', Message: 'Order already confirmed' };
+    }
+
+    const isSuccess = responseCode === '00';
+
+    if (isSuccess) {
+      await this.prisma.$transaction(async (tx) => {
+        const currentOrder = await tx.order.findUnique({
+          where: { id: orderId },
+        });
+
+        if (!currentOrder || currentOrder.status === 'CANCELLED') {
+          return;
+        }
+
+        if (currentOrder.status === 'PENDING' || currentOrder.status === 'PAYMENT_FAILED') {
+          await tx.order.update({
+            where: { id: orderId },
+            data: { status: 'PAID' },
+          });
+
+          await tx.payment.create({
+            data: {
+              orderId,
+              amount: currentOrder.total,
+              method: 'CARD',
+              status: 'SUCCESS',
+              idempotencyKey: `vnpay-${txnRef}`,
+              requestHash: `vnpay-${transactionNo || txnRef}`,
+              responseSnapshot: {
+                provider: 'VNPAY',
+                transactionNo,
+                bankCode: query['vnp_BankCode'],
+                cardType: query['vnp_CardType'],
+                payDate: query['vnp_PayDate'],
+              },
+            },
+          });
+
+          try {
+            await this.loyaltyService.award(tx, currentOrder);
+          } catch {}
+        }
+      });
+
+      return { RspCode: '00', Message: 'Confirm Success' };
+    }
+
+    // Nếu thanh toán thất bại
+    if (order.status === 'PENDING') {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: 'PAYMENT_FAILED' },
+      }).catch(() => {});
+    }
+
+    return { RspCode: '00', Message: 'Confirm Success' };
+  }
 }

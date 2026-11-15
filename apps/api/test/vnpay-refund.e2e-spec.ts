@@ -249,6 +249,65 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
         responseCode: '97',
       });
     });
+
+    it('GET /api/payments/vnpay/ipn xác thực hợp lệ theo chuẩn VNPay RspCode: 00', async () => {
+      const params = signVnpayParams({
+        vnp_TmnCode: TEST_TMN,
+        vnp_TxnRef: '10_1700000000',
+        vnp_Amount: '5000000',
+        vnp_ResponseCode: '00',
+        vnp_TransactionNo: 'VNPAY_IPN_001',
+      });
+
+      const res = await request(app.getHttpServer())
+        .get('/api/payments/vnpay/ipn')
+        .query(params);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        RspCode: '00',
+        Message: 'Confirm Success',
+      });
+    });
+
+    it('GET /api/payments/vnpay/ipn trả về RspCode: 97 khi sai chữ ký HMAC', async () => {
+      const params = signVnpayParams(
+        {
+          vnp_TmnCode: TEST_TMN,
+          vnp_TxnRef: '10_1700000000',
+          vnp_Amount: '5000000',
+          vnp_ResponseCode: '00',
+        },
+        'WRONG_HASH_SECRET',
+      );
+
+      const res = await request(app.getHttpServer())
+        .get('/api/payments/vnpay/ipn')
+        .query(params);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        RspCode: '97',
+        Message: 'Invalid Checksum',
+      });
+    });
+
+    it('POST /api/payments/vnpay/simulate-complete bị chặn khi ALLOW_VNPAY_SIMULATOR=false', async () => {
+      process.env.ALLOW_VNPAY_SIMULATOR = 'false';
+
+      const res = await request(app.getHttpServer())
+        .post('/api/payments/vnpay/simulate-complete')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({
+          orderId: 10,
+          txnRef: '10_1700000000',
+          amount: 50000,
+        });
+
+      expect(res.status).toBe(403);
+
+      delete process.env.ALLOW_VNPAY_SIMULATOR;
+    });
   });
 
   describe('2. Order Cancellation & VietQR Refund Workflow (FR-24 to FR-28)', () => {

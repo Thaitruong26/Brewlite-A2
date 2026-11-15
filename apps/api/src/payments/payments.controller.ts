@@ -82,7 +82,11 @@ export class PaymentsController {
     @Body('amount') amount: number,
     @Body('responseCode') responseCode: string = '00',
   ) {
-    if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_VNPAY_SIMULATOR) {
+    const isExplicitlyDisabled = process.env.ALLOW_VNPAY_SIMULATOR === 'false';
+    const isProdWithoutExplicitAllow =
+      process.env.NODE_ENV === 'production' && process.env.ALLOW_VNPAY_SIMULATOR !== 'true';
+
+    if (isExplicitlyDisabled || isProdWithoutExplicitAllow) {
       throw new ForbiddenException('VNPay Simulator chỉ khả dụng trong môi trường thử nghiệm/demo');
     }
     const query = this.vnpayService.generateSignedCallback(
@@ -95,8 +99,14 @@ export class PaymentsController {
   }
 
   @Get('vnpay/verify')
-  @ApiOperation({ summary: 'Xác thực kết quả thanh toán từ VNPay (Return URL / IPN)' })
+  @ApiOperation({ summary: 'Xác thực kết quả thanh toán từ VNPay (Return URL hiển thị kết quả cho khách)' })
   async verifyVnpay(@Query() query: Record<string, string>) {
     return this.vnpayService.verifyReturnUrl(query);
+  }
+
+  @Get('vnpay/ipn')
+  @ApiOperation({ summary: 'Xử lý IPN từ server VNPay (Server-to-Server webhook)' })
+  async vnpayIpn(@Query() query: Record<string, string>) {
+    return this.vnpayService.verifyIpn(query);
   }
 }
