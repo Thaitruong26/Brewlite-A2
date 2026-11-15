@@ -344,7 +344,7 @@ export default function BaristaPage() {
       setRefundProof("");
       setNotice(`Đã xác nhận hoàn tiền thành công cho đơn #${orderId}!`);
       // Reload orders to reflect update
-      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrder))).catch(() => {});
+      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
     } catch (e: any) {
       console.error("Xác nhận hoàn tiền thất bại:", e);
       alert(e?.message || "Xác nhận hoàn tiền thất bại. Vui lòng đối soát giao dịch và thử lại!");
@@ -362,7 +362,7 @@ export default function BaristaPage() {
       await failRefund(orderId, reason.trim());
       setRefundOrder(null);
       setNotice(`Đã ghi nhận chuyển khoản thất bại cho đơn #${orderId}.`);
-      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrder))).catch(() => {});
+      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
     } catch (e: any) {
       alert(e?.message || "Không thể cập nhật trạng thái thất bại");
     } finally {
@@ -379,7 +379,7 @@ export default function BaristaPage() {
       await holdRefund(orderId, note.trim());
       setRefundOrder(null);
       setNotice(`Đã chuyển đơn #${orderId} sang trạng thái đối soát (UNKNOWN).`);
-      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrder))).catch(() => {});
+      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
     } catch (e: any) {
       alert(e?.message || "Không thể chuyển đối soát");
     } finally {
@@ -392,7 +392,7 @@ export default function BaristaPage() {
     try {
       await retryRefund(orderId, refundBank, refundAccount);
       setNotice(`Đã đặt lại trạng thái hoàn tiền đơn #${orderId} về PENDING để thử lại.`);
-      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrder))).catch(() => {});
+      getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
     } catch (e: any) {
       alert(e?.message || "Không thể thử lại hoàn tiền");
     } finally {
