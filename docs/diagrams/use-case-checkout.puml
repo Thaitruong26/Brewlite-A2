@@ -1,0 +1,59 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Khách hàng" as Customer
+actor "VNPay" as VNPay
+actor "Nhân viên pha chế" as Barista
+
+rectangle "Hệ thống BrewLite" {
+
+    usecase "Đăng nhập" as UC1
+    usecase "Xem giỏ hàng" as UC2
+    usecase "Checkout và tạo đơn hàng" as UC3
+    usecase "Kiểm tra tồn kho" as UC4
+    usecase "Áp dụng khuyến mãi\nvà điểm Loyalty" as UC5
+
+    usecase "Thanh toán VNPay" as UC6
+    usecase "Thanh toán mô phỏng\n(Mock Payment)" as UC7
+    usecase "Nhận kết quả\nReturn URL" as UC8
+    usecase "Nhận thông báo IPN" as UC9
+    usecase "Đối soát giao dịch\n(QueryDr)" as UC10
+
+    usecase "Xem lịch sử đơn hàng" as UC11
+    usecase "Theo dõi trạng thái đơn" as UC12
+    usecase "Hủy đơn hàng" as UC13
+    usecase "Hoàn tiền" as UC14
+    usecase "Bồi hoàn điểm Loyalty" as UC15
+
+    usecase "Quản lý trạng thái đơn" as UC16
+}
+
+Customer --> UC1
+Customer --> UC2
+Customer --> UC3
+Customer --> UC6
+Customer --> UC7
+Customer --> UC11
+Customer --> UC12
+Customer --> UC13
+
+UC3 ..> UC4 : <<include>>
+UC3 ..> UC5 : <<include>>
+
+UC6 ..> UC8 : <<include>>
+UC6 ..> UC9 : <<include>>
+UC9 ..> UC10 : <<extend>>
+
+VNPay --> UC6
+VNPay --> UC8
+VNPay --> UC9
+VNPay --> UC14
+
+UC13 ..> UC14 : <<extend>>
+UC14 ..> UC15 : <<extend>>
+
+Barista --> UC16
+
+@enduml
