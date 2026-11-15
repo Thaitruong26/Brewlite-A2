@@ -15,7 +15,13 @@ import { RecipeService } from '../common/recipe/recipe.service.js';
 import { assertTransition } from './order-state.js';
 import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto.js';
 import { GetOrdersQueryDto } from './dto/get-orders-query.dto.js';
-import { CancelOrderDto, ConfirmRefundDto } from './dto/cancel-order.dto.js';
+import {
+  CancelOrderDto,
+  ConfirmRefundDto,
+  FailRefundDto,
+  HoldRefundDto,
+  RetryRefundDto,
+} from './dto/cancel-order.dto.js';
 
 export const ORDER_PAYMENT_TIMEOUT_MINUTES = 15;
 export const ORDER_PAYMENT_TIMEOUT_MS = ORDER_PAYMENT_TIMEOUT_MINUTES * 60 * 1000;
@@ -615,6 +621,264 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Phân tách mã tham chiếu VietQR để lấy thông tin tài khoản và trạng thái chu trình
+   */
+  public parseVietQrRef(refundRef?: string | null): {
+    bank: string;
+    account: string;
+    status: 'PENDING' | 'FAILED' | 'UNKNOWN' | 'COMPLETED' | null;
+    extra?: string;
+  } {
+    if (!refundRef || !refundRef.startsWith('VIETQR:')) {
+      return { bank: 'MB', account: '00000000', status: null };
+    }
+    const parts = refundRef.split(':');
+    const bank = parts[1] || 'MB';
+    const account = parts[2] || '00000000';
+    let status: 'PENDING' | 'FAILED' | 'UNKNOWN' | 'COMPLETED' | null = null;
+    let extra: string | undefined = undefined;
+
+    if (refundRef.includes(':CONFIRMED:')) {
+      status = 'COMPLETED';
+      extra = refundRef.split(':CONFIRMED:')[1];
+    } else if (refundRef.includes(':FAILED:')) {
+      status = 'FAILED';
+      extra = refundRef.split(':FAILED:')[1];
+    } else if (refundRef.includes(':UNKNOWN:')) {
+      status = 'UNKNOWN';
+      extra = refundRef.split(':UNKNOWN:')[1];
+    } else if (refundRef.includes(':PENDING')) {
+      status = 'PENDING';
+    }
+
+    return { bank, account, status, extra };
+  }
+
+  /**
+   * Barista ghi nhận chuyển khoản hoàn tiền thất bại (FAILED -> chuẩn bị retry)
+   * PATCH /orders/:id/fail-refund
+   */
+  async failRefund(id: number, user: UserContext, dto: FailRefundDto) {
+    if (user.role !== Role.BARISTA) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'Chỉ nhân viên Barista mới có quyền cập nhật trạng thái hoàn tiền',
+      });
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { payments: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException({
+          code: 'ORDER_NOT_FOUND',
+          message: `Không tìm thấy đơn hàng #${id}`,
+        });
+      }
+
+      if (order.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException({
+          code: 'INVALID_STATUS',
+          message: 'Chỉ có thể ghi nhận thất bại cho đơn hàng đã bị hủy',
+        });
+      }
+
+      if (!dto?.reason?.trim()) {
+        throw new BadRequestException({
+          code: 'REASON_REQUIRED',
+          message: 'Vui lòng cung cấp lý do chuyển tiền thất bại',
+        });
+      }
+
+      const payment = order.payments.find(
+        (p) => p.status === 'SUCCESS' || (p.refundRef && p.refundRef.startsWith('VIETQR')),
+      );
+      if (!payment) {
+        throw new BadRequestException({
+          code: 'NO_PAYMENT_FOUND',
+          message: 'Đơn hàng không có thông tin thanh toán để hoàn tiền',
+        });
+      }
+
+      if (payment.refundedAt) {
+        throw new ConflictException({
+          code: 'ALREADY_REFUNDED',
+          message: 'Đơn hàng này đã được xác nhận hoàn tiền thành công, không thể báo thất bại',
+        });
+      }
+
+      const { bank, account } = this.parseVietQrRef(payment.refundRef);
+      const failedRef = `VIETQR:${bank}:${account}:FAILED:${dto.reason.trim()}`;
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          refundRef: failedRef,
+          refundedAmount: 0,
+          refundedAt: null,
+        },
+      });
+
+      return {
+        orderId: order.id,
+        refundStatus: 'FAILED',
+        reason: dto.reason.trim(),
+        refundRef: failedRef,
+        message: 'Đã cập nhật trạng thái hoàn tiền thất bại. Barista có thể liên hệ khách hoặc bấm Thử lại.',
+      };
+    });
+  }
+
+  /**
+   * Barista chuyển trạng thái hoàn tiền sang đối soát / nghi ngờ (UNKNOWN -> đối soát)
+   * PATCH /orders/:id/hold-refund
+   */
+  async holdRefund(id: number, user: UserContext, dto?: HoldRefundDto) {
+    if (user.role !== Role.BARISTA) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'Chỉ nhân viên Barista mới có quyền chuyển trạng thái đối soát',
+      });
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { payments: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException({
+          code: 'ORDER_NOT_FOUND',
+          message: `Không tìm thấy đơn hàng #${id}`,
+        });
+      }
+
+      if (order.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException({
+          code: 'INVALID_STATUS',
+          message: 'Chỉ có thể chuyển đối soát cho đơn hàng đã bị hủy',
+        });
+      }
+
+      const payment = order.payments.find(
+        (p) => p.status === 'SUCCESS' || (p.refundRef && p.refundRef.startsWith('VIETQR')),
+      );
+      if (!payment) {
+        throw new BadRequestException({
+          code: 'NO_PAYMENT_FOUND',
+          message: 'Đơn hàng không có thông tin thanh toán để hoàn tiền',
+        });
+      }
+
+      if (payment.refundedAt) {
+        throw new ConflictException({
+          code: 'ALREADY_REFUNDED',
+          message: 'Đơn hàng này đã được xác nhận hoàn tiền thành công, không thể đưa vào đối soát',
+        });
+      }
+
+      const { bank, account } = this.parseVietQrRef(payment.refundRef);
+      const note = dto?.note?.trim() || 'Chờ đối soát ngân hàng';
+      const holdRef = `VIETQR:${bank}:${account}:UNKNOWN:${note}`;
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          refundRef: holdRef,
+          refundedAmount: 0,
+          refundedAt: null,
+        },
+      });
+
+      return {
+        orderId: order.id,
+        refundStatus: 'UNKNOWN',
+        note,
+        refundRef: holdRef,
+        message: 'Đã chuyển giao dịch hoàn tiền sang diện nghi ngờ / đối soát ngân hàng (UNKNOWN)',
+      };
+    });
+  }
+
+  /**
+   * Thử lại hoàn tiền VietQR (chuyển trạng thái về PENDING, cho phép cập nhật STK mới nếu khách báo)
+   * PATCH /orders/:id/retry-refund
+   */
+  async retryRefund(id: number, user: UserContext, dto?: RetryRefundDto) {
+    if (user.role !== Role.BARISTA) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'Chỉ nhân viên Barista mới có quyền thực hiện thử lại hoàn tiền',
+      });
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { payments: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException({
+          code: 'ORDER_NOT_FOUND',
+          message: `Không tìm thấy đơn hàng #${id}`,
+        });
+      }
+
+      if (order.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException({
+          code: 'INVALID_STATUS',
+          message: 'Chỉ có thể thử lại hoàn tiền cho đơn hàng đã bị hủy',
+        });
+      }
+
+      const payment = order.payments.find(
+        (p) => p.status === 'SUCCESS' || (p.refundRef && p.refundRef.startsWith('VIETQR')),
+      );
+      if (!payment) {
+        throw new BadRequestException({
+          code: 'NO_PAYMENT_FOUND',
+          message: 'Đơn hàng không có thông tin thanh toán để hoàn tiền',
+        });
+      }
+
+      if (payment.refundedAt) {
+        throw new ConflictException({
+          code: 'ALREADY_REFUNDED',
+          message: 'Đơn hàng này đã được xác nhận hoàn tiền thành công, không thể thử lại',
+        });
+      }
+
+      const { bank, account } = this.parseVietQrRef(payment.refundRef);
+      const targetBank = dto?.refundBank?.trim() || bank;
+      const targetAccount = dto?.refundAccount?.trim() || account;
+      const pendingRef = `VIETQR:${targetBank}:${targetAccount}:PENDING`;
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          refundRef: pendingRef,
+          refundedAmount: 0,
+          refundedAt: null,
+        },
+      });
+
+      return {
+        orderId: order.id,
+        refundStatus: 'PENDING',
+        refundBank: targetBank,
+        refundAccount: targetAccount,
+        refundRef: pendingRef,
+        message: 'Đã đặt lại trạng thái hoàn tiền về PENDING để thử lại',
+      };
+    });
+  }
+
+  /**
    * Tự động hủy một đơn hàng hết hạn thanh toán (hệ thống thực thi, không kiểm tra quyền user).
    */
   async cancelOrderInternal(id: number) {
@@ -863,6 +1127,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       const refundPayment = order.payments?.find(
         (p) => p.status === 'SUCCESS' || p.refundedAt || (p.refundRef && p.refundRef.startsWith('VIETQR')),
       );
+      const parsedRef = this.parseVietQrRef(refundPayment?.refundRef);
+      const isRefunded = Boolean(refundPayment?.refundedAt);
+      const refundStatus = isRefunded ? 'COMPLETED' : parsedRef.status;
+
       return {
         id: order.id,
         code: `#${order.id}`,
@@ -877,7 +1145,11 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
           toppings: item.toppings,
           note: item.note,
         })),
-        isRefunded: Boolean(refundPayment?.refundedAt),
+        isRefunded,
+        refundStatus,
+        refundBank: parsedRef.bank,
+        refundAccount: parsedRef.account,
+        refundExtra: parsedRef.extra || null,
         refundRef: refundPayment?.refundRef || null,
         refundedAt: refundPayment?.refundedAt ? refundPayment.refundedAt.toISOString() : null,
       };

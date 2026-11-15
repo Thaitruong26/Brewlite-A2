@@ -113,22 +113,33 @@ jobs:
         run: |
           echo "Initiating zero-downtime rolling update on Render Cloud..."
           
+          IS_PROD="${{ github.event.inputs.target_env || 'production' }}"
+          
+          # Kiểm tra bắt buộc có deploy secret khi triển khai production
+          if [ "$IS_PROD" = "production" ] && [ -z "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}" ] && [ -z "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}" ]; then
+            echo "❌ ERROR: Deployment secrets (RENDER_BACKEND_DEPLOY_HOOK_URL / RENDER_FRONTEND_DEPLOY_HOOK_URL) are missing."
+            echo "Không thể triển khai lên môi trường Production nếu thiếu Deploy Hook URL từ Render!"
+            exit 1
+          fi
+
           if [ -n "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}" ]; then
             echo "Triggering Backend API deployment..."
-            curl -fsS -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}" || echo "⚠️ Backend deploy hook trigger warning"
+            curl -fsS -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}"
+            echo "Backend deploy hook triggered successfully."
           else
-            echo "ℹ️ RENDER_BACKEND_DEPLOY_HOOK_URL not set in secrets (Simulation / Dry-run mode)"
+            echo "⚠️ RENDER_BACKEND_DEPLOY_HOOK_URL not set in secrets."
           fi
 
           if [ -n "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}" ]; then
             echo "Triggering Frontend UI deployment..."
-            curl -fsS -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}" || echo "⚠️ Frontend deploy hook trigger warning"
+            curl -fsS -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}"
+            echo "Frontend deploy hook triggered successfully."
           else
-            echo "ℹ️ RENDER_FRONTEND_DEPLOY_HOOK_URL not set in secrets (Simulation / Dry-run mode)"
+            echo "⚠️ RENDER_FRONTEND_DEPLOY_HOOK_URL not set in secrets."
           fi
 
-          echo "Deployment request sent. Waiting 15s for container initialization..."
-          sleep 15
+          echo "Deployment requests dispatched. Waiting 30s for Render rolling update..."
+          sleep 30
 
   # ============================================================================
   # GIAI ĐOẠN 3: AUTOMATED POST-DEPLOYMENT SMOKE TEST
@@ -139,7 +150,6 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # Chạy temporary test container verify trực tiếp trong runner nếu chưa cấu hình live domain
       postgres-smoke:
         image: postgres:16
         env:
@@ -161,31 +171,57 @@ jobs:
       - name: Make scripts executable
         run: chmod +x ./scripts/smoke-test.sh
 
-      - name: Setup Node.js & Start Local Smoke Test Target (if no live URL)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Execute Post-Deployment Smoke Test Suite
         run: |
-          # Nếu có cấu hình LIVE_API_URL từ Secret thì test trực tiếp live
-          if [ -n "${{ secrets.LIVE_API_URL }}" ]; then
-            echo "Testing against Live Production Endpoint: ${{ secrets.LIVE_API_URL }}"
-            export API_BASE_URL="${{ secrets.LIVE_API_URL }}"
-            export WEB_BASE_URL="${{ secrets.LIVE_WEB_URL }}"
+          TARGET_API="${{ secrets.LIVE_API_URL }}"
+          TARGET_WEB="${{ secrets.LIVE_WEB_URL }}"
+          
+          # Mặc định sử dụng live endpoint đã cấu hình trên Render nếu không override trong secret
+          if [ -z "$TARGET_API" ]; then
+            TARGET_API="https://brewlite-api.onrender.com"
+          fi
+          if [ -z "$TARGET_WEB" ]; then
+            TARGET_WEB="https://brewlite-web-bggg.onrender.com"
+          fi
+
+          echo "Checking live deployment connectivity at $TARGET_API..."
+          if curl -sf --connect-timeout 5 "$TARGET_API/api/health" > /dev/null 2>&1; then
+            echo " Live production deployment detected! Running smoke tests against live cluster..."
+            export API_BASE_URL="$TARGET_API"
+            export WEB_BASE_URL="$TARGET_WEB"
+            export MAX_RETRIES=30
+            export RETRY_DELAY=5
             ./scripts/smoke-test.sh
           else
-            echo "No LIVE_API_URL secret detected. Running automated smoke test verification against containerized build..."
+            echo "ℹ️ Live endpoint not yet reachable or in isolated CI runner. Launching local integrated services..."
             cd apps/api
             npm ci
             npx prisma migrate deploy
             npx prisma db seed
             npm run build
-            DATABASE_URL="postgresql://brewlite:brewlite@localhost:5432/brewlite" JWT_SECRET="smoke-test-secret" PORT=4001 node dist/src/main.js &
+            DATABASE_URL="postgresql://brewlite:brewlite@localhost:5432/brewlite" JWT_SECRET="smoke-test-secret" PORT=4001 node dist/main.js &
             API_PID=$!
             cd ../../
-            
+
+            cd apps/web
+            npm ci
+            npm run build
+            PORT=3001 npm run start &
+            WEB_PID=$!
+            cd ../../
+
             export API_BASE_URL="http://localhost:4001"
             export WEB_BASE_URL="http://localhost:3001"
-            
-            # Khởi chạy smoke test suite
-            ./scripts/smoke-test.sh || { kill $API_PID || true; exit 1; }
-            kill $API_PID || true
+            export MAX_RETRIES=20
+            export RETRY_DELAY=3
+
+            ./scripts/smoke-test.sh || { kill $API_PID $WEB_PID 2>/dev/null || true; exit 1; }
+            kill $API_PID $WEB_PID 2>/dev/null || true
           fi
 
   # ============================================================================
@@ -208,30 +244,42 @@ jobs:
           echo "target_sha=${TARGET_SHA}" >> $GITHUB_OUTPUT
           echo "========================================================"
           echo "🚨 CRITICAL: Smoke Test Failed or Manual Rollback Requested!"
-          echo "Reverting deployment to previous stable commit: ${TARGET_SHA}"
+          echo "Target commit SHA to revert: ${TARGET_SHA}"
           echo "========================================================"
 
       - name: Trigger Rollback on Render Cloud
+        id: exec_rollback
         run: |
           ROLLBACK_SHA="${{ steps.rollback_target.outputs.target_sha }}"
           IMAGE_PREFIX="${{ needs.build-and-push.outputs.image_prefix }}"
           
-          echo "Rolling back to image tag: ${IMAGE_PREFIX}/backend:sha-${ROLLBACK_SHA}"
-          echo "Rolling back to image tag: ${IMAGE_PREFIX}/frontend:sha-${ROLLBACK_SHA}"
+          echo "Target fallback backend image: ${IMAGE_PREFIX}/backend:sha-${ROLLBACK_SHA}"
+          echo "Target fallback frontend image: ${IMAGE_PREFIX}/frontend:sha-${ROLLBACK_SHA}"
 
           if [ -n "${{ secrets.RENDER_ROLLBACK_HOOK_URL }}" ]; then
-            curl -fsS -X POST "${{ secrets.RENDER_ROLLBACK_HOOK_URL }}" || echo "⚠️ Rollback webhook warning"
+            echo "Dispatching rollback webhook to Render Cloud..."
+            curl -fsS -X POST "${{ secrets.RENDER_ROLLBACK_HOOK_URL }}"
+            echo "rollback_executed=true" >> $GITHUB_OUTPUT
           else
-            echo "ℹ️ RENDER_ROLLBACK_HOOK_URL not configured. Recorded automatic rollback audit."
+            echo "❌ ERROR: RENDER_ROLLBACK_HOOK_URL is not configured!"
+            echo "rollback_executed=false" >> $GITHUB_OUTPUT
+            # Không nuốt lỗi để tránh báo cáo sai trạng thái rollback
+            exit 1
           fi
 
       - name: Publish Rollback Incident Summary
+        if: always()
         run: |
-          echo "### 🚨 Deployment Rollback Alert" >> $GITHUB_STEP_SUMMARY
-          echo "- **Trạng thái:** Rollback thành công về phiên bản trước" >> $GITHUB_STEP_SUMMARY
+          ROLLBACK_SUCCESS="${{ steps.exec_rollback.outputs.rollback_executed }}"
+          echo "### 🚨 Deployment Rollback Incident Report" >> $GITHUB_STEP_SUMMARY
           echo "- **Failed Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Rolled Back To:** \`${{ steps.rollback_target.outputs.target_sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target Rollback SHA:** \`${{ steps.rollback_target.outputs.target_sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Nguyên nhân:** Post-deployment smoke test phát hiện lỗi hoặc không phản hồi healthcheck." >> $GITHUB_STEP_SUMMARY
+          if [ "$ROLLBACK_SUCCESS" = "true" ]; then
+            echo "- **Trạng thái:** ✅ Rollback tự động đã gửi webhook thành công về phiên bản ổn định trước đó." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Trạng thái:** ❌ KHÔNG THỂ ROLLBACK TỰ ĐỘNG! Webhook chưa được cấu hình hoặc gặp lỗi. YÊU CẦU CAN THIỆP THỦ CÔNG TRÊN DASHBOARD RENDER!" >> $GITHUB_STEP_SUMMARY
+          fi
 
   # ============================================================================
   # GIAI ĐOẠN 5: GHI NHẬN TRIỂN KHAI THÀNH CÔNG (RELEASE STABLE TAG)

@@ -21,6 +21,10 @@ export interface BaristaOrder {
   isRefunded?: boolean;
   refundRef?: string | null;
   refundedAt?: string | null;
+  refundStatus?: 'PENDING' | 'FAILED' | 'UNKNOWN' | 'COMPLETED' | null;
+  refundBank?: string | null;
+  refundAccount?: string | null;
+  refundExtra?: string | null;
 }
 
 export function getBaristaOrders(status?: string, page = 1, limit = 50) {
@@ -69,6 +73,30 @@ export function confirmRefund(orderId: number, refundRef?: string) {
     method: "PATCH",
     authenticated: true,
     body: { refundRef },
+  });
+}
+
+export function failRefund(orderId: number, reason: string) {
+  return apiRequest(`/orders/${orderId}/fail-refund`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { reason },
+  });
+}
+
+export function holdRefund(orderId: number, note?: string) {
+  return apiRequest(`/orders/${orderId}/hold-refund`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { note },
+  });
+}
+
+export function retryRefund(orderId: number, refundBank?: string, refundAccount?: string) {
+  return apiRequest(`/orders/${orderId}/retry-refund`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { refundBank, refundAccount },
   });
 }
 

@@ -458,6 +458,55 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
 
       expect(res.status).toBe(400);
     });
+
+    it('PATCH /api/orders/:id/fail-refund: Barista ghi nhận hoàn tiền thất bại (FAILED)', async () => {
+      orders.get(20)!.status = OrderStatus.CANCELLED;
+      payments.get(100)!.refundRef = 'VIETQR:MB:0987654321:PENDING';
+      payments.get(100)!.refundedAt = null;
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/orders/20/fail-refund')
+        .set('Authorization', `Bearer ${baristaToken}`)
+        .send({ reason: 'Tài khoản không tồn tại' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.refundStatus).toBe('FAILED');
+      expect(res.body.reason).toBe('Tài khoản không tồn tại');
+      expect(payments.get(100)?.refundRef).toContain(':FAILED:Tài khoản không tồn tại');
+    });
+
+    it('PATCH /api/orders/:id/hold-refund: Barista chuyển sang đối soát (UNKNOWN)', async () => {
+      orders.get(20)!.status = OrderStatus.CANCELLED;
+      payments.get(100)!.refundRef = 'VIETQR:MB:0987654321:PENDING';
+      payments.get(100)!.refundedAt = null;
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/orders/20/hold-refund')
+        .set('Authorization', `Bearer ${baristaToken}`)
+        .send({ note: 'Chờ đối soát Napas' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.refundStatus).toBe('UNKNOWN');
+      expect(res.body.note).toBe('Chờ đối soát Napas');
+      expect(payments.get(100)?.refundRef).toContain(':UNKNOWN:Chờ đối soát Napas');
+    });
+
+    it('PATCH /api/orders/:id/retry-refund: Barista thử lại và cập nhật STK mới (PENDING)', async () => {
+      orders.get(20)!.status = OrderStatus.CANCELLED;
+      payments.get(100)!.refundRef = 'VIETQR:MB:0987654321:FAILED:Lỗi';
+      payments.get(100)!.refundedAt = null;
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/orders/20/retry-refund')
+        .set('Authorization', `Bearer ${baristaToken}`)
+        .send({ refundBank: 'VCB', refundAccount: '11223344' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.refundStatus).toBe('PENDING');
+      expect(res.body.refundBank).toBe('VCB');
+      expect(res.body.refundAccount).toBe('11223344');
+      expect(payments.get(100)?.refundRef).toBe('VIETQR:VCB:11223344:PENDING');
+    });
   });
 });
 

@@ -995,5 +995,104 @@ describe('OrdersService', () => {
         },
       });
     });
+
+    it('failRefund: cập nhật trạng thái FAILED với lý do từ chối', async () => {
+      const cancelledOrder = {
+        id: 109,
+        total: 50000,
+        status: OrderStatus.CANCELLED,
+        payments: [
+          {
+            id: 72,
+            status: 'SUCCESS',
+            amount: 50000,
+            refundRef: 'VIETQR:VCB:12345678:PENDING',
+          },
+        ],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(cancelledOrder);
+      prismaMock.payment.update.mockResolvedValue({
+        id: 72,
+        refundedAt: null,
+        refundedAmount: 0,
+        refundRef: 'VIETQR:VCB:12345678:FAILED:Tài khoản đóng',
+      });
+
+      const res = await service.failRefund(109, mockUserBarista, { reason: 'Tài khoản đóng' });
+      expect(res.orderId).toBe(109);
+      expect(res.refundStatus).toBe('FAILED');
+      expect(res.reason).toBe('Tài khoản đóng');
+      expect(prismaMock.payment.update).toHaveBeenCalledWith({
+        where: { id: 72 },
+        data: {
+          refundRef: 'VIETQR:VCB:12345678:FAILED:Tài khoản đóng',
+          refundedAmount: 0,
+          refundedAt: null,
+        },
+      });
+    });
+
+    it('holdRefund: chuyển sang trạng thái đối soát nghi ngờ UNKNOWN', async () => {
+      const cancelledOrder = {
+        id: 110,
+        total: 45000,
+        status: OrderStatus.CANCELLED,
+        payments: [
+          {
+            id: 73,
+            status: 'SUCCESS',
+            amount: 45000,
+            refundRef: 'VIETQR:BIDV:99998888:PENDING',
+          },
+        ],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(cancelledOrder);
+      prismaMock.payment.update.mockResolvedValue({
+        id: 73,
+        refundedAt: null,
+        refundedAmount: 0,
+        refundRef: 'VIETQR:BIDV:99998888:UNKNOWN:Napas nghẽn lệnh',
+      });
+
+      const res = await service.holdRefund(110, mockUserBarista, { note: 'Napas nghẽn lệnh' });
+      expect(res.orderId).toBe(110);
+      expect(res.refundStatus).toBe('UNKNOWN');
+      expect(res.note).toBe('Napas nghẽn lệnh');
+    });
+
+    it('retryRefund: đặt lại trạng thái PENDING và cho phép cập nhật STK mới', async () => {
+      const cancelledOrder = {
+        id: 111,
+        total: 55000,
+        status: OrderStatus.CANCELLED,
+        payments: [
+          {
+            id: 74,
+            status: 'SUCCESS',
+            amount: 55000,
+            refundRef: 'VIETQR:MB:old123:FAILED:Sai STK',
+          },
+        ],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(cancelledOrder);
+      prismaMock.payment.update.mockResolvedValue({
+        id: 74,
+        refundedAt: null,
+        refundedAmount: 0,
+        refundRef: 'VIETQR:TCB:new456:PENDING',
+      });
+
+      const res = await service.retryRefund(111, mockUserBarista, {
+        refundBank: 'TCB',
+        refundAccount: 'new456',
+      });
+      expect(res.orderId).toBe(111);
+      expect(res.refundStatus).toBe('PENDING');
+      expect(res.refundBank).toBe('TCB');
+      expect(res.refundAccount).toBe('new456');
+    });
   });
 });

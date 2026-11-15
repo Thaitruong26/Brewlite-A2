@@ -25,7 +25,7 @@ import type { UserContext } from './orders.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { GetOrdersQueryDto } from './dto/get-orders-query.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
-import { CancelOrderDto, ConfirmRefundDto } from './dto/cancel-order.dto.js';
+import { CancelOrderDto, ConfirmRefundDto, FailRefundDto, HoldRefundDto, RetryRefundDto } from './dto/cancel-order.dto.js';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -129,6 +129,54 @@ export class OrdersController {
     @CurrentUser() user: UserContext,
   ) {
     return this.ordersService.confirmRefund(id, user, dto);
+  }
+
+  @Patch(':id/fail-refund')
+  @ApiOperation({
+    summary: 'Barista báo chuyển khoản hoàn tiền thất bại (lỗi STK, tài khoản khóa)',
+    description: 'Đánh dấu quy trình hoàn tiền thất bại với lý do cụ thể, chuyển sang FAILED để xử lý lại.',
+  })
+  @ApiParam({ name: 'id', description: 'ID đơn hàng', example: 1042 })
+  @ApiResponse({ status: 200, description: 'Cập nhật thất bại thành công' })
+  @ApiResponse({ status: 403, description: 'Chỉ nhân viên Barista mới có quyền' })
+  async failRefund(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: FailRefundDto,
+    @CurrentUser() user: UserContext,
+  ) {
+    return this.ordersService.failRefund(id, user, dto);
+  }
+
+  @Patch(':id/hold-refund')
+  @ApiOperation({
+    summary: 'Chuyển hoàn tiền sang trạng thái đối soát nghi ngờ (UNKNOWN)',
+    description: 'Treo giao dịch hoàn tiền khi trạng thái ngân hàng chưa rõ ràng để đối soát trước khi hoàn tất.',
+  })
+  @ApiParam({ name: 'id', description: 'ID đơn hàng', example: 1042 })
+  @ApiResponse({ status: 200, description: 'Chuyển sang đối soát thành công' })
+  @ApiResponse({ status: 403, description: 'Chỉ nhân viên Barista mới có quyền' })
+  async holdRefund(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: HoldRefundDto,
+    @CurrentUser() user: UserContext,
+  ) {
+    return this.ordersService.holdRefund(id, user, dto);
+  }
+
+  @Patch(':id/retry-refund')
+  @ApiOperation({
+    summary: 'Thử lại hoàn tiền VietQR (chuyển về PENDING)',
+    description: 'Cho phép Barista thử lại giao dịch hoàn tiền, có thể cập nhật thông tin tài khoản/ngân hàng nếu khách cung cấp lại.',
+  })
+  @ApiParam({ name: 'id', description: 'ID đơn hàng', example: 1042 })
+  @ApiResponse({ status: 200, description: 'Đặt lại trạng thái PENDING thành công' })
+  @ApiResponse({ status: 403, description: 'Chỉ nhân viên Barista mới có quyền' })
+  async retryRefund(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RetryRefundDto,
+    @CurrentUser() user: UserContext,
+  ) {
+    return this.ordersService.retryRefund(id, user, dto);
   }
 
   @Patch(':id/status')
