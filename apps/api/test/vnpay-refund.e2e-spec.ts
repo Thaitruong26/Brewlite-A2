@@ -305,10 +305,19 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
 
       // Đơn hàng chuyển sang CANCELLED
       expect(orders.get(20)?.status).toBe(OrderStatus.CANCELLED);
-      // Payment được cập nhật thông tin hoàn tiền VietQR
+      // Payment được cập nhật thông tin hoàn tiền VietQR (refundedAmount = 0 vì Barista chưa chuyển)
       const payment = payments.get(100);
-      expect(payment?.refundedAmount).toBe(75000);
-      expect(payment?.refundRef).toBe('VIETQR:MB:0987654321');
+      expect(payment?.refundedAmount).toBe(0);
+      expect(payment?.refundRef).toBe('VIETQR:MB:0987654321:PENDING');
+    });
+
+    it('POST /api/orders/:id/cancel: Bắt buộc STK ngân hàng khi đơn đã PAID (HTTP 400 Bad Request)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/orders/20/cancel')
+        .set('Authorization', `Bearer ${customerToken}`)
+        .send({});
+
+      expect(res.status).toBe(400);
     });
 
     it('POST /api/orders/:id/cancel: Chặn hủy đơn khi đã ở trạng thái PREPARING (HTTP 409 Conflict)', async () => {
@@ -344,12 +353,13 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
     it('PATCH /api/orders/:id/confirm-refund: Barista xác nhận đã chuyển khoản VietQR thành công (FR-26)', async () => {
       // Đơn đã hủy trước đó
       orders.get(20)!.status = OrderStatus.CANCELLED;
-      payments.get(100)!.refundRef = 'VIETQR:MB:0987654321';
+      payments.get(100)!.refundRef = 'VIETQR:MB:0987654321:PENDING';
+      payments.get(100)!.refundedAt = null;
 
       const res = await request(app.getHttpServer())
         .patch('/api/orders/20/confirm-refund')
         .set('Authorization', `Bearer ${baristaToken}`)
-        .send({});
+        .send({ refundRef: 'FT24001928' });
 
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({
@@ -361,17 +371,31 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
       // Payment trong DB được ghi nhận thời điểm hoàn tiền
       const p = payments.get(100);
       expect(p?.refundedAt).toBeInstanceOf(Date);
-      expect(p?.refundRef).toBe('VIETQR:MB:0987654321:CONFIRMED');
+      expect(p?.refundRef).toBe('VIETQR:MB:0987654321:PENDING:CONFIRMED:FT24001928');
+    });
+
+    it('PATCH /api/orders/:id/confirm-refund: Chặn xác nhận hoàn tiền lần 2 (HTTP 409 Conflict)', async () => {
+      orders.get(20)!.status = OrderStatus.CANCELLED;
+      payments.get(100)!.refundRef = 'VIETQR:MB:0987654321:PENDING:CONFIRMED:FT24001928';
+      payments.get(100)!.refundedAt = new Date();
+
+      const res = await request(app.getHttpServer())
+        .patch('/api/orders/20/confirm-refund')
+        .set('Authorization', `Bearer ${baristaToken}`)
+        .send({ refundRef: 'FT24001928' });
+
+      expect(res.status).toBe(409);
     });
 
     it('PATCH /api/orders/:id/confirm-refund: Từ chối nếu đơn chưa bị hủy (HTTP 400)', async () => {
       // Đơn vẫn đang PAID
       orders.get(20)!.status = OrderStatus.PAID;
+      payments.get(100)!.refundedAt = null;
 
       const res = await request(app.getHttpServer())
         .patch('/api/orders/20/confirm-refund')
         .set('Authorization', `Bearer ${baristaToken}`)
-        .send({});
+        .send({ refundRef: 'FT24001928' });
 
       expect(res.status).toBe(400);
     });

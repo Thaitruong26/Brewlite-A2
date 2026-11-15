@@ -477,6 +477,13 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
       // 3. Nếu đơn đã PAID: thu hồi điểm thưởng và ghi nhận thông tin nhận hoàn tiền VietQR
       if (order.status === OrderStatus.PAID) {
+        if (!dto?.refundAccount?.trim()) {
+          throw new BadRequestException({
+            code: 'REFUND_ACCOUNT_REQUIRED',
+            message: 'Đơn hàng đã thanh toán yêu cầu cung cấp số tài khoản ngân hàng để nhận hoàn tiền',
+          });
+        }
+
         if (order.pointsEarned > 0) {
           await tx.user.update({
             where: { id: order.userId },
@@ -494,16 +501,16 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         }
 
         // Cập nhật Payment ghi nhận thông tin tài khoản nhận hoàn tiền VietQR
+        // Lưu ý: tách biệt số tiền cần hoàn và số tiền đã hoàn thực tế.
+        // Tại thời điểm hủy đơn: refundedAmount = 0, Barista sẽ quét QR chuyển tiền sau.
         const successfulPayment = order.payments.find((p) => p.status === 'SUCCESS');
-        const refString = dto?.refundAccount
-          ? `VIETQR:${dto.refundBank || 'MB'}:${dto.refundAccount}`
-          : `VIETQR-PENDING-${Date.now()}`;
+        const refString = `VIETQR:${dto.refundBank || 'MB'}:${dto.refundAccount.trim()}:PENDING`;
 
         if (successfulPayment) {
           await tx.payment.update({
             where: { id: successfulPayment.id },
             data: {
-              refundedAmount: order.total,
+              refundedAmount: 0,
               refundRef: refString,
             },
           });
@@ -559,7 +566,16 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      const payment = order.payments.find((p) => p.status === 'SUCCESS' || p.refundedAmount > 0);
+      if (!dto?.refundRef?.trim()) {
+        throw new BadRequestException({
+          code: 'REFUND_PROOF_REQUIRED',
+          message: 'Vui lòng cung cấp mã giao dịch hoặc bằng chứng chuyển khoản VietQR',
+        });
+      }
+
+      const payment = order.payments.find(
+        (p) => p.status === 'SUCCESS' || (p.refundRef && p.refundRef.startsWith('VIETQR')),
+      );
       if (!payment) {
         throw new BadRequestException({
           code: 'NO_PAYMENT_FOUND',
@@ -567,12 +583,24 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
+      if (payment.refundedAt) {
+        throw new ConflictException({
+          code: 'ALREADY_REFUNDED',
+          message: 'Đơn hàng này đã được xác nhận hoàn tiền trước đó, không thể xác nhận lại',
+        });
+      }
+
+      const proof = dto.refundRef.trim();
+      const confirmedRef = payment.refundRef
+        ? `${payment.refundRef}:CONFIRMED:${proof}`
+        : `VIETQR:CONFIRMED:${proof}`;
+
       const updatedPayment = await tx.payment.update({
         where: { id: payment.id },
         data: {
           refundedAt: new Date(),
           refundedAmount: order.total,
-          refundRef: dto?.refundRef || (payment.refundRef ? `${payment.refundRef}:CONFIRMED` : `VIETQR-CONFIRMED-${Date.now()}`),
+          refundRef: confirmedRef,
         },
       });
 

@@ -832,14 +832,34 @@ describe('OrdersService', () => {
         where: { orderId: 102 },
         data: { reversedAt: expect.any(Date) },
       });
-      // Ghi nhận nghĩa vụ hoàn tiền VietQR trên Payment
+      // Ghi nhận nghĩa vụ hoàn tiền VietQR trên Payment (tách biệt: lúc hủy refundedAmount = 0)
       expect(prismaMock.payment.update).toHaveBeenCalledWith({
         where: { id: 60 },
         data: {
-          refundedAmount: 50000,
-          refundRef: 'VIETQR:MB:0987654321',
+          refundedAmount: 0,
+          refundRef: 'VIETQR:MB:0987654321:PENDING',
         },
       });
+    });
+
+    it('ném BadRequestException nếu đơn PAID hủy nhưng thiếu số tài khoản hoàn tiền', async () => {
+      const paidOrder = {
+        id: 102,
+        userId: 1,
+        status: OrderStatus.PAID,
+        promoCode: null,
+        pointsUsed: 0,
+        pointsEarned: 0,
+        total: 50000,
+        items: [],
+        payments: [{ id: 60, status: 'SUCCESS', amount: 50000 }],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(paidOrder);
+
+      await expect(service.cancelOrder(102, mockUserCustomer)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('Barista có quyền hủy đơn của khách khi có sự cố phát sinh', async () => {
@@ -862,7 +882,10 @@ describe('OrdersService', () => {
         status: OrderStatus.CANCELLED,
       });
 
-      const res = await service.cancelOrder(103, mockUserBarista);
+      const res = await service.cancelOrder(103, mockUserBarista, {
+        refundBank: 'MB',
+        refundAccount: '0987654321',
+      });
       expect(res.status).toBe(OrderStatus.CANCELLED);
     });
   });
@@ -897,6 +920,18 @@ describe('OrdersService', () => {
       );
     });
 
+    it('ném BadRequestException nếu thiếu mã bằng chứng giao dịch refundRef', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 105,
+        status: OrderStatus.CANCELLED,
+        payments: [{ id: 70, status: 'SUCCESS' }],
+      });
+
+      await expect(service.confirmRefund(105, mockUserBarista, { refundRef: '' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
     it('ném BadRequestException nếu đơn hàng không có bản ghi Payment để hoàn tiền', async () => {
       prismaMock.order.findUnique.mockResolvedValue({
         id: 107,
@@ -904,9 +939,21 @@ describe('OrdersService', () => {
         payments: [],
       });
 
-      await expect(service.confirmRefund(107, mockUserBarista)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.confirmRefund(107, mockUserBarista, { refundRef: 'FT123' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('ném ConflictException nếu đơn hàng đã được xác nhận hoàn tiền trước đó (chống hoàn 2 lần)', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 107,
+        status: OrderStatus.CANCELLED,
+        payments: [{ id: 70, status: 'SUCCESS', refundedAt: new Date() }],
+      });
+
+      await expect(
+        service.confirmRefund(107, mockUserBarista, { refundRef: 'FT123' }),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('Barista xác nhận hoàn tiền VietQR thành công: cập nhật refundedAt và refundRef', async () => {
@@ -919,7 +966,7 @@ describe('OrdersService', () => {
             id: 71,
             status: 'SUCCESS',
             amount: 65000,
-            refundRef: 'VIETQR:MB:0987654321',
+            refundRef: 'VIETQR:MB:0987654321:PENDING',
           },
         ],
       };
@@ -930,21 +977,21 @@ describe('OrdersService', () => {
         id: 71,
         refundedAt: now,
         refundedAmount: 65000,
-        refundRef: 'VIETQR:MB:0987654321:CONFIRMED',
+        refundRef: 'VIETQR:MB:0987654321:PENDING:CONFIRMED:FT2401',
       });
 
-      const res = await service.confirmRefund(108, mockUserBarista);
+      const res = await service.confirmRefund(108, mockUserBarista, { refundRef: 'FT2401' });
 
       expect(res.orderId).toBe(108);
       expect(res.refundedAmount).toBe(65000);
-      expect(res.refundRef).toBe('VIETQR:MB:0987654321:CONFIRMED');
+      expect(res.refundRef).toBe('VIETQR:MB:0987654321:PENDING:CONFIRMED:FT2401');
       expect(res.message).toMatch(/Xác nhận hoàn tiền VietQR thành công/i);
       expect(prismaMock.payment.update).toHaveBeenCalledWith({
         where: { id: 71 },
         data: {
           refundedAt: expect.any(Date),
           refundedAmount: 65000,
-          refundRef: 'VIETQR:MB:0987654321:CONFIRMED',
+          refundRef: 'VIETQR:MB:0987654321:PENDING:CONFIRMED:FT2401',
         },
       });
     });

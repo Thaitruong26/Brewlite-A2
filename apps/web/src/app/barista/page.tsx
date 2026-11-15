@@ -32,6 +32,7 @@ type BaristaOrder = {
   isRefunded?: boolean;
   refundRef?: string | null;
   refundedAt?: string | null;
+  hasRefundObligation?: boolean;
 };
 type StockItem = { id?: number; sku: string; name: string; description: string; category: string; price: number; stock: number; target: number };
 
@@ -261,6 +262,7 @@ function mapBackendOrderToBarista(bo: BackendOrder): BaristaOrder {
     isRefunded: bo.isRefunded,
     refundRef: bo.refundRef,
     refundedAt: bo.refundedAt,
+    hasRefundObligation: Boolean(bo.refundRef?.startsWith("VIETQR") || bo.isRefunded || bo.refundedAt),
   };
 }
 
@@ -278,6 +280,8 @@ export default function BaristaPage() {
   const [refundOrder, setRefundOrder] = useState<BaristaOrder | null>(null);
   const [refundBank, setRefundBank] = useState("VCB");
   const [refundAccount, setRefundAccount] = useState("");
+  const [refundProof, setRefundProof] = useState("");
+  const [isRefunding, setIsRefunding] = useState(false);
   const [refundedOrders, setRefundedOrders] = useState<number[]>([]);
 
   useEffect(() => {
@@ -293,6 +297,7 @@ export default function BaristaPage() {
 
   const openRefundModal = (order: BaristaOrder) => {
     setRefundOrder(order);
+    setRefundProof("");
     let acc = "";
     let bank = "MB";
     if (order.refundRef && order.refundRef.startsWith("VIETQR:")) {
@@ -308,22 +313,31 @@ export default function BaristaPage() {
   };
 
   const handleConfirmRefund = async (orderId: number) => {
-    try {
-      await confirmRefund(orderId, `VIETQR:${refundBank}:${refundAccount}`);
-    } catch (e) {
-      console.warn("Backend confirmRefund sync note:", e);
+    if (!refundProof.trim()) {
+      alert("Vui lòng nhập mã giao dịch hoặc bằng chứng chuyển khoản thành công trước khi xác nhận!");
+      return;
     }
-    setRefundedOrders((prev) => {
-      const next = Array.from(new Set([...prev, orderId]));
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("brewlite_refunded_orders", JSON.stringify(next));
-        } catch {}
-      }
-      return next;
-    });
-    setRefundOrder(null);
-    setNotice(`Đã xác nhận hoàn tiền thành công cho đơn #${orderId}!`);
+    setIsRefunding(true);
+    try {
+      await confirmRefund(orderId, refundProof.trim());
+      setRefundedOrders((prev) => {
+        const next = Array.from(new Set([...prev, orderId]));
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("brewlite_refunded_orders", JSON.stringify(next));
+          } catch {}
+        }
+        return next;
+      });
+      setRefundOrder(null);
+      setRefundProof("");
+      setNotice(`Đã xác nhận hoàn tiền thành công cho đơn #${orderId}!`);
+    } catch (e: any) {
+      console.error("Xác nhận hoàn tiền thất bại:", e);
+      alert(e?.message || "Xác nhận hoàn tiền thất bại. Vui lòng đối soát giao dịch và thử lại!");
+    } finally {
+      setIsRefunding(false);
+    }
   };
 
   useEffect(() => {
@@ -928,7 +942,9 @@ export default function BaristaPage() {
                       <div className="space-y-2 border-t border-red-100 pt-2.5">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-red-700">Đơn đã hủy · Không cần pha chế</span>
-                          <span className="font-bold text-stone-700">Cần trả lại: {money(order.total)}</span>
+                          {order.hasRefundObligation && (
+                            <span className="font-bold text-stone-700">Cần trả lại: {money(order.total)}</span>
+                          )}
                         </div>
                         {refundedOrders.includes(order.id) || order.isRefunded ? (
                           <div className="flex items-center gap-2">
@@ -943,7 +959,7 @@ export default function BaristaPage() {
                               Xem lại QR
                             </button>
                           </div>
-                        ) : (
+                        ) : order.hasRefundObligation ? (
                           <button
                             type="button"
                             onClick={() => openRefundModal(order)}
@@ -951,6 +967,10 @@ export default function BaristaPage() {
                           >
                             💸 Trả lại tiền cho khách (Hiện mã QR)
                           </button>
+                        ) : (
+                          <div className="rounded-xl bg-stone-100 p-2 text-center text-xs font-medium text-stone-600">
+                            Đơn chưa thanh toán trước khi hủy · Không cần hoàn tiền
+                          </div>
                         )}
                       </div>
                     ) : order.stage !== "completed" ? (
@@ -993,16 +1013,6 @@ export default function BaristaPage() {
                             </button>
                           )}
                         </div>
-                        {/* Cho phép Barista hoàn tiền nếu khách báo hủy trực tiếp tại quầy */}
-                        {order.rawStatus === "PENDING" && (
-                          <button
-                            type="button"
-                            onClick={() => openRefundModal(order)}
-                            className="w-full text-center text-[11px] font-semibold text-red-600 hover:text-red-700 hover:underline py-1"
-                          >
-                            Hủy đơn & Hiện mã QR hoàn tiền cho khách
-                          </button>
-                        )}
                       </div>
                     ) : (
                       <div className="border-t border-[#eeede7] pt-2.5 text-xs text-[#56705d]">✓ Đã giao thành công · {order.elapsed}</div>
@@ -1401,6 +1411,21 @@ export default function BaristaPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-[#2c3d32] mb-1">
+                  Mã giao dịch / Bằng chứng chuyển khoản <span className="text-red-500">*</span>:
+                </label>
+                <input
+                  type="text"
+                  value={refundProof}
+                  onChange={(e) => setRefundProof(e.target.value)}
+                  placeholder="Nhập mã giao dịch ngân hàng (VD: FT24001928, MB987654...)"
+                  className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#145332]"
+                  required
+                />
+                <p className="text-[10px] text-stone-500 mt-1">Bắt buộc nhập mã giao dịch thành công để đối soát và kích hoạt hoàn tất nghĩa vụ.</p>
+              </div>
+
               {/* Mã QR VietQR tự động sinh cho Barista quét app ngân hàng */}
               <div className="flex flex-col items-center justify-center p-3.5 rounded-xl bg-[#f8f9fa] border border-[#e9ecef]">
                 <p className="text-xs text-[#495057] mb-2 font-medium text-center">
@@ -1421,17 +1446,19 @@ export default function BaristaPage() {
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
+                disabled={isRefunding}
                 onClick={() => setRefundOrder(null)}
-                className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
               >
                 Đóng
               </button>
               <button
                 type="button"
+                disabled={isRefunding || !refundProof.trim()}
                 onClick={() => handleConfirmRefund(refundOrder.id)}
-                className="flex-1 rounded-xl bg-[#145332] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0f4328] transition cursor-pointer shadow-sm"
+                className="flex-1 rounded-xl bg-[#145332] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0f4328] transition cursor-pointer shadow-sm disabled:opacity-50"
               >
-                ✓ Đã chuyển hoàn tiền
+                {isRefunding ? "Đang xác nhận..." : "✓ Đã chuyển hoàn tiền"}
               </button>
             </div>
           </div>
