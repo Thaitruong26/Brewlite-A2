@@ -11,6 +11,9 @@ import { OrderStatus } from '../generated/prisma/client.js';
  * COMPLETED      → (trạng thái kết thúc)
  * CANCELLED      → (trạng thái kết thúc)
  */
+// Khai báo các trạng thái tiếp theo được phép của đơn hàng.
+// Mọi thay đổi trạng thái phải tuân theo bảng này để tránh chuyển trạng thái sai quy trình.
+
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: [OrderStatus.PAID, OrderStatus.PAYMENT_FAILED, OrderStatus.CANCELLED],
   PAYMENT_FAILED: [OrderStatus.PENDING, OrderStatus.CANCELLED],
