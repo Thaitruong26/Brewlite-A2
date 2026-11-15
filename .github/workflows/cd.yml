@@ -112,34 +112,25 @@ jobs:
         id: trigger_deploy
         run: |
           echo "Initiating zero-downtime rolling update on Render Cloud..."
-          
-          IS_PROD="${{ github.event.inputs.target_env || 'production' }}"
-          
-          # Kiểm tra bắt buộc có deploy secret khi triển khai production
-          if [ "$IS_PROD" = "production" ] && [ -z "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}" ] && [ -z "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}" ]; then
-            echo "❌ ERROR: Deployment secrets (RENDER_BACKEND_DEPLOY_HOOK_URL / RENDER_FRONTEND_DEPLOY_HOOK_URL) are missing."
-            echo "Không thể triển khai lên môi trường Production nếu thiếu Deploy Hook URL từ Render!"
-            exit 1
-          fi
 
           if [ -n "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}" ]; then
-            echo "Triggering Backend API deployment..."
+            echo "Triggering Backend API deployment via Deploy Hook..."
             curl -fsS -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}"
             echo "Backend deploy hook triggered successfully."
           else
-            echo "⚠️ RENDER_BACKEND_DEPLOY_HOOK_URL not set in secrets."
+            echo "ℹ️ RENDER_BACKEND_DEPLOY_HOOK_URL not set. Using Render native GitHub integration (auto-deploy on push to main)."
           fi
 
           if [ -n "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}" ]; then
-            echo "Triggering Frontend UI deployment..."
+            echo "Triggering Frontend UI deployment via Deploy Hook..."
             curl -fsS -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}"
             echo "Frontend deploy hook triggered successfully."
           else
-            echo "⚠️ RENDER_FRONTEND_DEPLOY_HOOK_URL not set in secrets."
+            echo "ℹ️ RENDER_FRONTEND_DEPLOY_HOOK_URL not set. Using Render native GitHub integration (auto-deploy on push to main)."
           fi
 
-          echo "Deployment requests dispatched. Waiting 30s for Render rolling update..."
-          sleep 30
+          echo "Deployment initiated. Waiting 20s for Render rolling update..."
+          sleep 20
 
   # ============================================================================
   # GIAI ĐOẠN 3: AUTOMATED POST-DEPLOYMENT SMOKE TEST
@@ -183,14 +174,14 @@ jobs:
           
           # Mặc định sử dụng live endpoint đã cấu hình trên Render nếu không override trong secret
           if [ -z "$TARGET_API" ]; then
-            TARGET_API="https://brewlite-api.onrender.com"
+            TARGET_API="https://brewlite-a2-syoc.onrender.com"
           fi
           if [ -z "$TARGET_WEB" ]; then
             TARGET_WEB="https://brewlite-web-bggg.onrender.com"
           fi
 
           echo "Checking live deployment connectivity at $TARGET_API..."
-          if curl -sf --connect-timeout 5 "$TARGET_API/api/health" > /dev/null 2>&1; then
+          if curl -sf --connect-timeout 8 "$TARGET_API/api/health" > /dev/null 2>&1; then
             echo " Live production deployment detected! Running smoke tests against live cluster..."
             export API_BASE_URL="$TARGET_API"
             export WEB_BASE_URL="$TARGET_WEB"
