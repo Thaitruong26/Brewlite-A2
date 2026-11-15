@@ -23,11 +23,12 @@ export class AuthService {
 
   /** Register a new CUSTOMER account */
   async register(dto: RegisterDto) {
+    // Kiểm tra email đã tồn tại để tránh tạo nhiều tài khoản cùng email.
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
     if (existing) throw new ConflictException('Email đã được sử dụng');
-
+// Băm mật khẩu trước khi lưu vào database, không lưu mật khẩu gốc.
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
     const user = await this.prisma.user.create({
       data: { email: dto.email, passwordHash, fullName: dto.fullName },
