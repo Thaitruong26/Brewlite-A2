@@ -1,0 +1,82 @@
+# ==============================================================================
+# BrewLite A2 - Render Infrastructure as Code (Blueprint)
+# Target: Production Deployment on Render Cloud Platform (Singapore Region)
+# ==============================================================================
+
+version: "1"
+
+databases:
+  - name: brewlite-postgres
+    databaseName: brewlite
+    user: brewlite
+    region: singapore
+    plan: free
+    postgresMajorVersion: "16"
+    ipAllowList: [] # Private network only - chặn toàn bộ truy cập từ Internet bên ngoài
+
+services:
+  # ----------------------------------------------------------------------------
+  # Backend Modular Monolith API Web Service (NestJS + Prisma)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: brewlite-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: apps/api
+    region: singapore
+    plan: free
+    healthCheckPath: /api/health
+    domains:
+      - brewlite-api.onrender.com
+    envVars:
+      - key: PORT
+        value: 4001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brewlite-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: CORS_ORIGIN
+        value: https://brewlite.onrender.com
+      - key: VNPAY_TMN_CODE
+        sync: false
+      - key: VNPAY_HASH_SECRET
+        sync: false
+      - key: VNPAY_URL
+        value: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+      - key: VNPAY_RETURN_URL
+        value: https://brewlite.onrender.com/payment/vnpay-return
+      - key: ALLOW_VNPAY_SIMULATOR
+        value: "false"
+
+  # ----------------------------------------------------------------------------
+  # Frontend Customer & Barista KDS Web Service (Next.js 15 Standalone)
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: brewlite-web
+    runtime: docker
+    dockerfilePath: apps/web/Dockerfile
+    dockerContext: apps/web
+    region: singapore
+    plan: free
+    healthCheckPath: /
+    domains:
+      - brewlite.onrender.com
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: /api
+      - key: INTERNAL_API_URL
+        fromService:
+          type: web
+          name: brewlite-api
+          property: host
+

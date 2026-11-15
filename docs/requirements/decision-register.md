@@ -12,7 +12,7 @@
 | D-06 | SUPERSEDED | *(Đã bị thay thế bởi D-07)* Refund tự động qua API cổng thanh toán và cộng điểm bù khi thất bại | Thay thế bởi D-07, ADR-009 |
 | D-07 | LOCKED | **Hoàn tiền chuyển khoản VietQR thủ công qua Barista:** Khách hủy PAID cung cấp ngân hàng và STK; Order chuyển CANCELLED và tạo Refund PENDING; Barista quét mã VietQR Napas247 trên KDS để chuyển khoản thủ công bằng Mobile Banking; Barista xác nhận lưu bằng chứng -> Refund COMPLETED. Không cộng điểm bù. | FR-24..28; UC-10; ADR-009; SEQ-02; ACT-01; Task 10 |
 | O-01 | RESOLVED | Quyết định D-07 chuyển sang hoàn tiền VietQR 100% giá trị tiền mặt thực trả, bãi bỏ điểm bù; O-01 được đóng | FR-24..28; ADR-009 |
-| O-02 | RESOLVED | Hệ thống đóng gói và triển khai qua Docker Compose (PostgreSQL, NestJS API, Next.js Web) | ADR-007; DEP-01 |
+| O-02 | LOCKED | **Chốt chính thức nền tảng Render Cloud Platform (Singapore Region)**: Frontend Web Service (Next.js), Backend Web Service (NestJS), Managed PostgreSQL 16 (Private VPC), Ingress HTTPS tự động; Local dùng Docker Compose | ADR-007; DEP-01; Task 3.2 |
 | O-03 | RESOLVED | Quét tự động hủy đơn PENDING/PAYMENT_FAILED sau 15 phút, hoàn tồn kho nguyên liệu | FR-08..09, 17, UC-07 |
 | O-04 | RESOLVED | Refund UNKNOWN được Barista đối soát trực tiếp với ứng dụng ngân hàng trước khi cho phép thử lại | FR-28; ADR-009 |
 | O-05 | RESOLVED | Thông tin VNPay TMN Code và HashSecret Sandbox nạp an toàn từ biến môi trường | P0.1, Task 5.1 |

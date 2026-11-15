@@ -1,32 +1,35 @@
 digraph G {
- graph [label="deployment-production — BrewLite A2 design", labelloc="t",fontsize=19, fontname="DejaVu Sans", bgcolor="white",pad="0.5",rankdir="LR",nodesep="0.4",ranksep="0.75",splines="spline"];
- node [style="rounded,filled",fontname="DejaVu Sans",fontsize=11,margin="0.20,0.13",penwidth=1.3,color="#64748b"];
- edge [color="#475569",fontname="DejaVu Sans",fontsize=10,arrowsize=0.7];
- "Phone" [label="Customer phone\nBrowser / PWA optional", shape=box, fillcolor="#eef2ff"];
-"Barista" [label="Barista device", shape=box, fillcolor="#eef2ff"];
-"Edge" [label="Production HTTPS ingress / CDN (proposed Render)", shape=box, fillcolor="#dbeafe"];
-"Web" [label="Next.js Web Service :3000", shape=box, fillcolor="#dbeafe"];
-"Api" [label="NestJS API :3001", shape=box, fillcolor="#dbeafe"];
-"DB" [label="Managed Postgres :5432\npersistent private storage", shape=box, fillcolor="#dbeafe"];
-"VN" [label="VNPay Sandbox", shape=box, fillcolor="#fff7ed"];
-"Secrets" [label="Secret store: JWT/DB/VNPay", shape=box, fillcolor="#eff6ff"];
-"Logs" [label="Logs + /health", shape=box, fillcolor="#eff6ff"];
-"CI" [label="GitHub Actions CI/CD", shape=box, fillcolor="#dbeafe"];
-"Registry" [label="GHCR container registry", shape=box, fillcolor="#dbeafe"];
-"Local" [label="Local Docker Compose\nWeb + API + DB volume", shape=box, fillcolor="#dbeafe"];
-"Phone" -> "Edge" [label="HTTPS 443"];
-"Barista" -> "Edge" [label="HTTPS 443"];
-"Edge" -> "Web" [label="HTTPS"];
-"Web" -> "Api" [label="HTTPS API"];
-"Api" -> "DB" [label="private TCP 5432"];
-"Api" -> "VN" [label="HTTPS pay/refund/query"];
-"VN" -> "Api" [label="signed IPN HTTPS"];
-"Secrets" -> "Api" [label="env"];
-"Secrets" -> "Web" [label="env"];
-"Api" -> "Logs" [label="health/logs"];
-"CI" -> "Registry" [label="push SHA-tag"];
-"Registry" -> "Web" [label="pull image"];
-"Registry" -> "Api" [label="pull image"];
-"Local" -> "CI" [label="separate boundary"];
+  graph [label="DEP-01: Deployment Diagram — Render Cloud Platform (BrewLite A2 Production)", labelloc="t", fontsize=16, fontname="DejaVu Sans", bgcolor="white", pad="0.5", rankdir="LR", nodesep="0.4", ranksep="0.75", splines="spline"];
+  node [style="rounded,filled", fontname="DejaVu Sans", fontsize=10, margin="0.20,0.13", penwidth=1.3, color="#64748b"];
+  edge [color="#475569", fontname="DejaVu Sans", fontsize=9, arrowsize=0.7];
 
- }
+  "Phone" [label="Customer Phone\nMobile Web (Next.js PWA)", shape=box, fillcolor="#eef2ff"];
+  "Barista" [label="Barista Station\nKDS Web + Mobile Banking App", shape=box, fillcolor="#eef2ff"];
+  "Edge" [label="Render Managed Ingress\nCloudflare Auto TLS 1.3 :443\nDDoS Protection", shape=box, fillcolor="#dbeafe"];
+  "Web" [label="Render Web Service (Frontend)\nNext.js 15 Standalone :3001\nbrewlite.onrender.com", shape=box, fillcolor="#dbeafe"];
+  "Api" [label="Render Web Service (Backend)\nNestJS Modular Monolith :4001\nbrewlite-api.onrender.com", shape=box, fillcolor="#dbeafe"];
+  "DB" [label="Render Managed PostgreSQL 16\nPrivate VPC TCP :5432\nPersistent SSD Volume", shape=box, fillcolor="#dbeafe"];
+  "VN" [label="VNPay Sandbox Gateway\nPay URL & QueryDR", shape=box, fillcolor="#fff7ed"];
+  "VietQR" [label="Napas247 VietQR Standard\n(Tạo mã tại KDS, chuyển khoản thủ công)", shape=box, fillcolor="#f0fdf4"];
+  "Secrets" [label="Render Secret Store\nJWT, DB_URL, VNPAY_*", shape=box, fillcolor="#eff6ff"];
+  "Logs" [label="Render Logging & Healthcheck\nGET /api/health", shape=box, fillcolor="#eff6ff"];
+  "CI" [label="GitHub Actions CI/CD\nLint, Test, Build, Scan", shape=box, fillcolor="#f8fafc"];
+  "Registry" [label="GitHub Container Registry (GHCR)\nDocker Images :latest & :sha", shape=box, fillcolor="#f8fafc"];
+
+  "Phone" -> "Edge" [label="HTTPS :443"];
+  "Barista" -> "Edge" [label="HTTPS :443"];
+  "Edge" -> "Web" [label="Reverse Proxy :3001"];
+  "Edge" -> "Api" [label="Reverse Proxy :4001"];
+  "Web" -> "Api" [label="Internal HTTPS /api"];
+  "Api" -> "DB" [label="Private TCP :5432"];
+  "Api" -> "VN" [label="HTTPS :443 (Khởi tạo)"];
+  "VN" -> "Api" [label="Signed IPN HTTPS :443"];
+  "Barista" -> "VietQR" [label="Tạo mã QR hoàn tiền"];
+  "VietQR" -> "Phone" [label="Chuyển khoản Napas247"];
+  "Secrets" -> "Api" [label="env"];
+  "Secrets" -> "Web" [label="env"];
+  "Api" -> "Logs" [label="health & metrics"];
+  "CI" -> "Registry" [label="push SHA-tag"];
+  "Registry" -> "Web" [label="pull image / deploy"];
+  "Registry" -> "Api" [label="pull image / deploy"];
+}

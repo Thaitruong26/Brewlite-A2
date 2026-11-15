@@ -63,8 +63,8 @@ Quầy cà phê phục vụ người dùng trên điện thoại; chọn size/to
 4. Payment return và IPN có thể đến nhiều lần, đến sai thứ tự hoặc đến muộn.
 5. Một Order có thể có nhiều PaymentAttempt nhưng tối đa một thanh toán hợp lệ được ghi nhận là thành công.
 6. Trừ/giữ kho ở bước tạo đơn; tồn kho được phục hồi đúng một lần khi hủy.
-7. Tỷ lệ quy đổi `R` điểm–tiền chưa được phê duyệt, giữ thành open decision O-01.
-8. Nền tảng Render trong Deployment Diagram là phương án đề xuất, chưa được nhóm chốt.
+7. Tỷ lệ quy đổi `R` điểm–tiền chưa được phê duyệt, giữ thành open decision O-01 (đã giải quyết bởi D-07 hoàn tiền 100% bằng VietQR).
+8. Đã chốt chính thức nền tảng Render Cloud Platform (Singapore Region) cho môi trường Production (Next.js Web Service, NestJS API Web Service, Managed PostgreSQL private network).
 
 ## 6. Ràng buộc
 
@@ -87,7 +87,7 @@ Quầy cà phê phục vụ người dùng trên điện thoại; chọn size/to
 | Refund thành công muộn sau đã bù điểm | Cao | Ledger/audit + cảnh báo đối soát, tránh double benefit | FR-28 |
 | Overstock khi checkout đồng thời | Cao | ACID + optimistic/pessimistic lock | FR-08/09 |
 | Scope creep nếu đòi offline/native | Trung bình | PWA install là Could | D-02 |
-| Mô hình deployment không khớp sản phẩm thật | Cao | O-02, cập nhật DEP-01 theo provider được chọn | Task 3.2 |
+| Mô hình deployment không khớp sản phẩm thật | Thấp | Đã chốt Render Cloud Platform (O-02), chuẩn hóa tài liệu và sơ đồ DEP-01 | Task 3.2 |
 
 ## 8. Quy tắc hoàn thành
 

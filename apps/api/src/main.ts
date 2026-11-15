@@ -5,6 +5,11 @@ import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Tin cậy reverse proxy (Render Ingress, Cloudflare) để nhận đúng client IP và giao thức HTTPS
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableCors({

@@ -1,42 +1,84 @@
 @startuml
 skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam roundCorner 8
+skinparam linetype ortho
 left to right direction
-node "Customer phone" as Phone { artifact "Browser (mobile-first)" }
-node "Barista device" as Barista { artifact "Browser (KDS / VietQR)" }
-frame "Local development" as Local {
- node "Docker compose (local)" as DC {
-   artifact "Next.js dev" as LWEB
-   artifact "NestJS dev" as LAPI
-   database "PostgreSQL dev volume" as LDB
- }
+
+title DEP-01: Kiến Trúc Triển Khai Production Trên Nền Tảng Render Cloud (Render Cloud Platform Blueprint)
+
+node "Khách hàng (Customer Device)" as Phone {
+  artifact "Mobile Browser\n(Next.js Web PWA)" as MobileUI
 }
-frame "CI: GitHub Actions" as CI {
- artifact "lint → test → build → scan" as QA
- artifact "Docker image: SHA tag" as Build
+
+node "Quầy Pha Chế (Barista Station)" as BaristaNode {
+  artifact "KDS Browser\n(Tablet / PC Web)" as BaristaUI
+  artifact "Mobile Banking App\n(Quét Napas247 VietQR)" as BankApp
 }
-cloud "GHCR registry" as GHCR
-frame "Production target: Containerized Deploy" as PROD {
- node "Managed HTTPS ingress" as Edge
- node "Next.js Web Service :3001" as Web
- node "NestJS API Web Service :4001" as API
- database "Managed PostgreSQL\nprivate :5432 + persistent storage" as DB
- artifact "Secret env (JWT, DB_URL, VNPay key)" as Secrets
- artifact "GET /api/health + structured logs" as Logs
+
+frame "CI/CD: GitHub Platform" as GitHubCI {
+  artifact "GitHub Actions CI\n(Lint, Test, Build, Scan)" as GHA_CI
+  artifact "GitHub Actions CD\n(Docker Buildx SHA tag)" as GHA_CD
+  cloud "GHCR.io Registry\n(Container Images)" as GHCR
 }
-cloud "VNPay Sandbox" as VN
-Phone --> Edge : HTTPS :443
-Barista --> Edge : HTTPS :443
-Edge --> Web : HTTPS
-Web --> API : HTTPS /api (server-to-server)
-API --> DB : internal TCP :5432
-API --> VN : HTTPS :443 pay/QueryDr (Thu tiền)
-VN --> API : HTTPS :443 IPN (public URL)
-Secrets ..> Web
-Secrets ..> API
-Logs ..> API
-QA --> Build
-Build --> GHCR : push SHA tag
-GHCR --> Web : pull image
-GHCR --> API : pull image
-DC ..> QA : separate environment
+
+cloud "Nền Tảng Hosting: Render Cloud Platform (Singapore Region)" as RenderPlatform {
+  node "Render Managed Ingress / Edge" as Edge {
+    artifact "Cloudflare Ingress\nAuto TLS 1.3 (:443)\nDDoS Mitigation" as TLS
+  }
+
+  frame "Render Private Network (Isolated VPC)" as PrivateNet {
+    node "Frontend Web Service\n[brewlite.onrender.com :3001]" as WebService {
+      artifact "Next.js Container\n(Node.js Standalone)" as NextApp
+    }
+
+    node "Backend API Web Service\n[brewlite-api.onrender.com :4001]" as ApiService {
+      artifact "NestJS Modular Monolith\n(Prisma ORM Client)" as NestApp
+      artifact "Healthcheck Endpoint\nGET /api/health" as HealthCheck
+    }
+
+    database "Managed PostgreSQL 16\n[dpg-*.singapore.render.com :5432]" as ManagedDB {
+      artifact "Persistent SSD Volume\n(ACID & Concurrency Locks)" as DBStorage
+    }
+
+    artifact "Render Secret Store / Env Groups\n(JWT_SECRET, DATABASE_URL, VNPAY_*)" as RenderSecrets
+  }
+}
+
+cloud "Cổng Thanh Toán: VNPay Sandbox" as VNPayCloud {
+  artifact "VNPay Payment Gateway\n(:443 Pay Redirect & QueryDR)" as VNPayGateway
+}
+
+' External Network Flow (HTTPS :443)
+MobileUI --> TLS : HTTPS :443\n(Đặt món, thanh toán, hủy đơn)
+BaristaUI --> TLS : HTTPS :443\n(Quản lý hàng đợi KDS, nhận VietQR)
+
+' Ingress routing to Web Services
+TLS --> NextApp : Reverse Proxy (:3001)
+TLS --> NestApp : Reverse Proxy (:4001)\n(Public API & Webhook IPN)
+
+' Frontend to Backend API
+NextApp --> NestApp : HTTPS /api\n(Server-to-Server & Client Requests)
+
+' Backend to Database inside Private Network
+NestApp --> DBStorage : Private TCP :5432\n(Internal VPC No Internet Expose)
+
+' Environment Secrets Binding
+RenderSecrets ..> NextApp : Runtime Env
+RenderSecrets ..> NestApp : Runtime Env
+
+' Payment & VietQR Flow
+NestApp --> VNPayGateway : HTTPS :443\n(Khởi tạo giao dịch thanh toán)
+VNPayGateway --> NestApp : Webhook IPN HTTPS :443\n(Ký số HMAC verifyReturnUrl)
+
+' VietQR Manual Refund Flow
+BaristaUI ..> BankApp : Hiển thị mã VietQR động\n(STK, Ngân hàng, Số tiền, Nội dung)
+BankApp ..> MobileUI : Chuyển khoản hoàn tiền trực tiếp Napas247\n(Barista xác nhận lưu bằng chứng)
+
+' CI/CD Pipeline Flow
+GHA_CI --> GHA_CD : Trigger sau khi pass test & build
+GHA_CD --> GHCR : Push Docker Images (:latest & :sha)
+GHCR --> NextApp : Render Deploy Hook / Pull image
+GHCR --> NestApp : Render Deploy Hook / Pull image
+
 @enduml

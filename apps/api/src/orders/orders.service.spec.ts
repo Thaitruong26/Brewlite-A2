@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -679,6 +680,273 @@ describe('OrdersService', () => {
 
       expect(count).toBe(0);
       expect(prismaMock.order.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cancelOrder (Task 10 & Quy trình hoàn tiền VietQR FR-24)', () => {
+    const mockUserCustomer = { id: 1, role: Role.CUSTOMER };
+    const mockUserOther = { id: 999, role: Role.CUSTOMER };
+    const mockUserBarista = { id: 2, role: Role.BARISTA };
+
+    it('ném NotFoundException nếu đơn hàng không tồn tại', async () => {
+      prismaMock.order.findUnique.mockResolvedValue(null);
+
+      await expect(service.cancelOrder(999, mockUserCustomer)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('ném ForbiddenException nếu khách hàng cố ý hủy đơn của người khác', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 101,
+        userId: 1,
+        status: OrderStatus.PENDING,
+        items: [],
+        payments: [],
+      });
+
+      await expect(service.cancelOrder(101, mockUserOther)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('ném ConflictException nếu đơn hàng đang có giao dịch PROCESSING dở dang', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 101,
+        userId: 1,
+        status: OrderStatus.PENDING,
+        items: [],
+        payments: [{ id: 50, status: 'PROCESSING' }],
+      });
+
+      await expect(service.cancelOrder(101, mockUserCustomer)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('ném ConflictException (409) nếu đơn hàng đã ở bước PREPARING không thể hủy', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 101,
+        userId: 1,
+        status: OrderStatus.PREPARING,
+        items: [],
+        payments: [{ id: 50, status: 'SUCCESS' }],
+      });
+
+      await expect(service.cancelOrder(101, mockUserCustomer)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('hủy đơn PENDING thành công: hoàn kho nguyên liệu, hoàn promoCode và điểm đã dùng', async () => {
+      const pendingOrder = {
+        id: 101,
+        userId: 1,
+        status: OrderStatus.PENDING,
+        promoCode: 'GIAM10',
+        pointsUsed: 500,
+        pointsEarned: 0,
+        total: 45000,
+        items: [
+          {
+            id: 1,
+            consumption: [{ ingredientId: 10, quantity: 30 }],
+          },
+        ],
+        payments: [],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(pendingOrder);
+      prismaMock.ingredient.update.mockResolvedValue({});
+      prismaMock.stockMovement.create.mockResolvedValue({});
+      prismaMock.promoCode.update.mockResolvedValue({});
+      prismaMock.user.update.mockResolvedValue({});
+      prismaMock.order.update.mockResolvedValue({
+        ...pendingOrder,
+        status: OrderStatus.CANCELLED,
+      });
+
+      const res = await service.cancelOrder(101, mockUserCustomer);
+
+      expect(res.status).toBe(OrderStatus.CANCELLED);
+      // Hoàn kho
+      expect(prismaMock.ingredient.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: { stock: { increment: 30 }, version: { increment: 1 } },
+      });
+      // Hoàn lượt dùng promoCode
+      expect(prismaMock.promoCode.update).toHaveBeenCalledWith({
+        where: { code: 'GIAM10' },
+        data: { usedCount: { decrement: 1 } },
+      });
+      // Hoàn điểm đã sử dụng
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { loyaltyPoints: { increment: 500 } },
+      });
+    });
+
+    it('hủy đơn PAID thành công (FR-24): thu hồi điểm tích lũy và lưu thông tin nhận hoàn tiền VietQR', async () => {
+      const paidOrder = {
+        id: 102,
+        userId: 1,
+        status: OrderStatus.PAID,
+        promoCode: null,
+        pointsUsed: 0,
+        pointsEarned: 50,
+        total: 50000,
+        items: [
+          {
+            id: 1,
+            consumption: [{ ingredientId: 10, quantity: 25 }],
+          },
+        ],
+        payments: [{ id: 60, status: 'SUCCESS', amount: 50000 }],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(paidOrder);
+      prismaMock.ingredient.update.mockResolvedValue({});
+      prismaMock.stockMovement.create.mockResolvedValue({});
+      prismaMock.user.update.mockResolvedValue({});
+      prismaMock.loyaltyTransaction.updateMany.mockResolvedValue({ count: 1 });
+      prismaMock.payment.update.mockResolvedValue({});
+      prismaMock.order.update.mockResolvedValue({
+        ...paidOrder,
+        status: OrderStatus.CANCELLED,
+      });
+
+      const cancelDto = {
+        refundBank: 'MB',
+        refundAccount: '0987654321',
+      };
+
+      const res = await service.cancelOrder(102, mockUserCustomer, cancelDto);
+
+      expect(res.status).toBe(OrderStatus.CANCELLED);
+      // Thu hồi điểm thưởng
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { loyaltyPoints: { decrement: 50 } },
+      });
+      expect(prismaMock.loyaltyTransaction.updateMany).toHaveBeenCalledWith({
+        where: { orderId: 102 },
+        data: { reversedAt: expect.any(Date) },
+      });
+      // Ghi nhận nghĩa vụ hoàn tiền VietQR trên Payment
+      expect(prismaMock.payment.update).toHaveBeenCalledWith({
+        where: { id: 60 },
+        data: {
+          refundedAmount: 50000,
+          refundRef: 'VIETQR:MB:0987654321',
+        },
+      });
+    });
+
+    it('Barista có quyền hủy đơn của khách khi có sự cố phát sinh', async () => {
+      const paidOrder = {
+        id: 103,
+        userId: 1,
+        status: OrderStatus.PAID,
+        promoCode: null,
+        pointsUsed: 0,
+        pointsEarned: 0,
+        total: 40000,
+        items: [],
+        payments: [{ id: 61, status: 'SUCCESS', amount: 40000 }],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(paidOrder);
+      prismaMock.payment.update.mockResolvedValue({});
+      prismaMock.order.update.mockResolvedValue({
+        ...paidOrder,
+        status: OrderStatus.CANCELLED,
+      });
+
+      const res = await service.cancelOrder(103, mockUserBarista);
+      expect(res.status).toBe(OrderStatus.CANCELLED);
+    });
+  });
+
+  describe('confirmRefund (Task 10 & Barista hoàn tiền VietQR FR-26)', () => {
+    const mockUserCustomer = { id: 1, role: Role.CUSTOMER };
+    const mockUserBarista = { id: 2, role: Role.BARISTA };
+
+    it('ném ForbiddenException nếu người gọi không phải là nhân viên Barista', async () => {
+      await expect(service.confirmRefund(105, mockUserCustomer)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('ném NotFoundException nếu đơn hàng không tồn tại', async () => {
+      prismaMock.order.findUnique.mockResolvedValue(null);
+
+      await expect(service.confirmRefund(999, mockUserBarista)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('ném BadRequestException nếu đơn hàng chưa ở trạng thái CANCELLED', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 106,
+        status: OrderStatus.PAID,
+        payments: [{ id: 70, status: 'SUCCESS' }],
+      });
+
+      await expect(service.confirmRefund(106, mockUserBarista)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('ném BadRequestException nếu đơn hàng không có bản ghi Payment để hoàn tiền', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 107,
+        status: OrderStatus.CANCELLED,
+        payments: [],
+      });
+
+      await expect(service.confirmRefund(107, mockUserBarista)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('Barista xác nhận hoàn tiền VietQR thành công: cập nhật refundedAt và refundRef', async () => {
+      const cancelledOrder = {
+        id: 108,
+        total: 65000,
+        status: OrderStatus.CANCELLED,
+        payments: [
+          {
+            id: 71,
+            status: 'SUCCESS',
+            amount: 65000,
+            refundRef: 'VIETQR:MB:0987654321',
+          },
+        ],
+      };
+
+      const now = new Date();
+      prismaMock.order.findUnique.mockResolvedValue(cancelledOrder);
+      prismaMock.payment.update.mockResolvedValue({
+        id: 71,
+        refundedAt: now,
+        refundedAmount: 65000,
+        refundRef: 'VIETQR:MB:0987654321:CONFIRMED',
+      });
+
+      const res = await service.confirmRefund(108, mockUserBarista);
+
+      expect(res.orderId).toBe(108);
+      expect(res.refundedAmount).toBe(65000);
+      expect(res.refundRef).toBe('VIETQR:MB:0987654321:CONFIRMED');
+      expect(res.message).toMatch(/Xác nhận hoàn tiền VietQR thành công/i);
+      expect(prismaMock.payment.update).toHaveBeenCalledWith({
+        where: { id: 71 },
+        data: {
+          refundedAt: expect.any(Date),
+          refundedAmount: 65000,
+          refundRef: 'VIETQR:MB:0987654321:CONFIRMED',
+        },
+      });
     });
   });
 });

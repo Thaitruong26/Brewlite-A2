@@ -87,10 +87,11 @@ docker compose up --build
 ```
 
 Sau khi khởi chạy thành công:
-* 🌐 **Giao diện Khách hàng:** [http://localhost:3000](http://localhost:3000) (hoặc `http://localhost:3001` nếu dùng cấu hình port mapping)
-* 🍵 **Màn hình quầy Barista:** [http://localhost:3000/barista](http://localhost:3000/barista)
-* 🔌 **Backend API:** [http://localhost:4000/api](http://localhost:4000/api)
-* 📚 **Swagger API Docs:** [http://localhost:4000/api/docs](http://localhost:4000/api/docs)
+* 🌐 **Giao diện Khách hàng:** [http://localhost:3001](http://localhost:3001)
+* 🍵 **Màn hình quầy Barista:** [http://localhost:3001/barista](http://localhost:3001/barista)
+* 🔌 **Backend API:** [http://localhost:4001/api](http://localhost:4001/api)
+* 📚 **Swagger API Docs:** [http://localhost:4001/api/docs](http://localhost:4001/api/docs)
+* 🩺 **Health Check API:** [http://localhost:4001/api/health](http://localhost:4001/api/health)
 
 ---
 
@@ -159,15 +160,17 @@ Nếu muốn trải nghiệm quét mã qua ứng dụng ngân hàng thật trên
 
 ---
 
-### 5.3. Thử nghiệm Luồng Hủy đơn & Barista Hoàn tiền
+### 5.3. Thử nghiệm Luồng Hủy đơn & Barista Hoàn tiền VietQR (ADR-009 / D-07)
 
 1. **Khách hàng hủy đơn:**
-   * Tại trang theo dõi đơn hàng [`/orders/{id}`](http://localhost:3000/orders), khi đơn ở trạng thái `PAID` (Đã thanh toán), bấm nút **"Hủy đơn hàng"**.
-   * Nhập lý do hủy và thông tin nhận hoàn tiền (Ngân hàng & Số tài khoản).
-2. **Barista xử lý hoàn tiền:**
-   * Barista mở màn hình [`/barista`](http://localhost:3000/barista), tab **"Đã hủy"** sẽ có cờ đỏ cảnh báo: *🚨 Có X đơn đã hủy cần hoàn trả tiền*.
+   * Tại trang theo dõi đơn hàng [`/orders/{id}`](http://localhost:3001/orders), khi đơn ở trạng thái `PAID` (Đã thanh toán) và quầy chưa bắt đầu pha (`PREPARING`), bấm nút **"Hủy đơn hàng"**.
+   * Nhập ngân hàng thụ hưởng và số tài khoản (STK).
+   * Backend chuyển `Order` sang `CANCELLED`, hoàn trả nguyên liệu, hoàn usedCount mã giảm giá, thu hồi điểm thưởng đã tích và tạo bản ghi yêu cầu hoàn tiền `PENDING`.
+2. **Barista xử lý hoàn tiền VietQR:**
+   * Barista mở màn hình [`/barista`](http://localhost:3001/barista), tab **"Đã hủy"** sẽ có cờ đỏ cảnh báo: *🚨 Có X đơn đã hủy cần hoàn trả tiền!*.
    * Barista bấm **"💸 Trả lại tiền cho khách (Hiện mã QR)"**.
-   * Cửa sổ QR hoàn tiền bật lên với đúng số tiền và thông tin tài khoản khách, Barista dùng app ngân hàng quét mã để chuyển trả tiền cho khách ngay lập tức.
+   * Hệ thống tự động sinh mã **Napas247 VietQR** mã hóa chính xác ngân hàng, STK, số tiền cần hoàn và memo `Hoan tien don #ID`.
+   * Barista dùng ứng dụng ngân hàng di động quét mã QR để chuyển trả tiền cho khách ngay lập tức, sau đó bấm **"✓ Đã chuyển hoàn tiền"** để cập nhật trạng thái `COMPLETED` trong cơ sở dữ liệu. Không áp dụng chính sách cộng điểm bù (`CREDIT_COMPENSATION`).
 
 ---
 
@@ -200,7 +203,7 @@ brewlite/
 ├── docs/                         # Toàn bộ tạo phẩm thiết kế & tài liệu Assignment 2
 │   ├── requirements/             # Task 1: Bối cảnh, SRS, Use-case specifications
 │   ├── diagrams/                 # Task 2: Activity, Sequence, Class Diagrams
-│   ├── architecture/             # Task 3: 8 ADRs, Logical & Deployment Diagrams
+│   ├── architecture/             # Task 3: 9 ADRs (kèm ADR-009 VietQR Refund), Logical & Deployment Diagrams
 │   ├── traceability-matrix.md     # Ma trận truy vết từ yêu cầu đến mã nguồn và kiểm thử
 │   └── user-guide.md             # Hướng dẫn chi tiết người dùng và Barista
 ├── tests/                        # Task 5: Integration & E2E Tests mở rộng
@@ -216,10 +219,10 @@ brewlite/
 ## 🧪 8. Kiểm thử tự động (Automated Testing)
 
 ```bash
-# Chạy Unit Tests Backend (86 tests)
+# Chạy toàn bộ Unit Tests Backend (115 tests - 100% Passed)
 npm --prefix apps/api run test
 
-# Chạy End-to-End Tests Backend (11 tests)
+# Chạy toàn bộ End-to-End Tests Backend (21 tests - 100% Passed)
 npm --prefix apps/api run test:e2e
 
 # Kiểm tra build ứng dụng Web Frontend
@@ -228,10 +231,20 @@ npm --prefix apps/web run build
 
 ---
 
-## 🔄 9. Quy trình CI/CD (GitHub Actions)
+## 🔄 9. Quy trình CI/CD & Triển khai Production (Render Cloud Platform)
 
 1. **Continuous Integration (`ci.yml`):**
    * Tự động kích hoạt khi có commit/pull request vào nhánh `main` và `develop`.
-   * Chạy song song: Lint (ESLint, Oxlint) -> Unit Tests -> E2E Tests -> Build NestJS & Next.js -> Docker Compose Validation.
-2. **Continuous Deployment (`cd.yml`):**
-   * Đóng gói Docker Image tự động khi merge vào nhánh `main` và đẩy lên GitHub Container Registry (GHCR).
+   * Chạy song song: Lint (ESLint, Oxlint) -> Unit Tests (115 tests) -> E2E Tests (21 tests) -> Build NestJS & Next.js -> Docker Compose Validation.
+2. **Continuous Deployment (`cd.yml` — Quy trình 5 giai đoạn khép kín):**
+   * **Giai đoạn 1 (Docker Image):** Đóng gói đa tầng tối ưu hóa dung lượng cho Backend NestJS và Frontend Next.js Standalone.
+   * **Giai đoạn 2 (Container Registry):** Đẩy images lên **GitHub Container Registry (GHCR.io)** kèm 3 nhãn định danh: `:latest`, `:${{ github.sha }}`, và `:sha-${{ github.sha }}`.
+   * **Giai đoạn 3 (Deploy Render):** Kích hoạt webhook Render Zero-Downtime Rolling Update để nạp phiên bản mới.
+   * **Giai đoạn 4 (Automated Smoke Test):** Tự động chạy bộ kịch bản kiểm thử sau triển khai (`scripts/smoke-test.sh` / `scripts/smoke-test.ps1`) kiểm tra 5 chốt chặn: Healthcheck API & DB, Product Catalog API, VNPay Security Guard, Frontend Homepage và Barista KDS Interface.
+   * **Giai đoạn 5 (Automated Rollback):** Nếu Smoke Test thất bại hoặc healthcheck không phản hồi, quy trình tự động kích hoạt **Rollback Hook** đưa phiên bản production trở về Git commit SHA ổn định trước đó.
+3. **Nền tảng Hosting Production (DEP-01):**
+   * Hệ thống chốt triển khai chính thức trên **Render Cloud Platform (Singapore Region)**:
+     * **Web Service Frontend:** Next.js 15 Standalone (`brewlite.onrender.com`).
+     * **Web Service Backend:** NestJS 10 Modular Monolith (`brewlite-api.onrender.com`).
+     * **Managed Database:** Render PostgreSQL 16 (Private VPC TCP :5432, Persistent Storage).
+     * **Ingress & Security:** Cloudflare Edge Auto TLS 1.3 (:443), Secret Store tập trung, Healthcheck `/api/health` cho zero-downtime rolling update.

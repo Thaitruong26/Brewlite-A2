@@ -28,10 +28,10 @@
 | FR-22 Chặn hủy sau khi bắt đầu pha chế | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-22 |
 | FR-23 Hủy đơn chưa trả tiền | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-003;ADR-006 | `POST /orders/:id/cancel` | T-FR-23 |
 | FR-24 Hủy đơn PAID và tạo nghĩa vụ hoàn tiền | UC-10 | ACT-01;SEQ-02;CLASS-01 | ADR-006;ADR-009 | `POST /orders/:id/cancel` | T-FR-24;INT-04 |
-| FR-25 Tạo VietQR cho Barista hoàn tiền | UC-10 | SEQ-02;CLASS-01 | ADR-009 | `GET /barista/refunds/:id/qr` | T-FR-25 |
-| FR-26 Barista xác nhận hoàn tiền | UC-10 | SEQ-02;CLASS-01 | ADR-009 | `POST /barista/refunds/:id/confirm` | T-FR-26 |
-| FR-27 Xử lý hoàn tiền thất bại và chống trùng | UC-09;UC-10 | SEQ-02;CLASS-01 | ADR-009 | `Refund attempt/retry API` | T-FR-27;INT-05/08 |
-| FR-28 Đối soát hoàn tiền chưa rõ kết quả | UC-10 | ACT-01;SEQ-02 | ADR-009 | `Refund reconciliation API` | T-FR-28;INT-06 |
+| FR-25 Tạo VietQR cho Barista hoàn tiền | UC-10 | SEQ-02;CLASS-01 | ADR-009 | `Barista KDS VietQR UI` | T-FR-25 |
+| FR-26 Barista xác nhận hoàn tiền | UC-10 | SEQ-02;CLASS-01 | ADR-009 | `PATCH /orders/:id/confirm-refund` | T-FR-26 |
+| FR-27 Xử lý hoàn tiền thất bại và chống trùng | UC-09;UC-10 | SEQ-02;CLASS-01 | ADR-009 | `POST /orders/:id/cancel (Idempotent)` | T-FR-27;INT-05/08 |
+| FR-28 Đối soát hoàn tiền chưa rõ kết quả | UC-10 | ACT-01;SEQ-02 | ADR-009 | `PATCH /orders/:id/confirm-refund & Audit` | T-FR-28;INT-06 |
 | FR-29 Hàng đợi Barista | UC-13 | ACT-01;CLASS-01 | ADR-005 | `GET /barista/orders` | T-FR-29 |
 | FR-30 State machine pha chế | UC-13 | ACT-01;CLASS-01 | ADR-006 | `PATCH /orders/:id/status` | T-FR-30 |
 | FR-31 Quản lý tồn kho | UC-15 | CLASS-01 | ADR-003 | `POST /inventory/adjustments` | T-FR-31 |
@@ -70,7 +70,7 @@
 | CLASS-01 | Domain core | [class-domain.puml](diagrams/class-domain.puml) | [SVG](diagrams/class-domain.svg) |
 | CLASS-02 | Inventory/recipes | [class-inventory.puml](diagrams/class-inventory.puml) | [SVG](diagrams/class-inventory.svg) |
 | ARC-01 | Logical architecture | [architecture-logical.puml](diagrams/architecture-logical.puml) | [SVG](diagrams/architecture-logical.svg) |
-| DEP-01 | Deployment blueprint proposed | [deployment-production.puml](diagrams/deployment-production.puml) | [SVG](diagrams/deployment-production.svg) |
+| DEP-01 | Production deployment blueprint (Render Cloud Platform) | [deployment-production.puml](diagrams/deployment-production.puml) | [SVG](diagrams/deployment-production.svg) |
 
 ### Traceability chain ví dụ
 

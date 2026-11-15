@@ -1,20 +1,34 @@
-# ADR-007 — Docker, CI/CD, health, secrets và deployment
+# ADR-007 — Docker, CI/CD, Observability, Secrets và Triển Khai Render Cloud Platform
 
-- **Trạng thái:** Proposed; Render NOT approved
-- **Ngày:** 2026-11-14
-- **Liên quan:** FR-32; NFR-02/08/09/10/12/14
+- **Trạng thái:** LOCKED & APPROVED — Đã chốt chính thức nền tảng Render Cloud Platform
+- **Ngày:** 2026-11-15
+- **Liên quan:** FR-32; NFR-02/08/09/10/12/14; O-02; DEP-01; Task 3.2
 
 ## Bối cảnh
-Đề yêu cầu local, production và minh chứng.
+Yêu cầu đồ án cần một kiến trúc triển khai thực tế có phân định rõ 3 ranh giới môi trường: Local development, CI/CD automated pipeline, và Production hosting có khả năng phục vụ người dùng thực tế với kết nối Internet HTTPS an toàn cho cả Webhook IPN của VNPay và KDS Barista quét VietQR.
 
 ## Quyết định
-Docker Compose local; GitHub Actions install/lint/test/build rồi image SHA → GHCR → target deploy; HTTPS, DB private, secret store, /health, log.
+1. **Môi trường Local:** Sử dụng Docker Compose (`docker-compose.yml`) đóng gói 3 container (PostgreSQL 16, NestJS Backend, Next.js Frontend) cho phép kiểm thử và khởi chạy một chạm (`docker compose up --build`).
+2. **Môi trường CI/CD:** GitHub Actions (`ci.yml`, `cd.yml`) tự động thực hiện lint, unit test, e2e concurrency test, build và đóng gói Docker image với nhãn Git SHA đẩy lên GitHub Container Registry (`ghcr.io`).
+3. **Nền tảng Production:** **Render Cloud Platform (Singapore / Southeast Asia Region)**:
+   - **Frontend:** Render Web Service (Next.js 15 Standalone Docker, Port 3001, domain `brewlite.onrender.com`).
+   - **Backend:** Render Web Service (NestJS Modular Monolith, Port 4001, domain `brewlite-api.onrender.com`).
+   - **Database:** Render Managed PostgreSQL 16 trong Private Virtual Network (`dpg-*.singapore.render.com:5432`), không expose ra Internet.
+   - **Ingress:** Render Cloudflare Ingress tự động cấu hình TLS 1.3 / HTTPS :443.
+   - **Secret Store:** Quản lý tập trung qua Render Environment Groups.
+   - **Observability:** Healthcheck probe `GET /api/health` đảm bảo rolling deploy không downtime.
 
 ## Hệ quả tích cực
-Reproducible, observable, rollback theo image tag.
+- Môi trường triển khai thực tế, độ trễ thấp tối ưu cho thị trường Việt Nam (Singapore Region).
+- Không cần quản trị máy chủ hạ tầng vật lý (PaaS/Managed Serverless Container).
+- Cô lập database hoàn toàn trong mạng nội bộ private VPC.
+- Khả năng rollback 1 chạm theo Docker Image tag SHA.
 
-## Hạn chế/trade-off
-Cần chọn platform thật (O-02), provision/secrets và chi phí vận hành.
+## Hạn chế / Trade-off
+- Cần theo dõi chi phí và hạn mức sử dụng băng thông trên Render.
+- Phụ thuộc vào kết nối mạng ngoài giữa Render và cổng thanh toán VNPay Sandbox.
 
 ## Truy vết
-[ADR-007 trong Architecture](../architecture.md), [SRS](../../requirements/software-requirements-specification.md), [ma trận](../../traceability-matrix.md).
+- [Deployment Specification (DEP-01)](../../deployment.md)
+- [Deployment Diagram PUML](../../diagrams/deployment-production.puml)
+- [Ma trận truy vết](../../traceability-matrix.md)
