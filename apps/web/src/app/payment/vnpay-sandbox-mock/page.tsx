@@ -2,7 +2,6 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { createPaymentApi, formatVND, getOrderByIdApi, simulateVnpayCompleteApi } from "@/lib/api";
 
 type Step = "SELECT_METHOD" | "NCB_CARD" | "NCB_OTP" | "QR_CODE";
@@ -15,7 +14,6 @@ function VnpayMockContent() {
   const orderId = parseInt(txnRef.split("_")[0] || "0", 10);
   const rawAmount = parseInt(searchParams.get("vnp_Amount") || "0", 10);
   const amount = rawAmount > 0 ? rawAmount / 100 : 0;
-  const orderInfo = searchParams.get("vnp_OrderInfo") || `Thanh toan don hang ${orderId} BrewLite`;
 
   const [step, setStep] = useState<Step>("SELECT_METHOD");
   const [cardNumber, setCardNumber] = useState("9704198526191432198");
@@ -197,7 +195,7 @@ function VnpayMockContent() {
                   <span>Trạng thái: Đang chờ Barista đối soát và bấm nhận tiền...</span>
                 </div>
                 <p className="text-[11px] text-amber-800 leading-relaxed">
-                  📌 <strong>Quy định:</strong> Để tránh thất thoát, nhân viên Barista cần kiểm tra tài khoản và bấm <strong>"✓ Xác nhận đã nhận tiền (PAID)"</strong> trên màn hình Barista (<code>/barista</code>) thì hệ thống mới chuyển sang trang hoàn tất cho quý khách.
+                  📌 <strong>Quy định:</strong> Để tránh thất thoát, nhân viên Barista cần kiểm tra tài khoản và bấm <strong>&ldquo;✓ Xác nhận đã nhận tiền (PAID)&rdquo;</strong> trên màn hình Barista (<code>/barista</code>) thì hệ thống mới chuyển sang trang hoàn tất cho quý khách.
                 </p>
               </div>
 

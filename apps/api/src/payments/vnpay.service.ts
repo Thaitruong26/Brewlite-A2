@@ -340,7 +340,7 @@ export class VnpayService {
         orderId,
         amount,
         responseCode: '02',
-        message: `Trạng thái đơn hàng không hợp lệ để thanh toán (${order.status})`,
+        message: `Trạng thái đơn hàng không hợp lệ để thanh toán (${String(order.status)})`,
       };
     }
 

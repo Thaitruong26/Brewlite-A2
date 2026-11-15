@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useStockStore } from "@/store/stock-store";
 import { useAuthStore } from "@/store/auth-store";
