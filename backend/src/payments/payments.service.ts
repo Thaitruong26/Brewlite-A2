@@ -35,6 +35,7 @@ export class PaymentsService {
     user?: { id: number; role?: string },
     res?: any,
   ) {
+    // Idempotency-Key giúp nhận diện yêu cầu thanh toán và tránh xử lý trùng lặp.
     // 1. Validate idempotency key
     if (!idempotencyKey?.trim()) {
       throw new BadRequestException('Idempotency-Key is required');
@@ -52,7 +53,7 @@ export class PaymentsService {
     const requestHash = createHash('sha256')
       .update(JSON.stringify(normalizedRequest))
       .digest('hex');
-
+// Nếu khóa đã tồn tại, đối chiếu requestHash để xác định đây có phải yêu cầu cũ hay không.
     // 3. Check idempotent request
     const existing = await this.prisma.payment.findUnique({
       where: { idempotencyKey: normalizedKey },
