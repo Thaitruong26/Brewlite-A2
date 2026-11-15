@@ -38,7 +38,7 @@ Nguồn: Quyết định của nhóm 14/11/2026 + Assignment2-BrewLite. `Must` =
 | FR-17 | Đối soát giao dịch chưa rõ | Must | Return URL không tự PAID; UNKNOWN được QueryDr/đối soát trước kết luận | UC-08 |
 | FR-18 | Mock payment qua provider | Must | Provider Mock đạt cùng contract; không được chọn trong production public | UC-07 |
 | FR-19 | Khuyến mãi | Must | Mã khuyến mãi hợp lệ mới áp dụng; giới hạn sử dụng không vượt quota khi cạnh tranh | UC-04 |
-| FR-20 | Điểm thưởng cơ bản | Must | Tích điểm khi COMPLETED đúng một lần; transaction ledger có source unique | UC-14 |
+| FR-20 | Điểm thưởng cơ bản | Must | Tích điểm khi đơn chuyển sang PAID, đúng một lần cho mỗi order; 1 điểm/1.000đ trên tổng tiền thực trả. Khi hủy PAID, thu hồi điểm đã tích đúng một lần | UC-14 |
 | FR-21 | Dùng điểm ở checkout | Should | Điểm dùng không vượt số dư, bị giữ/khấu trừ một lần và được trả khi hủy | UC-04;UC-10 |
 | FR-22 | Chặn hủy sau khi bắt đầu pha chế | Must | Cancel khi PREPARING/READY/COMPLETED/CANCELLED trả 409, không đổi dữ liệu | UC-09 |
 | FR-23 | Hủy đơn chưa trả tiền | Must | PENDING/PAYMENT_FAILED -> CANCELLED; hoàn giữ kho, promo, điểm một lần | UC-09 |
@@ -141,7 +141,7 @@ Sơ đồ tổng quát: [use-case-overview.svg](../diagrams/use-case-overview.sv
 | PAID (chưa rõ kết quả) | Chờ đối soát ngân hàng | CANCELLED giữ nguyên | UNKNOWN (cần đối soát) | Release 1 lần | Thu hồi điểm đã tích |
 | PREPARING/READY/COMPLETED/CANCELLED | Không | HTTP 409 Conflict | Không áp dụng | Không đổi | Không đổi |
 
-> **Lưu ý:** Hệ thống hoàn tiền 100% bằng tiền mặt chuyển khoản qua Napas247 VietQR; không áp dụng chính sách cộng điểm bù (`CREDIT_COMPENSATION`). Chức năng tích điểm mua hàng thông thường khi hoàn tất đơn vẫn giữ nguyên.
+> **Lưu ý:** Hệ thống hoàn tiền 100% bằng tiền mặt chuyển khoản qua Napas247 VietQR; không áp dụng chính sách cộng điểm bù (`CREDIT_COMPENSATION`). Điểm thưởng mua hàng được cộng khi PAID và thu hồi nếu đơn PAID bị hủy; không cộng điểm bù hoàn tiền.
 
 ## 8. Ràng buộc nghiệp vụ ngoài phạm vi
 

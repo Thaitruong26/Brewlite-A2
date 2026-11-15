@@ -11,12 +11,12 @@ Yêu cầu đồ án cần một kiến trúc triển khai thực tế có phân
 1. **Môi trường Local:** Sử dụng Docker Compose (`docker-compose.yml`) đóng gói 3 container (PostgreSQL 16, NestJS Backend, Next.js Frontend) cho phép kiểm thử và khởi chạy một chạm (`docker compose up --build`).
 2. **Môi trường CI/CD:** GitHub Actions (`ci.yml`, `cd.yml`) tự động thực hiện lint, unit test, e2e concurrency test, build và đóng gói Docker image với nhãn Git SHA đẩy lên GitHub Container Registry (`ghcr.io`).
 3. **Nền tảng Production:** **Render Cloud Platform (Singapore / Southeast Asia Region)**:
-   - **Frontend:** Render Web Service (Next.js 15 Standalone Docker, Port 3001, domain `brewlite.onrender.com`).
-   - **Backend:** Render Web Service (NestJS Modular Monolith, Port 4001, domain `brewlite-api.onrender.com`).
+   - **Frontend:** Render Web Service (Next.js 16.4.0, Docker, Node.js 22, Port 3001, domain `brewlite-web-bggg.onrender.com`).
+   - **Backend:** Render Web Service (NestJS 12 Modular Monolith (Prisma 7.10.x), Port 4001, domain `brewlite-a2-syoc.onrender.com`).
    - **Database:** Render Managed PostgreSQL 16 trong Private Virtual Network (`dpg-*.singapore.render.com:5432`), không expose ra Internet.
    - **Ingress:** Render Cloudflare Ingress tự động cấu hình TLS 1.3 / HTTPS :443.
    - **Secret Store:** Quản lý tập trung qua Render Environment Groups.
-   - **Observability:** Healthcheck probe `GET /api/health` đảm bảo rolling deploy không downtime.
+   - **Observability:** Healthcheck probe `GET /api/health` hỗ trợ đánh giá tính sẵn sàng khi triển khai; không tự bảo đảm zero-downtime.
 
 ## Hệ quả tích cực
 - Môi trường triển khai thực tế, độ trễ thấp tối ưu cho thị trường Việt Nam (Singapore Region).

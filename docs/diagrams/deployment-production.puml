@@ -28,12 +28,12 @@ cloud "Nền Tảng Hosting: Render Cloud Platform (Singapore Region)" as Render
   }
 
   frame "Render Private Network (Isolated VPC)" as PrivateNet {
-    node "Frontend Web Service\n[brewlite.onrender.com :3001]" as WebService {
-      artifact "Next.js Container\n(Node.js Standalone)" as NextApp
+    node "Frontend Web Service\n[brewlite-web-bggg.onrender.com :3001]" as WebService {
+      artifact "Next.js 16.4.0 Container\n(Node.js 22, Docker)" as NextApp
     }
 
-    node "Backend API Web Service\n[brewlite-api.onrender.com :4001]" as ApiService {
-      artifact "NestJS Modular Monolith\n(Prisma ORM Client)" as NestApp
+    node "Backend API Web Service\n[brewlite-a2-syoc.onrender.com :4001]" as ApiService {
+      artifact "NestJS 12 Modular Monolith\n(Prisma 7.10.x)" as NestApp
       artifact "Healthcheck Endpoint\nGET /api/health" as HealthCheck
     }
 
@@ -78,7 +78,7 @@ BankApp ..> MobileUI : Chuyển khoản hoàn tiền trực tiếp Napas247\n(Ba
 ' CI/CD Pipeline Flow
 GHA_CI --> GHA_CD : Trigger sau khi pass test & build
 GHA_CD --> GHCR : Push Docker Images (:latest & :sha)
-GHCR --> NextApp : Render Deploy Hook / Pull image
-GHCR --> NestApp : Render Deploy Hook / Pull image
+GHCR --> NextApp : Render Deploy Hook / GitHub source
+GHCR --> NestApp : Render Deploy Hook / GitHub source
 
 @enduml

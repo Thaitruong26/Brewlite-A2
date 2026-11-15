@@ -23,7 +23,7 @@
 | FR-17 Đối soát giao dịch chưa rõ | UC-08 | SEQ-01 | ADR-004 | `GET /orders/:id/payment-status` | T-FR-17 |
 | FR-18 Mock payment qua provider | UC-07 | SEQ-01 | ADR-004 | `PaymentProvider interface` | T-FR-18 |
 | FR-19 Khuyến mãi | UC-04 | ACT-01;CLASS-01 | ADR-003 | `POST /orders` | T-FR-19 |
-| FR-20 Điểm thưởng cơ bản | UC-14 | CLASS-01 | ADR-006 | `Order completion handler` | T-FR-20 |
+| FR-20 Điểm thưởng cơ bản | UC-14 | CLASS-01 | ADR-006 | `LoyaltyService.award() khi Payment SUCCESS / Order PAID` | T-FR-20 |
 | FR-21 Dùng điểm ở checkout | UC-04;UC-10 | ACT-01;CLASS-01 | ADR-006 | `POST /orders` | T-FR-21 |
 | FR-22 Chặn hủy sau khi bắt đầu pha chế | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-22 |
 | FR-23 Hủy đơn chưa trả tiền | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-003;ADR-006 | `POST /orders/:id/cancel` | T-FR-23 |

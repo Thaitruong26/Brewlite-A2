@@ -26,5 +26,5 @@
 - Khi hủy đơn `PAID`, hệ thống chuyển `Order` sang `CANCELLED`, hoàn trả nguyên liệu, hoàn lượt voucher, thu hồi điểm thưởng đã tích và tạo đúng 1 bản ghi `Refund PENDING`.
 - Màn hình Barista KDS tạo mã Napas247 VietQR chứa chính xác ngân hàng, STK của khách, số tiền thực tế cần hoàn và nội dung chuyển tiền `Hoan tien don #ID`.
 - Barista chịu trách nhiệm kiểm tra giao dịch trên Banking App; xác nhận thành công chuyển `Refund` sang `COMPLETED`. Không có callback ngân hàng tự động.
-- Không có nghiệp vụ cộng điểm bù `CREDIT_COMPENSATION` cho Refund thất bại. Tích điểm thưởng mua hàng khi đơn hoàn tất vẫn giữ nguyên.
+- Không có nghiệp vụ cộng điểm bù `CREDIT_COMPENSATION` cho Refund thất bại. Tích điểm thưởng mua hàng khi PAID (1 điểm/1.000đ), chỉ một lần mỗi đơn; hủy PAID thì thu hồi điểm đã cộng.
 - `vnp_ReturnUrl` chỉ hiển thị thông tin; xác thực chữ ký HMAC và so khớp `amount === order.total` mới cho phép chuyển `PAID`.

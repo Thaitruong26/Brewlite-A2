@@ -25,7 +25,7 @@
 | T-FR-17 | Return URL không tự PAID; UNKNOWN được QueryDr/đối soát trước kết luận | FR-17 |
 | T-FR-18 | Provider Mock đạt cùng contract; không được chọn trong production public | FR-18 |
 | T-FR-19 | Mã khuyến mãi hợp lệ mới áp dụng; giới hạn sử dụng không vượt quota khi cạnh tranh | FR-19 |
-| T-FR-20 | Tích điểm khi COMPLETED đúng một lần; transaction ledger có source unique | FR-20 |
+| T-FR-20 | Khi Payment SUCCESS và Order chuyển PAID: cộng floor(total/1000) điểm, chỉ một lần mỗi order. Khi hủy PAID, thu hồi điểm đúng một lần | FR-20 |
 | T-FR-21 | Điểm dùng không vượt số dư, bị giữ/khấu trừ một lần và được trả khi hủy | FR-21 |
 | T-FR-22 | Cancel khi PREPARING/READY/COMPLETED/CANCELLED trả 409, không đổi dữ liệu | FR-22 |
 | T-FR-23 | PENDING/PAYMENT_FAILED -> CANCELLED; hoàn giữ kho, promo, điểm một lần | FR-23 |

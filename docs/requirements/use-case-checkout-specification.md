@@ -29,9 +29,9 @@ Use-case diagram riêng: [use-case-checkout.svg](../diagrams/use-case-checkout.s
 6. Backend dùng `PaymentProvider(VNPay)` tạo signed sandbox URL, ghi PaymentAttempt/PENDING có providerTxnRef, trả URL; UI redirect sang VNPay.
 7. VNPay xử lý sandbox và phát IPN đến backend. Backend verify signature, txnRef, amount, merchant, business status; một transaction cập nhật Payment success và Order `PAID`, duplicate IPN không cập nhật lại (FR-14..17).
 8. Trình duyệt quay về `ReturnUrl` chỉ để hiển thị; UI lấy `GET /orders/{id}` hoặc payment status từ backend. Không tự kết luận thành công từ query trên browser.
-9. Barista thấy đơn `PAID`, chuyển lần lượt `PREPARING → READY → COMPLETED`, Customer xem tiến độ; Loyalty EARNED ghi một lần khi hoàn tất.
+9. Barista thấy đơn `PAID`, chuyển lần lượt `PREPARING → READY → COMPLETED`, Customer xem tiến độ; Loyalty EARNED được ghi một lần khi thanh toán thành công và đơn chuyển PAID.
 
-**Hậu điều kiện:** Một đơn PAID được truy vết đến đúng payment; stock reservation không tạo trùng; điểm thưởng ghi một lần khi COMPLETED.
+**Hậu điều kiện:** Một đơn PAID được truy vết đến đúng payment; stock reservation không tạo trùng; điểm thưởng ghi một lần khi PAID; nếu hủy PAID hợp lệ thì thu hồi điểm.
 
 ## 3. Luồng thay thế/ngoại lệ (A/E)
 
