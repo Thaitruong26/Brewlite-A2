@@ -319,3 +319,20 @@ Tài liệu tập trung vào quy trình Checkout, tạo đơn hàng, khởi tạ
 
 Tài liệu không mô tả chi tiết cách triển khai nội bộ của chức năng quản lý sản phẩm, hạ tầng xác thực hoặc toàn bộ chương trình Loyalty.
 
+## Ma trận xử lý Checkout và thanh toán
+
+| Tình huống | Trạng thái đơn hàng | Xử lý hệ thống |
+|---|---|---|
+| Tạo đơn hàng thành công | PENDING | Lưu đơn hàng và chờ thanh toán |
+| Thanh toán VNPay thành công | PAID | Cập nhật trạng thái đơn hàng và ghi nhận giao dịch |
+| Thanh toán thất bại | PAYMENT_FAILED | Ghi nhận lỗi và cho phép người dùng thử lại |
+| Người dùng hủy đơn trước thanh toán | CANCELLED | Hủy đơn và giải phóng tồn kho |
+| Thanh toán thành công nhưng người dùng hủy đơn | CANCELLED | Thực hiện quy trình hoàn tiền |
+| Nhận callback trùng lặp | Không đổi | Kiểm tra giao dịch đã xử lý để tránh ghi nhận nhiều lần |
+| Callback không hợp lệ | Không đổi | Từ chối xử lý và ghi nhận thông tin đối soát |
+
+*Nguyên tắc xử lý:*
+- Chỉ ghi nhận thanh toán thành công sau khi xác minh dữ liệu phản hồi từ VNPay.
+- Một giao dịch chỉ được xử lý thành công một lần.
+- Không tự động chuyển trạng thái đơn hàng nếu callback không hợp lệ.
+- Ghi nhận lịch sử giao dịch để phục vụ đối soát và xử lý khiếu nại.
