@@ -36,7 +36,13 @@ export function CancelOrder({ order, disabled, compact = false, onRefresh, onCan
         localStorage.setItem(`refund_account_${order.id}`, account);
         localStorage.setItem(`refund_bank_${order.id}`, bank);
       }
-      await apiRequest(`/orders/${order.id}/cancel`, { method: "POST" });
+      await apiRequest(`/orders/${order.id}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({
+          refundBank: bank,
+          refundAccount: account,
+        }),
+      });
       setCancelled(true);
       dialog.current?.close();
       onCancelled?.();

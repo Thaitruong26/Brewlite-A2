@@ -14,10 +14,10 @@ export interface VnpayConfig {
 export class VnpayService {
   private readonly logger = new Logger(VnpayService.name);
 
-  // Cấu hình VNPay Sandbox chính thức (Môi trường thử nghiệm công khai)
+  // Cấu hình VNPay Sandbox chính thức - nạp hoàn toàn từ Environment Variables (P0.1)
   private readonly config: VnpayConfig = {
-    tmnCode: process.env.VNPAY_TMN_CODE || '2QXUI4J4',
-    hashSecret: process.env.VNPAY_HASH_SECRET || 'RAIQUIVYHUZLWDTCARBMONSGNUDQGNTK',
+    tmnCode: process.env.VNPAY_TMN_CODE || '',
+    hashSecret: process.env.VNPAY_HASH_SECRET || '',
     vnpUrl: process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
     returnUrl: process.env.VNPAY_RETURN_URL || 'http://localhost:3001/payment/vnpay-return',
   };
@@ -26,6 +26,22 @@ export class VnpayService {
     private readonly prisma: PrismaService,
     private readonly loyaltyService: LoyaltyService,
   ) {}
+
+  private getHashSecret(): string {
+    const secret = this.config.hashSecret || process.env.VNPAY_HASH_SECRET;
+    if (!secret) {
+      throw new BadRequestException('VNPAY_HASH_SECRET chưa được thiết lập trong biến môi trường hệ thống');
+    }
+    return secret;
+  }
+
+  private getTmnCode(): string {
+    const code = this.config.tmnCode || process.env.VNPAY_TMN_CODE;
+    if (!code) {
+      throw new BadRequestException('VNPAY_TMN_CODE chưa được thiết lập trong biến môi trường hệ thống');
+    }
+    return code;
+  }
 
   private getVnpayDateFormat(d: Date = new Date()): string {
     const vnTime = new Date(d.getTime() + 7 * 3600 * 1000);
@@ -65,6 +81,9 @@ export class VnpayService {
       throw new BadRequestException('Đơn hàng không ở trạng thái chờ thanh toán');
     }
 
+    const tmnCode = this.getTmnCode();
+    const hashSecret = this.getHashSecret();
+
     const createDate = this.getVnpayDateFormat();
     const txnRef = `${order.id}_${Date.now()}`;
     const amount = order.total * 100; // VNPay tính theo đơn vị hào (nhân 100)
@@ -73,7 +92,7 @@ export class VnpayService {
     const vnpParams: Record<string, string> = {
       vnp_Version: '2.1.0',
       vnp_Command: 'pay',
-      vnp_TmnCode: this.config.tmnCode,
+      vnp_TmnCode: tmnCode,
       vnp_Locale: 'vn',
       vnp_CurrCode: 'VND',
       vnp_TxnRef: txnRef,
@@ -90,7 +109,7 @@ export class VnpayService {
       .map(([k, v]) => `${k}=${v}`)
       .join('&');
 
-    const hmac = createHmac('sha512', this.config.hashSecret);
+    const hmac = createHmac('sha512', hashSecret);
     const secureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     const paymentUrl = `${this.config.vnpUrl}?${signData}&vnp_SecureHash=${secureHash}`;
@@ -101,7 +120,7 @@ export class VnpayService {
 
   /**
    * Sinh URL cho cổng giả lập VNPay Sandbox Mock Simulator
-   * Dùng cho demo hoặc kiểm thử khi chưa đăng ký tài khoản Sandbox với VNPay
+   * Dùng cho demo hoặc kiểm thử khi chưa kết nối cổng ngân hàng ngoài
    */
   async createSimulatorUrl(orderId: number): Promise<string> {
     const order = await this.prisma.order.findUnique({
@@ -112,6 +131,9 @@ export class VnpayService {
       throw new BadRequestException('Đơn hàng không tồn tại');
     }
 
+    const tmnCode = this.getTmnCode();
+    const hashSecret = this.getHashSecret();
+
     const createDate = this.getVnpayDateFormat();
     const txnRef = `${order.id}_${Date.now()}`;
     const amount = order.total * 100;
@@ -119,7 +141,7 @@ export class VnpayService {
     const vnpParams: Record<string, string> = {
       vnp_Version: '2.1.0',
       vnp_Command: 'pay',
-      vnp_TmnCode: this.config.tmnCode,
+      vnp_TmnCode: tmnCode,
       vnp_Locale: 'vn',
       vnp_CurrCode: 'VND',
       vnp_TxnRef: txnRef,
@@ -135,7 +157,7 @@ export class VnpayService {
       .map(([k, v]) => `${k}=${v}`)
       .join('&');
 
-    const hmac = createHmac('sha512', this.config.hashSecret);
+    const hmac = createHmac('sha512', hashSecret);
     const secureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     return `/payment/vnpay-sandbox-mock?${signData}&vnp_SecureHash=${secureHash}`;
@@ -150,6 +172,9 @@ export class VnpayService {
     amount: number,
     responseCode: string = '00',
   ): string {
+    const tmnCode = this.getTmnCode();
+    const hashSecret = this.getHashSecret();
+
     const payDate = this.getVnpayDateFormat();
     const transactionNo = `SIM_${Date.now()}`;
     const vnpParams: Record<string, string> = {
@@ -160,7 +185,7 @@ export class VnpayService {
       vnp_OrderInfo: `Thanh toan don hang ${orderId} BrewLite`,
       vnp_PayDate: payDate,
       vnp_ResponseCode: responseCode,
-      vnp_TmnCode: this.config.tmnCode,
+      vnp_TmnCode: tmnCode,
       vnp_TransactionNo: transactionNo,
       vnp_TransactionStatus: responseCode,
       vnp_TxnRef: txnRef,
@@ -171,7 +196,7 @@ export class VnpayService {
       .map(([k, v]) => `${k}=${v}`)
       .join('&');
 
-    const hmac = createHmac('sha512', this.config.hashSecret);
+    const hmac = createHmac('sha512', hashSecret);
     const secureHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     return `${signData}&vnp_SecureHashType=SHA512&vnp_SecureHash=${secureHash}`;
@@ -179,6 +204,8 @@ export class VnpayService {
 
   /**
    * Xác thực kết quả trả về từ VNPay (Return URL / IPN)
+   * Tuân thủ P0.1 & P0.2: kiểm tra chữ ký HMAC, so sánh số tiền callback với đơn,
+   * kiểm tra mã đối tác tmnCode, và chỉ cho phép chuyển từ PENDING/PAYMENT_FAILED sang PAID.
    */
   async verifyReturnUrl(query: Record<string, string>): Promise<{
     isSuccess: boolean;
@@ -199,6 +226,22 @@ export class VnpayService {
       };
     }
 
+    const tmnCode = this.getTmnCode();
+    const hashSecret = this.getHashSecret();
+
+    // 1. Kiểm tra đối tác (Merchant TMN Code)
+    if (query['vnp_TmnCode'] && query['vnp_TmnCode'] !== tmnCode) {
+      this.logger.error(`Sai mã merchant VNPay: nhận được ${query['vnp_TmnCode']}, cấu hình là ${tmnCode}`);
+      return {
+        isSuccess: false,
+        orderId: 0,
+        amount: 0,
+        responseCode: '97',
+        message: 'Mã đối tác (vnp_TmnCode) không hợp lệ',
+      };
+    }
+
+    // 2. Kiểm tra chữ ký HMAC-SHA512
     const cleanQuery: Record<string, string> = { ...query };
     delete cleanQuery['vnp_SecureHash'];
     delete cleanQuery['vnp_SecureHashType'];
@@ -208,7 +251,7 @@ export class VnpayService {
       .map(([k, v]) => `${k}=${v}`)
       .join('&');
 
-    const hmac = createHmac('sha512', this.config.hashSecret);
+    const hmac = createHmac('sha512', hashSecret);
     const calculatedHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     if (calculatedHash.toLowerCase() !== secureHash.toLowerCase()) {
@@ -238,16 +281,83 @@ export class VnpayService {
       };
     }
 
+    // 3. Tìm đơn hàng trên hệ thống
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payments: true },
+    });
+
+    if (!order) {
+      return {
+        isSuccess: false,
+        orderId,
+        amount,
+        responseCode: '01',
+        message: 'Đơn hàng không tồn tại trên hệ thống',
+      };
+    }
+
+    // 4. Kiểm tra số tiền callback so với giá trị đơn (Chống Tampering số tiền)
+    if (Math.round(amount) !== Math.round(order.total)) {
+      this.logger.error(`Số tiền thanh toán ${amount} không khớp với đơn hàng #${order.id} (${order.total})`);
+      return {
+        isSuccess: false,
+        orderId,
+        amount,
+        responseCode: '04',
+        message: 'Số tiền thanh toán không khớp với giá trị đơn hàng',
+      };
+    }
+
+    // 5. Kiểm tra trạng thái đơn: Nếu đã bị hủy thì từ chối nhận tiền
+    if (order.status === 'CANCELLED') {
+      this.logger.warn(`Đơn hàng #${order.id} đã bị hủy trước đó, từ chối cập nhật thanh toán`);
+      return {
+        isSuccess: false,
+        orderId,
+        amount,
+        responseCode: '02',
+        message: 'Đơn hàng đã bị hủy trước đó',
+      };
+    }
+
+    // Nếu đơn hàng đã hoàn tất thanh toán trước đó (Xử lý Idempotency)
+    if (order.status === 'PAID' || order.status === 'PREPARING' || order.status === 'READY' || order.status === 'COMPLETED') {
+      return {
+        isSuccess: true,
+        orderId,
+        amount,
+        responseCode: '00',
+        transactionNo,
+        message: 'Đơn hàng đã được thanh toán thành công trước đó',
+      };
+    }
+
+    // Chỉ cho phép chuyển trạng thái sang PAID nếu đang ở PENDING hoặc PAYMENT_FAILED
+    if (order.status !== 'PENDING' && order.status !== 'PAYMENT_FAILED') {
+      return {
+        isSuccess: false,
+        orderId,
+        amount,
+        responseCode: '02',
+        message: `Trạng thái đơn hàng không hợp lệ để thanh toán (${order.status})`,
+      };
+    }
+
     const isSuccess = responseCode === '00';
 
     if (isSuccess) {
-      // Cập nhật trạng thái đơn sang PAID và ghi nhận Payment
+      // 6. Cập nhật trạng thái đơn sang PAID và ghi nhận Payment nguyên tử trong transaction
       await this.prisma.$transaction(async (tx) => {
-        const order = await tx.order.findUnique({
+        const currentOrder = await tx.order.findUnique({
           where: { id: orderId },
         });
 
-        if (order && order.status !== 'PAID' && order.status !== 'COMPLETED') {
+        if (!currentOrder || currentOrder.status === 'CANCELLED') {
+          throw new BadRequestException('Đơn hàng không hợp lệ hoặc đã bị hủy');
+        }
+
+        if (currentOrder.status === 'PENDING' || currentOrder.status === 'PAYMENT_FAILED') {
           await tx.order.update({
             where: { id: orderId },
             data: { status: 'PAID' },
@@ -256,8 +366,8 @@ export class VnpayService {
           await tx.payment.create({
             data: {
               orderId,
-              amount: order.total,
-              method: 'CARD', // Lưu dạng thẻ qua cổng thanh toán
+              amount: currentOrder.total,
+              method: 'CARD', // Thẻ ATM/Nội địa qua cổng VNPay
               status: 'SUCCESS',
               idempotencyKey: `vnpay-${txnRef}`,
               requestHash: `vnpay-${transactionNo || txnRef}`,
@@ -273,7 +383,7 @@ export class VnpayService {
 
           // Tích điểm thưởng cho khách (1 điểm / 1.000đ)
           try {
-            await this.loyaltyService.award(tx, order);
+            await this.loyaltyService.award(tx, currentOrder);
           } catch {
             // Bỏ qua nếu đơn đã được tích điểm
           }
@@ -291,6 +401,13 @@ export class VnpayService {
     }
 
     // Nếu không thành công (Hủy hoặc lỗi giao dịch)
+    if (order.status === 'PENDING') {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: 'PAYMENT_FAILED' },
+      }).catch(() => {});
+    }
+
     return {
       isSuccess: false,
       orderId,
@@ -301,4 +418,3 @@ export class VnpayService {
     };
   }
 }
-

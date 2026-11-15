@@ -27,11 +27,11 @@
 | FR-21 Dùng điểm ở checkout | UC-04;UC-10 | ACT-01;CLASS-01 | ADR-006 | `POST /orders` | T-FR-21 |
 | FR-22 Chặn hủy sau khi bắt đầu pha chế | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-22 |
 | FR-23 Hủy đơn chưa trả tiền | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-003;ADR-006 | `POST /orders/:id/cancel` | T-FR-23 |
-| FR-24 Hoàn tiền khi hủy PAID | UC-10 | ACT-01;SEQ-02;CLASS-01 | ADR-004;ADR-006 | `POST /orders/:id/cancel` | T-FR-24 |
-| FR-25 Hủy khi refund thành công | UC-10 | SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-25 |
-| FR-26 Điểm bù khi refund thất bại | UC-10 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-26 |
-| FR-27 Idempotency hủy/refund/điểm bù | UC-09;UC-10 | SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-27 |
-| FR-28 Giữ an toàn khi refund UNKNOWN | UC-10 | SEQ-02;CLASS-01 | ADR-004;ADR-006 | `Refund reconciliation job` | T-FR-28 |
+| FR-24 Tiếp nhận thông tin hoàn tiền khi hủy PAID | UC-10 | ACT-01;SEQ-02;CLASS-01 | ADR-004;ADR-006 | `POST /orders/:id/cancel` | T-FR-24 |
+| FR-25 Sinh mã VietQR Napas247 cho Barista | UC-10;UC-13 | SEQ-02;CLASS-01 | ADR-006 | `Barista KDS UI` | T-FR-25 |
+| FR-26 Barista xác nhận hoàn tiền đã chuyển | UC-10;UC-13 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `PATCH /orders/:id/confirm-refund` | T-FR-26 |
+| FR-27 Idempotency và an toàn hủy/hoàn tiền | UC-09;UC-10 | SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-27 |
+| FR-28 Thu hồi ưu đãi và hoàn tồn kho khi hủy | UC-10;UC-14 | SEQ-02;CLASS-01 | ADR-003;ADR-006 | `POST /orders/:id/cancel` | T-FR-28 |
 | FR-29 Hàng đợi Barista | UC-13 | ACT-01;CLASS-01 | ADR-005 | `GET /barista/orders` | T-FR-29 |
 | FR-30 State machine pha chế | UC-13 | ACT-01;CLASS-01 | ADR-006 | `PATCH /orders/:id/status` | T-FR-30 |
 | FR-31 Quản lý tồn kho | UC-15 | CLASS-01 | ADR-003 | `POST /inventory/adjustments` | T-FR-31 |
@@ -74,7 +74,7 @@
 
 ### Traceability chain ví dụ
 
-`D-06 → FR-26/27/28 → UC-10 → ACT-01/SEQ-02/CLASS-01 → ADR-006 → POST /orders/:id/cancel → T-FR-26/27/28 + INT-05/06/08`.
+`D-06 → FR-24/25/26/27/28 → UC-10 → ACT-01/SEQ-02/CLASS-01 → ADR-006 → POST /orders/:id/cancel & PATCH /orders/:id/confirm-refund → T-FR-24..28 + INT-05/06/08`.
 
 `D-04 → FR-13..17 → UC-07/08 → SEQ-01/CLASS-01 → ADR-004 → /payments/vnpay/ipn → T-FR-13..17 + INT-02/03`.
 

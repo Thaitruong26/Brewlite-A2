@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  ForbiddenException,
   Get,
   Headers,
   Post,
@@ -74,13 +75,16 @@ export class PaymentsController {
   @Post('vnpay/simulate-complete')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Tạo query callback ký HMAC-SHA512 từ Simulator' })
+  @ApiOperation({ summary: 'Tạo query callback ký HMAC-SHA512 từ Simulator (Chỉ dành cho môi trường thử nghiệm)' })
   simulateComplete(
     @Body('orderId') orderId: number,
     @Body('txnRef') txnRef: string,
     @Body('amount') amount: number,
     @Body('responseCode') responseCode: string = '00',
   ) {
+    if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_VNPAY_SIMULATOR) {
+      throw new ForbiddenException('VNPay Simulator chỉ khả dụng trong môi trường thử nghiệm/demo');
+    }
     const query = this.vnpayService.generateSignedCallback(
       orderId,
       txnRef,

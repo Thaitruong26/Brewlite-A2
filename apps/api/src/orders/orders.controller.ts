@@ -25,6 +25,7 @@ import type { UserContext } from './orders.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { GetOrdersQueryDto } from './dto/get-orders-query.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { CancelOrderDto, ConfirmRefundDto } from './dto/cancel-order.dto.js';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -100,17 +101,34 @@ export class OrdersController {
   @Post(':id/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Hủy đơn hàng (Task 10)',
-    description: 'Chủ đơn hoặc barista hủy đơn: hoàn lại tồn kho, hoàn usedCount mã giảm giá, thu hồi điểm.',
+    summary: 'Hủy đơn hàng (Task 10 & Quy trình hoàn tiền VietQR)',
+    description: 'Chủ đơn hoặc barista hủy đơn: hoàn lại tồn kho, hoàn usedCount mã giảm giá, thu hồi điểm thưởng. Ghi nhận tài khoản ngân hàng để Barista hoàn tiền VietQR.',
   })
   @ApiParam({ name: 'id', description: 'ID đơn hàng', example: 1042 })
   @ApiResponse({ status: 200, description: 'Hủy đơn thành công' })
   @ApiResponse({ status: 409, description: 'Chuyển trạng thái sai (INVALID_TRANSITION) hoặc đang thanh toán (PAYMENT_IN_PROGRESS)' })
   async cancelOrder(
     @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CancelOrderDto,
     @CurrentUser() user: UserContext,
   ) {
-    return this.ordersService.cancelOrder(id, user);
+    return this.ordersService.cancelOrder(id, user, dto);
+  }
+
+  @Patch(':id/confirm-refund')
+  @ApiOperation({
+    summary: 'Barista xác nhận đã chuyển khoản hoàn tiền VietQR cho khách',
+    description: 'Chỉ nhân viên Barista mới có quyền xác nhận đã hoàn tất giao dịch chuyển tiền VietQR cho đơn hủy.',
+  })
+  @ApiParam({ name: 'id', description: 'ID đơn hàng', example: 1042 })
+  @ApiResponse({ status: 200, description: 'Xác nhận hoàn tiền thành công' })
+  @ApiResponse({ status: 403, description: 'Chỉ nhân viên Barista mới có quyền' })
+  async confirmRefund(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ConfirmRefundDto,
+    @CurrentUser() user: UserContext,
+  ) {
+    return this.ordersService.confirmRefund(id, user, dto);
   }
 
   @Patch(':id/status')

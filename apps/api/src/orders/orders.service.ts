@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -14,6 +15,7 @@ import { RecipeService } from '../common/recipe/recipe.service.js';
 import { assertTransition } from './order-state.js';
 import { CreateOrderDto, CreateOrderItemDto } from './dto/create-order.dto.js';
 import { GetOrdersQueryDto } from './dto/get-orders-query.dto.js';
+import { CancelOrderDto, ConfirmRefundDto } from './dto/cancel-order.dto.js';
 
 export const ORDER_PAYMENT_TIMEOUT_MINUTES = 15;
 export const ORDER_PAYMENT_TIMEOUT_MS = ORDER_PAYMENT_TIMEOUT_MINUTES * 60 * 1000;
@@ -411,9 +413,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Task 10: POST /orders/:id/cancel
-   * Hủy đơn hàng: hoàn kho, hoàn lượt dùng mã giảm giá, hoàn tiền/thu hồi điểm nếu đơn đã PAID.
+   * Hủy đơn hàng: hoàn kho, hoàn lượt dùng mã giảm giá, thu hồi điểm thưởng.
+   * Nếu đơn đã PAID: lưu thông tin tài khoản hoàn tiền để Barista quét mã VietQR chuyển trả lại.
    */
-  async cancelOrder(id: number, user: UserContext) {
+  async cancelOrder(id: number, user: UserContext, dto?: CancelOrderDto) {
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
         where: { id },
@@ -472,7 +475,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // 3. Nếu đơn đã PAID: thu hồi điểm thưởng và ghi nhận hoàn tiền mock
+      // 3. Nếu đơn đã PAID: thu hồi điểm thưởng và ghi nhận thông tin nhận hoàn tiền VietQR
       if (order.status === OrderStatus.PAID) {
         if (order.pointsEarned > 0) {
           await tx.user.update({
@@ -490,15 +493,18 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
           });
         }
 
-        // Cập nhật Payment ghi nhận hoàn tiền mock
+        // Cập nhật Payment ghi nhận thông tin tài khoản nhận hoàn tiền VietQR
         const successfulPayment = order.payments.find((p) => p.status === 'SUCCESS');
+        const refString = dto?.refundAccount
+          ? `VIETQR:${dto.refundBank || 'MB'}:${dto.refundAccount}`
+          : `VIETQR-PENDING-${Date.now()}`;
+
         if (successfulPayment) {
           await tx.payment.update({
             where: { id: successfulPayment.id },
             data: {
-              refundedAt: new Date(),
               refundedAmount: order.total,
-              refundRef: `MOCK-REFUND-${Date.now()}`,
+              refundRef: refString,
             },
           });
         }
@@ -517,6 +523,65 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         code: `#${updatedOrder.id}`,
         status: updatedOrder.status,
         message: 'Đơn hàng đã được hủy thành công',
+      };
+    });
+  }
+
+  /**
+   * Barista xác nhận đã chuyển hoàn tiền qua VietQR cho khách
+   * PATCH /orders/:id/confirm-refund
+   */
+  async confirmRefund(id: number, user: UserContext, dto?: ConfirmRefundDto) {
+    if (user.role !== Role.BARISTA) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'Chỉ nhân viên Barista mới có quyền xác nhận hoàn tiền cho đơn hàng',
+      });
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { payments: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException({
+          code: 'ORDER_NOT_FOUND',
+          message: `Không tìm thấy đơn hàng #${id}`,
+        });
+      }
+
+      if (order.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException({
+          code: 'INVALID_STATUS',
+          message: 'Chỉ có thể xác nhận hoàn tiền cho đơn hàng đã bị hủy',
+        });
+      }
+
+      const payment = order.payments.find((p) => p.status === 'SUCCESS' || p.refundedAmount > 0);
+      if (!payment) {
+        throw new BadRequestException({
+          code: 'NO_PAYMENT_FOUND',
+          message: 'Đơn hàng không có thông tin thanh toán để hoàn tiền',
+        });
+      }
+
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          refundedAt: new Date(),
+          refundedAmount: order.total,
+          refundRef: dto?.refundRef || (payment.refundRef ? `${payment.refundRef}:CONFIRMED` : `VIETQR-CONFIRMED-${Date.now()}`),
+        },
+      });
+
+      return {
+        orderId: order.id,
+        refundedAt: updatedPayment.refundedAt,
+        refundedAmount: updatedPayment.refundedAmount,
+        refundRef: updatedPayment.refundRef,
+        message: 'Xác nhận hoàn tiền VietQR thành công',
       };
     });
   }
@@ -751,25 +816,44 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
             select: { fullName: true },
           },
           items: true,
+          payments: {
+            select: {
+              id: true,
+              method: true,
+              status: true,
+              amount: true,
+              refundedAt: true,
+              refundedAmount: true,
+              refundRef: true,
+            },
+          },
         },
       }),
     ]);
 
-    const data = orders.map((order) => ({
-      id: order.id,
-      code: `#${order.id}`,
-      status: order.status,
-      total: order.total,
-      customerName: order.user?.fullName || 'Khách hàng',
-      createdAt: order.createdAt.toISOString(),
-      items: order.items.map((item) => ({
-        productName: item.productName,
-        size: item.size,
-        qty: item.qty,
-        toppings: item.toppings,
-        note: item.note,
-      })),
-    }));
+    const data = orders.map((order) => {
+      const refundPayment = order.payments?.find(
+        (p) => p.status === 'SUCCESS' || p.refundedAt || (p.refundRef && p.refundRef.startsWith('VIETQR')),
+      );
+      return {
+        id: order.id,
+        code: `#${order.id}`,
+        status: order.status,
+        total: order.total,
+        customerName: order.user?.fullName || 'Khách hàng',
+        createdAt: order.createdAt.toISOString(),
+        items: order.items.map((item) => ({
+          productName: item.productName,
+          size: item.size,
+          qty: item.qty,
+          toppings: item.toppings,
+          note: item.note,
+        })),
+        isRefunded: Boolean(refundPayment?.refundedAt),
+        refundRef: refundPayment?.refundRef || null,
+        refundedAt: refundPayment?.refundedAt ? refundPayment.refundedAt.toISOString() : null,
+      };
+    });
 
     const totalPages = Math.ceil(total / limit) || 1;
 

@@ -18,6 +18,9 @@ export interface BaristaOrder {
   items: BaristaOrderItem[];
   createdAt: string;
   updatedAt?: string;
+  isRefunded?: boolean;
+  refundRef?: string | null;
+  refundedAt?: string | null;
 }
 
 export function getBaristaOrders(status?: string, page = 1, limit = 50) {
@@ -58,6 +61,14 @@ export function cancelBaristaOrder(orderId: number) {
   return apiRequest<BaristaOrder>(`/orders/${orderId}/cancel`, {
     method: "POST",
     authenticated: true,
+  });
+}
+
+export function confirmRefund(orderId: number, refundRef?: string) {
+  return apiRequest(`/orders/${orderId}/confirm-refund`, {
+    method: "PATCH",
+    authenticated: true,
+    body: { refundRef },
   });
 }
 

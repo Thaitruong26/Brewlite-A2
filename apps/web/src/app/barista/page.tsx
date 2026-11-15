@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/auth-store";
 import {
   getAllBaristaOrders,
   updateOrderStatus,
+  confirmRefund,
   getProductsStock,
   getIngredientsStock,
   addIngredientStock,
@@ -29,6 +30,9 @@ type BaristaOrder = {
   items: ProductLine[];
   note?: string;
   total: number;
+  isRefunded?: boolean;
+  refundRef?: string | null;
+  refundedAt?: string | null;
 };
 type StockItem = { id?: number; sku: string; name: string; description: string; category: string; price: number; stock: number; target: number };
 
@@ -255,6 +259,9 @@ function mapBackendOrderToBarista(bo: BackendOrder): BaristaOrder {
     items,
     note: bo.items.find((i) => i.note)?.note || undefined,
     total: bo.total || 0,
+    isRefunded: bo.isRefunded,
+    refundRef: bo.refundRef,
+    refundedAt: bo.refundedAt,
   };
 }
 
@@ -287,15 +294,26 @@ export default function BaristaPage() {
 
   const openRefundModal = (order: BaristaOrder) => {
     setRefundOrder(order);
-    if (typeof window !== "undefined") {
-      const savedAcc = localStorage.getItem(`refund_account_${order.id}`) || "";
-      const savedBank = localStorage.getItem(`refund_bank_${order.id}`) || "MB";
-      setRefundAccount(savedAcc);
-      setRefundBank(savedBank);
+    let acc = "";
+    let bank = "MB";
+    if (order.refundRef && order.refundRef.startsWith("VIETQR:")) {
+      const parts = order.refundRef.split(":");
+      if (parts[1]) bank = parts[1];
+      if (parts[2]) acc = parts[2];
+    } else if (typeof window !== "undefined") {
+      acc = localStorage.getItem(`refund_account_${order.id}`) || "";
+      bank = localStorage.getItem(`refund_bank_${order.id}`) || "MB";
     }
+    setRefundAccount(acc);
+    setRefundBank(bank);
   };
 
-  const handleConfirmRefund = (orderId: number) => {
+  const handleConfirmRefund = async (orderId: number) => {
+    try {
+      await confirmRefund(orderId, `VIETQR:${refundBank}:${refundAccount}`);
+    } catch (e) {
+      console.warn("Backend confirmRefund sync note:", e);
+    }
     setRefundedOrders((prev) => {
       const next = Array.from(new Set([...prev, orderId]));
       if (typeof window !== "undefined") {
@@ -463,7 +481,7 @@ export default function BaristaPage() {
 
   const needingRefundCount = useMemo(() => {
     return orders.filter(
-      (order) => order.stage === "cancelled" && !refundedOrders.includes(order.id)
+      (order) => order.stage === "cancelled" && !order.isRefunded && !refundedOrders.includes(order.id)
     ).length;
   }, [orders, refundedOrders]);
 
@@ -913,7 +931,7 @@ export default function BaristaPage() {
                           <span className="font-semibold text-red-700">Đơn đã hủy · Không cần pha chế</span>
                           <span className="font-bold text-stone-700">Cần trả lại: {money(order.total)}</span>
                         </div>
-                        {refundedOrders.includes(order.id) ? (
+                        {refundedOrders.includes(order.id) || order.isRefunded ? (
                           <div className="flex items-center gap-2">
                             <div className="flex-1 rounded-xl bg-emerald-50 border border-emerald-300 p-2 text-center text-xs font-bold text-emerald-800 flex items-center justify-center gap-1.5">
                               <span>✅</span> Đã hoàn tiền cho khách thành công

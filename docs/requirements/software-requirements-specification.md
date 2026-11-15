@@ -42,11 +42,11 @@ Nguồn: Quyết định của nhóm 14/11/2026 + Assignment2-BrewLite. `Must` =
 | FR-21 | Dùng điểm ở checkout | Should | Điểm dùng không vượt số dư, bị giữ/khấu trừ một lần và được trả khi hủy | UC-04;UC-10 |
 | FR-22 | Chặn hủy sau khi bắt đầu pha chế | Must | Cancel khi PREPARING/READY/COMPLETED/CANCELLED trả 409, không đổi dữ liệu | UC-09 |
 | FR-23 | Hủy đơn chưa trả tiền | Must | PENDING/PAYMENT_FAILED -> CANCELLED; hoàn giữ kho, promo, điểm một lần | UC-09 |
-| FR-24 | Hoàn tiền khi hủy PAID | Must | PAID tạo 1 refund request đến đúng VNPay giao dịch gốc trước khi finalize cancel | UC-10 |
-| FR-25 | Hủy khi refund thành công | Must | Refund SUCCESS: CANCELLED; release stock/benefits một lần; không cấp điểm bù | UC-10 |
-| FR-26 | Điểm bù khi refund thất bại | Must | Refund xác nhận FAILED: CANCELLED, lưu Refund FAILED và CREDIT_COMPENSATION đủ giá trị, 1 ledger duy nhất | UC-10 |
-| FR-27 | Idempotency hủy/refund/điểm bù | Must | 2 request hủy đồng thời/callback lặp chỉ 1 refund intent và 1 bút toán bù; trạng thái không lùi | UC-09;UC-10 |
-| FR-28 | Giữ an toàn khi refund UNKNOWN | Must | Timeout/UNKNOWN không được coi FAILED; chặn PREPARING, đối soát trước khi cộng điểm hoặc hoàn tất cancel | UC-10 |
+| FR-24 | Tiếp nhận thông tin hoàn tiền khi hủy PAID | Must | Khách hủy đơn PAID gửi kèm thông tin tài khoản ngân hàng thụ hưởng (Ngân hàng, STK); chuyển CANCELLED và ghi nhận yêu cầu hoàn tiền | UC-10 |
+| FR-25 | Tự động sinh mã VietQR Napas247 cho Barista | Must | Màn hình Barista KDS tự động sinh mã VietQR Napas247 chứa đúng STK, ngân hàng, số tiền và nội dung chuyển khoản "Hoan tien don #ID" | UC-10;UC-13 |
+| FR-26 | Barista xác nhận hoàn tiền đã chuyển khoản | Must | Barista quét VietQR chuyển trả tiền tức thì cho khách và bấm xác nhận; DB cập nhật refundedAt, refundedAmount, refundRef | UC-10;UC-13 |
+| FR-27 | Idempotency và an toàn hủy/hoàn tiền | Must | Hủy đơn hoặc xác nhận hoàn tiền lặp lại đảm bảo Idempotency; từ PREPARING trở đi chặn không cho hủy (409 Conflict) | UC-09;UC-10 |
+| FR-28 | Thu hồi ưu đãi và hoàn tồn kho khi hủy | Must | Hủy đơn PAID tự động hoàn trả tồn kho nguyên liệu, hoàn usedCount mã giảm giá và thu hồi điểm thưởng đã tích của đơn | UC-10;UC-14 |
 | FR-29 | Hàng đợi Barista | Must | Barista xem PAID; Customer không được xem hàng đợi nội bộ | UC-13 |
 | FR-30 | State machine pha chế | Must | PAID -> PREPARING -> READY -> COMPLETED; bước nhảy không hợp lệ trả 409 | UC-13 |
 | FR-31 | Quản lý tồn kho | Should | Manager cập nhật tồn kho qua ledger, không sửa âm và có audit actor/reason | UC-15 |
