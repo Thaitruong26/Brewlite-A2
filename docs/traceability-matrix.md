@@ -27,11 +27,11 @@
 | FR-21 Dùng điểm ở checkout | UC-04;UC-10 | ACT-01;CLASS-01 | ADR-006 | `POST /orders` | T-FR-21 |
 | FR-22 Chặn hủy sau khi bắt đầu pha chế | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-22 |
 | FR-23 Hủy đơn chưa trả tiền | UC-09 | ACT-01;SEQ-02;CLASS-01 | ADR-003;ADR-006 | `POST /orders/:id/cancel` | T-FR-23 |
-| FR-24 Tiếp nhận thông tin hoàn tiền khi hủy PAID | UC-10 | ACT-01;SEQ-02;CLASS-01 | ADR-004;ADR-006 | `POST /orders/:id/cancel` | T-FR-24 |
-| FR-25 Sinh mã VietQR Napas247 cho Barista | UC-10;UC-13 | SEQ-02;CLASS-01 | ADR-006 | `Barista KDS UI` | T-FR-25 |
-| FR-26 Barista xác nhận hoàn tiền đã chuyển | UC-10;UC-13 | ACT-01;SEQ-02;CLASS-01 | ADR-006 | `PATCH /orders/:id/confirm-refund` | T-FR-26 |
-| FR-27 Idempotency và an toàn hủy/hoàn tiền | UC-09;UC-10 | SEQ-02;CLASS-01 | ADR-006 | `POST /orders/:id/cancel` | T-FR-27 |
-| FR-28 Thu hồi ưu đãi và hoàn tồn kho khi hủy | UC-10;UC-14 | SEQ-02;CLASS-01 | ADR-003;ADR-006 | `POST /orders/:id/cancel` | T-FR-28 |
+| FR-24 Hủy đơn PAID và tạo nghĩa vụ hoàn tiền | UC-10 | ACT-01;SEQ-02;CLASS-01 | ADR-006;ADR-009 | `POST /orders/:id/cancel` | T-FR-24;INT-04 |
+| FR-25 Tạo VietQR cho Barista hoàn tiền | UC-10 | SEQ-02;CLASS-01 | ADR-009 | `GET /barista/refunds/:id/qr` | T-FR-25 |
+| FR-26 Barista xác nhận hoàn tiền | UC-10 | SEQ-02;CLASS-01 | ADR-009 | `POST /barista/refunds/:id/confirm` | T-FR-26 |
+| FR-27 Xử lý hoàn tiền thất bại và chống trùng | UC-09;UC-10 | SEQ-02;CLASS-01 | ADR-009 | `Refund attempt/retry API` | T-FR-27;INT-05/08 |
+| FR-28 Đối soát hoàn tiền chưa rõ kết quả | UC-10 | ACT-01;SEQ-02 | ADR-009 | `Refund reconciliation API` | T-FR-28;INT-06 |
 | FR-29 Hàng đợi Barista | UC-13 | ACT-01;CLASS-01 | ADR-005 | `GET /barista/orders` | T-FR-29 |
 | FR-30 State machine pha chế | UC-13 | ACT-01;CLASS-01 | ADR-006 | `PATCH /orders/:id/status` | T-FR-30 |
 | FR-31 Quản lý tồn kho | UC-15 | CLASS-01 | ADR-003 | `POST /inventory/adjustments` | T-FR-31 |
@@ -66,7 +66,7 @@
 | UC-CHK-01 | Use case checkout | [use-case-checkout.puml](diagrams/use-case-checkout.puml) | [SVG](diagrams/use-case-checkout.svg) |
 | ACT-01 | Activity checkout/hủy/refund | [activity-checkout.puml](diagrams/activity-checkout.puml) | [SVG](diagrams/activity-checkout.svg) |
 | SEQ-01 | Tạo đơn/thanh toán/IPN | [sequence-checkout.puml](diagrams/sequence-checkout.puml) | [SVG](diagrams/sequence-checkout.svg) |
-| SEQ-02 | Hủy/hoàn tiền/bù điểm | [sequence-cancel-refund.puml](diagrams/sequence-cancel-refund.puml) | [SVG](diagrams/sequence-cancel-refund.svg) |
+| SEQ-02 | Hủy/hoàn tiền VietQR | [sequence-cancel-refund.puml](diagrams/sequence-cancel-refund.puml) | [SVG](diagrams/sequence-cancel-refund.svg) |
 | CLASS-01 | Domain core | [class-domain.puml](diagrams/class-domain.puml) | [SVG](diagrams/class-domain.svg) |
 | CLASS-02 | Inventory/recipes | [class-inventory.puml](diagrams/class-inventory.puml) | [SVG](diagrams/class-inventory.svg) |
 | ARC-01 | Logical architecture | [architecture-logical.puml](diagrams/architecture-logical.puml) | [SVG](diagrams/architecture-logical.svg) |
@@ -74,7 +74,7 @@
 
 ### Traceability chain ví dụ
 
-`D-06 → FR-24/25/26/27/28 → UC-10 → ACT-01/SEQ-02/CLASS-01 → ADR-006 → POST /orders/:id/cancel & PATCH /orders/:id/confirm-refund → T-FR-24..28 + INT-05/06/08`.
+`D-07 → FR-24/25/26/27/28 → UC-10 → ACT-01/SEQ-02/CLASS-01 → ADR-009 → POST /orders/:id/cancel & Barista VietQR → T-FR-24..28 + INT-04..08`.
 
 `D-04 → FR-13..17 → UC-07/08 → SEQ-01/CLASS-01 → ADR-004 → /payments/vnpay/ipn → T-FR-13..17 + INT-02/03`.
 

@@ -52,19 +52,41 @@ Use-case diagram riêng: [use-case-checkout.svg](../diagrams/use-case-checkout.s
 
 **Trigger:** Customer nhấn Hủy, đang `PENDING` hoặc `PAYMENT_FAILED`. **Tiền điều kiện:** là chủ đơn, chưa bắt đầu pha chế. **Các bước:** 1) `POST /orders/{id}/cancel` kèm idempotency key, 2) lock Order kiểm tra state, 3) transaction chuyển `CANCELLED` + release `InventoryReservation`/promotion/loyalty hold đúng một lần, 4) trả state. **Ngoại lệ:** race/duplicate request trả kết quả cũ, không release gấp đôi. **AC:** T-FR-22/23/27.
 
-## 5. Luồng hủy PAID — UC-10
+## 5. Luồng hủy PAID và hoàn tiền thủ công bằng VietQR — UC-10
 
-**Trigger:** Customer yêu cầu cancel khi Order `PAID`; Barista chưa chuyển PREPARING.
+**Actor chính:** Customer  
+**Actor hỗ trợ:** Barista  
+**Tiền điều kiện:** Customer là chủ đơn, Order đang `PAID` và chưa chuyển sang `PREPARING`.
 
-1. Backend xác thực owner và lock Order. Nếu không phải `PAID` hoặc đã có lệnh cancel đang xử lý thì không tạo request mới.
-2. Tạo `CancellationRequest` và `Refund` với providerRequestId/idempotency key duy nhất; đặt `CancellationRequest.WAITING_PROVIDER`, **khóa thao tác Barista PREPARING**.
-3. Gọi `PaymentProvider.refund()` với giao dịch thanh toán gốc. **Không giữ transaction DB trong lúc gọi mạng**; xử lý kết quả bằng transaction mới và guard idempotent.
-4. **Refund confirmed SUCCESS:** lưu `Refund.SUCCESS`, chuyển Order `CANCELLED`, release kho/promo/loyalty hold đúng một lần; **không** cấp điểm bù.
-5. **Refund confirmed FAILED:** lưu `Refund.FAILED`, chuyển Order `CANCELLED`, release nguồn lực; tạo `LoyaltyTransaction(type=CREDIT_COMPENSATION, originRefundId)` đúng một lần, `amountVndEquivalent=refundAmountVnd` và `points=amount/R` với O-01 chưa chốt.
-6. **Refund UNKNOWN/timeout:** ghi `UNKNOWN`/WAITING_RECONCILIATION, **chưa** cấp điểm, chưa finalize `CANCELLED`; giữ PAID tạm trong DB, chặn PREPARING và gọi QueryDr/đối soát. Khi có kết luận đi bước 4 hoặc 5.
-7. UI hiển thị lần lượt “Đang xử lý hoàn”, “Đã hủy/đã hoàn”, “Đã hủy/đã bù điểm”, hoặc “Đang đối soát”. Không hiển thị thành công khi UNKNOWN.
+### Luồng chính:
+1. Customer yêu cầu hủy đơn hàng `PAID`.
+2. Giao diện yêu cầu nhập ngân hàng, số tài khoản (STK) và tên chủ tài khoản nhận tiền.
+3. Backend xác thực Customer, kiểm tra trạng thái đơn và thông tin nhận tiền.
+4. Trong một transaction nguyên tử, hệ thống:
+   - Chuyển `Order` sang `CANCELLED`.
+   - Hoàn nguyên liệu tồn kho, hoàn lượt sử dụng mã khuyến mãi và hoàn điểm đã sử dụng theo chính sách.
+   - Thu hồi điểm thưởng đã tích của đơn.
+   - Tạo một bản ghi `Refund` với trạng thái `PENDING` và số tiền thực tế cần hoàn.
+   - Lưu thông tin tài khoản nhận tiền được bảo vệ an toàn.
+5. Barista mở danh sách đơn đã hủy có `Refund PENDING` trên màn hình KDS (`/barista`).
+6. Barista chọn yêu cầu hoàn tiền; hệ thống tạo mã Napas247 VietQR với đúng ngân hàng, STK, số tiền và nội dung chuyển khoản `Hoan tien don #ID`.
+7. Barista quét VietQR bằng ứng dụng ngân hàng di động (Mobile Banking) và thực hiện chuyển khoản.
+8. Sau khi xác minh giao dịch thành công, Barista bấm xác nhận và lưu bằng chứng.
+9. `Refund` chuyển `COMPLETED`. Customer theo dõi thấy trạng thái đơn đã hủy và đã hoàn tiền thành công.
 
-**Hậu điều kiện:** mỗi order tối đa một cancel flow đang hoạt động; mọi bút toán `CREDIT_COMPENSATION` unique theo Refund; không có hiệu ứng kép khi retry/callback trùng. **Ngoại lệ:** PREPARING+ → HTTP 409; refund đến muộn sau compensation → reconciliation flag, audit/manual review.
+### Luồng thay thế và ngoại lệ:
+- **A-01:** Đơn `PENDING`/`PAYMENT_FAILED` được hủy mà không tạo Refund chuyển khoản.
+- **A-02:** Đơn `PREPARING`/`READY`/`COMPLETED`/`CANCELLED` không thể hủy; trả HTTP 409 Conflict.
+- **A-03:** Thông tin tài khoản không hợp lệ; từ chối yêu cầu, không chuyển trạng thái.
+- **A-04:** Chuyển khoản thất bại; `Refund` chuyển `FAILED`. Barista có thể tạo lần thử mới (`RefundAttempt`) sau khi xác minh lần trước không thành công.
+- **A-05:** Chuyển khoản chưa rõ kết quả; `Refund` chuyển `UNKNOWN`. Phải đối soát sao kê trước khi thử lại.
+- **A-06:** Hai Barista thao tác đồng thời; hệ thống chỉ cho một người nhận xử lý mỗi lần thử (`claim Refund IN_PROGRESS`).
+- **A-07:** Gửi lại yêu cầu hủy; hệ thống trả kết quả hiện có (Idempotency), không hoàn kho hoặc tạo `Refund` trùng.
+
+### Hậu điều kiện:
+- `Order` vẫn `CANCELLED` bất kể `Refund` còn `PENDING`, `FAILED` hay `UNKNOWN`.
+- Mỗi `Order` có tối đa một nghĩa vụ hoàn tiền, có thể có nhiều `RefundAttempt` nhưng không được ghi nhận nhiều lần hoàn tiền hoàn tất.
+- **Không có nghiệp vụ cộng điểm bù cho Refund thất bại.**
 
 ## 6. Các tiêu chí nghiệm thu trọng tâm
 
@@ -73,11 +95,11 @@ Use-case diagram riêng: [use-case-checkout.svg](../diagrams/use-case-checkout.s
 | INT-01 | Given kho 5 suất; 10 create đồng thời → tối đa 5 đơn thành công, kho không âm | ACT-01, SEQ-01, CLASS-01 |
 | INT-02 | Given IPN signed success nhưng return đến trước → chỉ IPN/QueryDr validated làm PAID | SEQ-01 |
 | INT-03 | Given payment retry 10 lần cùng key → 1 active effect | SEQ-01, CLASS-01 |
-| INT-04 | Given PAID, refund SUCCESS → CANCELLED, 0 credit bù, release stock once | SEQ-02 |
-| INT-05 | Given PAID, refund confirmed FAILED → CANCELLED, Refund.FAILED và 1 ledger bù đúng giá trị | SEQ-02, CLASS-01 |
-| INT-06 | Given refund timeout UNKNOWN → chưa cấp điểm, vẫn khóa Barista, chờ đối soát | SEQ-02 |
-| INT-07 | Given PREPARING/READY/COMPLETED → POST cancel trả 409 và không thay đổi DB | ACT-01, SEQ-02 |
-| INT-08 | Given 2 cancel đồng thời → 1 Refund, 1 credit, 1 release inventory | SEQ-02 |
+| INT-04 | Given PAID, khách hủy kèm STK hợp lệ → Order CANCELLED ngay, tạo 1 Refund PENDING, hoàn kho 1 lần, 0 credit bù | SEQ-02, CLASS-01 |
+| INT-05 | Given Refund PENDING, Barista chuyển khoản VietQR thành công → Barista xác nhận lưu evidence, Refund COMPLETED | SEQ-02, CLASS-01 |
+| INT-06 | Given chuyển khoản chưa rõ kết quả → Refund UNKNOWN, khóa thử lại, yêu cầu đối soát sao kê | SEQ-02 |
+| INT-07 | Given PREPARING/READY/COMPLETED → POST cancel trả 409 Conflict và không thay đổi DB | ACT-01, SEQ-02 |
+| INT-08 | Given 2 cancel đồng thời hoặc retry → 1 Refund duy nhất, 1 lần release inventory, không duplicate | SEQ-02 |
 | E2E-01 | Menu → tùy chọn → giỏ → JWT → order → VNPay sandbox → IPN → theo dõi → COMPLETED | ACT-01, SEQ-01 |
 
 ## 7. Liên kết nhất quán

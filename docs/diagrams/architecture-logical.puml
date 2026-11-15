@@ -8,19 +8,19 @@ node "NestJS Modular Monolith (apps/api)" as API {
  component "Auth / Catalog / Cart" as C
  component "Checkout / Orders / Inventory" as O
  component "Payment Service" as P
- component "PaymentProvider" as I
- component "Cancellation / Loyalty / Promotion" as L
+ component "PaymentProvider (Thu tiền)" as I
+ component "Cancellation / Manual Refund (VietQR)" as L
  component "Observability / Health" as H
 }
 database "PostgreSQL + Prisma migrations" as DB
 cloud "VNPay Sandbox" as VN
 Customer --> Web : HTTPS
-Barista --> Web : HTTPS
+Barista --> Web : HTTPS (KDS / Quét mã VietQR)
 Web --> API : HTTPS REST / JWT
 API --> DB : Prisma + private TCP 5432
 O --> P
 P --> I
-I --> VN : Signed HTTPS pay/refund/query
+I --> VN : Signed HTTPS pay/query
 VN --> API : HTTPS IPN
 L --> O
 @enduml

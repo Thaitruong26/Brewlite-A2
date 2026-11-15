@@ -42,11 +42,11 @@ Nguồn: Quyết định của nhóm 14/11/2026 + Assignment2-BrewLite. `Must` =
 | FR-21 | Dùng điểm ở checkout | Should | Điểm dùng không vượt số dư, bị giữ/khấu trừ một lần và được trả khi hủy | UC-04;UC-10 |
 | FR-22 | Chặn hủy sau khi bắt đầu pha chế | Must | Cancel khi PREPARING/READY/COMPLETED/CANCELLED trả 409, không đổi dữ liệu | UC-09 |
 | FR-23 | Hủy đơn chưa trả tiền | Must | PENDING/PAYMENT_FAILED -> CANCELLED; hoàn giữ kho, promo, điểm một lần | UC-09 |
-| FR-24 | Tiếp nhận thông tin hoàn tiền khi hủy PAID | Must | Khách hủy đơn PAID gửi kèm thông tin tài khoản ngân hàng thụ hưởng (Ngân hàng, STK); chuyển CANCELLED và ghi nhận yêu cầu hoàn tiền | UC-10 |
-| FR-25 | Tự động sinh mã VietQR Napas247 cho Barista | Must | Màn hình Barista KDS tự động sinh mã VietQR Napas247 chứa đúng STK, ngân hàng, số tiền và nội dung chuyển khoản "Hoan tien don #ID" | UC-10;UC-13 |
-| FR-26 | Barista xác nhận hoàn tiền đã chuyển khoản | Must | Barista quét VietQR chuyển trả tiền tức thì cho khách và bấm xác nhận; DB cập nhật refundedAt, refundedAmount, refundRef | UC-10;UC-13 |
-| FR-27 | Idempotency và an toàn hủy/hoàn tiền | Must | Hủy đơn hoặc xác nhận hoàn tiền lặp lại đảm bảo Idempotency; từ PREPARING trở đi chặn không cho hủy (409 Conflict) | UC-09;UC-10 |
-| FR-28 | Thu hồi ưu đãi và hoàn tồn kho khi hủy | Must | Hủy đơn PAID tự động hoàn trả tồn kho nguyên liệu, hoàn usedCount mã giảm giá và thu hồi điểm thưởng đã tích của đơn | UC-10;UC-14 |
+| FR-24 | Hủy đơn PAID và tạo nghĩa vụ hoàn tiền | Must | Khách nhập ngân hàng và STK hợp lệ; đơn chuyển CANCELLED, tạo đúng một Refund PENDING, hoàn tài nguyên một lần | UC-10 |
+| FR-25 | Tạo VietQR cho Barista hoàn tiền | Must | QR chứa ngân hàng, STK, đúng số tiền thực trả và mã tham chiếu đơn; chỉ hiển thị cho nhân viên có quyền | UC-10;UC-13 |
+| FR-26 | Barista xác nhận hoàn tiền | Must | Sau khi kiểm tra giao dịch thành công, nhân viên lưu bằng chứng; Refund chuyển COMPLETED. Không cộng điểm bù | UC-10;UC-13 |
+| FR-27 | Xử lý hoàn tiền thất bại và chống trùng | Must | Refund FAILED được thử lại có kiểm soát; không tạo nghĩa vụ hoàn tiền thứ hai, không xác nhận thành công hai lần | UC-09;UC-10 |
+| FR-28 | Đối soát hoàn tiền chưa rõ kết quả | Must | Refund UNKNOWN phải được đối soát trước khi thử lại; không tự coi là thất bại hoặc thành công | UC-10 |
 | FR-29 | Hàng đợi Barista | Must | Barista xem PAID; Customer không được xem hàng đợi nội bộ | UC-13 |
 | FR-30 | State machine pha chế | Must | PAID -> PREPARING -> READY -> COMPLETED; bước nhảy không hợp lệ trả 409 | UC-13 |
 | FR-31 | Quản lý tồn kho | Should | Manager cập nhật tồn kho qua ledger, không sửa âm và có audit actor/reason | UC-15 |
@@ -63,15 +63,15 @@ Nguồn: Quyết định của nhóm 14/11/2026 + Assignment2-BrewLite. `Must` =
 | NFR-03 | Bảo mật đăng nhập | Must | Hash password bằng argon2/bcrypt; endpoint bảo vệ JWT+role; thử 401/403. |
 | NFR-04 | Bảo vệ VNPay | Must | 100% IPN/return được kiểm checksum; backend kiểm amount, merchantRef, status; không ghi secret vào log. |
 | NFR-05 | Nhất quán ACID | Must | Tạo đơn/giữ kho atomic; stress 10 request tranh 5 suất không phát sinh tồn kho âm. |
-| NFR-06 | Idempotency | Must | Replay payment/refund/credit 10 lần không sinh bản ghi nghiệp vụ trùng. |
+| NFR-06 | Idempotency | Must | Replay payment/refund/confirm 10 lần không sinh bản ghi nghiệp vụ trùng hoặc lặp nghĩa vụ chuyển tiền. |
 | NFR-07 | Khả dụng giao diện | Must | Mobile width 360–430 px không cuộn ngang; một cột và điều hướng dưới; hỗ trợ keyboard. |
-| NFR-08 | Khả năng deploy | Must | docker compose chạy web, api, DB; migration/seed và GET /health kiểm tra được. |
+| NFR-08 | Khả năng deploy | Must | docker compose chạy web, api, DB; migration/seed và GET /api/health kiểm tra được. |
 | NFR-09 | Cấu hình/secrets | Must | Mọi secret trong env/secret store; quét git không có HashSecret, JWT secret hoặc mật khẩu DB thật. |
-| NFR-10 | Audit | Must | Log structured có correlationId cho create, IPN, cancel, refund, compensate; không log dữ liệu nhạy cảm. |
+| NFR-10 | Audit | Must | Log structured có correlationId cho create, IPN, cancel, manual refund attempt, refund confirm; không log dữ liệu nhạy cảm. |
 | NFR-11 | Dễ bảo trì | Should | Module/domain tách riêng; kiểm thử unit PaymentProvider và cancellation service với fake provider. |
 | NFR-12 | Phục hồi dữ liệu | Should | DB production có backup hàng ngày; thử restore vào staging thành công. |
 | NFR-13 | Tương thích | Should | Smoke test trên Chrome Android và Safari iOS bản gần hiện hành với width 375 px. |
-| NFR-14 | Quan sát | Must | GET /health trả 200 khi API+DB sẵn sàng, non-2xx khi DB không sẵn sàng; có request log. |
+| NFR-14 | Quan sát | Must | GET /api/health trả 200 khi API+DB sẵn sàng, non-2xx khi DB không sẵn sàng; có request log. |
 | NFR-15 | Truy vết và kiểm thử | Must | 100% FR Must có UC, diagram, planned API, test ID; validation script chạy thành công. |
 | NFR-16 | Thời gian phản hồi thanh toán | Should | UI hiển thị PENDING/UNKNOWN rõ ràng khi chờ kết quả; không tự báo thành công theo timeout. |
 
@@ -90,9 +90,9 @@ Ngưỡng hiệu năng/availability là **đề xuất để nhóm phê duyệt*
 | UC-07 | Khởi tạo thanh toán VNPay hoặc Mock | Customer |
 | UC-08 | Xác minh IPN/đối soát | VNPay |
 | UC-09 | Hủy đơn chưa thanh toán | Customer |
-| UC-10 | Hủy PAID và hoàn tiền/bù điểm | Customer;VNPay |
+| UC-10 | Hủy đơn PAID và hoàn tiền thủ công bằng VietQR | Customer;Barista |
 | UC-12 | Theo dõi/lịch sử đơn | Customer |
-| UC-13 | Xử lý đơn pha chế | Barista |
+| UC-13 | Xử lý đơn pha chế & hoàn tiền quầy | Barista |
 | UC-14 | Tích/tiêu điểm | Customer |
 | UC-15 | Quản lý tồn kho | Manager |
 
@@ -107,37 +107,41 @@ Sơ đồ tổng quát: [use-case-overview.svg](../diagrams/use-case-overview.sv
 | Order / OrderItem | id, userId, status, totalVnd, snapshot, version | Tạo theo transaction; nhiều item |
 | InventoryStock / InventoryReservation | ingredientId, availableQty, reservedQty, orderId | Một reservation release tối đa một lần |
 | Payment / PaymentAttempt | id, orderId, provider, status, providerTxnRef, idempotencyKey | Callback verify signed; 1 payment success hiệu lực |
-| Refund | id, paymentId, providerRequestId, status, amountVnd | SUCCESS/FAILED/UNKNOWN khác nhau |
-| CancellationRequest | id, orderId, status, reason | Chặn pha chế trong khi chờ refund |
+| Refund | id, orderId, paymentId, amount, status, bankCode, accountNumber, accountName, confirmedBy, confirmedAt, evidenceRef | Status: PENDING, IN_PROGRESS, FAILED, UNKNOWN, COMPLETED |
+| RefundAttempt | id, refundId, baristaId, attemptNo, status, failureReason, startedAt, finishedAt | Quản lý lịch sử thử hoàn tiền thủ công |
 | Promotion / PromotionRedemption | code, scope, quota, status | Không overuse khi concurrency |
-| LoyaltyTransaction | id, userId, orderId, refundId?, type, points, amountVndEquivalent | Unique(refundId,type=CREDIT_COMPENSATION) |
+| LoyaltyTransaction | id, userId, orderId, type, points | Type: EARN, REDEEM, REVERSE (Bỏ CREDIT_COMPENSATION) |
 
-**Order transition:** `PENDING -> PAID | PAYMENT_FAILED | CANCELLED`; `PAYMENT_FAILED -> PAID | CANCELLED`; `PAID -> PREPARING | CANCELLED` (lệnh cancel PAID chỉ finalize sau refund result), `PREPARING -> READY -> COMPLETED`. Mọi trạng thái từ PREPARING trở đi không thể cancel: HTTP 409. `CANCELLED` terminal. `PaymentAttempt` và `Refund` có trạng thái độc lập, không đánh đồng với Order.
+**Order transition:** `PENDING -> PAID | PAYMENT_FAILED | CANCELLED`; `PAYMENT_FAILED -> PAID | CANCELLED`; `PAID -> PREPARING | CANCELLED`; `PREPARING -> READY -> COMPLETED`. Mọi trạng thái từ `PREPARING` trở đi không thể cancel: HTTP 409 Conflict. `CANCELLED` là trạng thái kết thúc (terminal).
 
-**Refund UNKNOWN:** khi provider không xác nhận thành công/thất bại, lưu `Refund.UNKNOWN` + `CancellationRequest.WAITING_RECONCILIATION`, order giữ `PAID` về mặt dữ liệu (nhưng tạm khóa pha chế). Chỉ khi biết kết quả mới finalized `CANCELLED`. Không cấp điểm khi UNKNOWN. Lựa chọn này cần nhóm phê duyệt trong O-04.
+**Quy tắc trạng thái Refund:**
+- `Order.CANCELLED` độc lập hoàn toàn với `Refund.PENDING / IN_PROGRESS / FAILED / UNKNOWN / COMPLETED`.
+- Hệ thống không tự xác minh chuyển khoản ngân hàng: VietQR hỗ trợ sinh thông tin chuyển tiền Napas247, Barista chịu trách nhiệm kiểm tra app ngân hàng và xác nhận.
+- Khi hủy đơn PAID hợp lệ: Order chuyển `CANCELLED` ngay lập tức, hoàn kho/voucher, thu hồi điểm đã tích và tạo đúng 1 `Refund` với trạng thái `PENDING`.
+- Barista nhận xử lý: Refund chuyển `IN_PROGRESS` (khóa tránh 2 Barista thao tác cùng lúc).
+- Barista xác nhận chuyển khoản thành công: Refund chuyển `COMPLETED`.
+- Giao dịch chuyển tiền thất bại: Refund chuyển `FAILED`, Barista được thử lại có kiểm soát sau khi xác minh.
+- Giao dịch chưa rõ: Refund chuyển `UNKNOWN`, Barista phải đối soát với app ngân hàng trước khi thử lại, không tự coi là thất bại hay thành công.
 
 ## 6. VNPay integration requirements
 
-- Khởi tạo hosted payment URL server-side theo VNPay Sandbox 2.1.0, ký HMAC-SHA512, `vnp_Amount = amountVnd * 100` (tài liệu VNPay).
+- Khởi tạo hosted payment URL server-side theo VNPay Sandbox 2.1.0, ký HMAC-SHA512, `vnp_Amount = amountVnd * 100`. Cấu hình secret đọc từ biến môi trường (P0.1).
 - `ReturnUrl` = điều hướng/hiển thị; `IPN` = nguồn cập nhật server sau khi verify; QueryDr để đối soát giao dịch UNKNOWN.
-- Trước khi đặt `PAID`: xác thực chữ ký, mã merchant, `vnp_TxnRef`, amount, trạng thái và tính chưa xử lý; IPN duplicate phải trả kết quả idempotent.
-- Refund qua giao diện `PaymentProvider.refund` và VNPay sandbox refund; `vnp_RequestId` unique. Không retry refund bằng request mới khi kết quả UNKNOWN chưa được đối soát.
-- Ghi audit không chứa HMAC secret hoặc thông tin tài khoản nhạy cảm.
+- Trước khi đặt `PAID`: xác thực chữ ký HMAC, mã merchant `vnp_TmnCode`, kiểm tra `amount === order.total` (chống sửa đổi số tiền P0.2), và chỉ cho phép chuyển từ `PENDING` hoặc `PAYMENT_FAILED`.
+- Giao diện thanh toán tách biệt hoàn toàn giữa luồng thu tiền (VNPay) và luồng hoàn tiền thủ công VietQR tại quầy (ADR-009).
 
-Tài liệu tham khảo chính thức: https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html ; https://sandbox.vnpayment.vn/apis/docs/truy-van-hoan-tien/querydr%26refund.html ; https://sandbox.vnpayment.vn/apis/docs/faqs/ . Các trường API chi tiết phải xác minh ở thời điểm tích hợp, đây **chưa phải code đã chạy**.
+## 7. Hành vi cancel/refund và decision table
 
-## 7. Hành vi cancel/refund/điểm bù và các decision tables
+| Trạng thái lúc xin hủy | Thao tác hoàn tiền | Kết quả Order | Trạng thái Refund | Kho/promo/điểm đã dùng | Điểm thưởng đã tích |
+|---|---|---|---|---|---|
+| PENDING | Không | CANCELLED ngay | Không | Release 1 lần | Không áp dụng |
+| PAYMENT_FAILED | Không | CANCELLED ngay | Không | Release 1 lần | Không áp dụng |
+| PAID (hợp lệ) | Barista quét VietQR chuyển khoản | CANCELLED ngay | PENDING → IN_PROGRESS → COMPLETED | Release 1 lần | Thu hồi điểm đã tích |
+| PAID (thất bại chuyển) | Barista xác nhận thất bại | CANCELLED giữ nguyên | FAILED (cho phép thử lại) | Release 1 lần | Thu hồi điểm đã tích |
+| PAID (chưa rõ kết quả) | Chờ đối soát ngân hàng | CANCELLED giữ nguyên | UNKNOWN (cần đối soát) | Release 1 lần | Thu hồi điểm đã tích |
+| PREPARING/READY/COMPLETED/CANCELLED | Không | HTTP 409 Conflict | Không áp dụng | Không đổi | Không đổi |
 
-| Trạng thái lúc xin hủy | Refund? | Kết quả | Kho/promo/điểm đã dùng | Điểm bù |
-|---|---|---|---|---|
-| PENDING | Không | CANCELLED ngay | Release 1 lần | Không |
-| PAYMENT_FAILED | Không | CANCELLED ngay | Release 1 lần | Không |
-| PAID | VNPay/Provider refund | Refund SUCCESS → CANCELLED | Release 1 lần | Không |
-| PAID | VNPay/Provider refund | Refund confirmed FAILED → CANCELLED | Release 1 lần | `CREDIT_COMPENSATION` duy nhất |
-| PAID | VNPay/Provider refund | Refund UNKNOWN → chờ reconcile, chưa finalize | Tạm khóa pha chế, không giải phóng trước kết luận | Không |
-| PREPARING/READY/COMPLETED/CANCELLED | Không | HTTP 409 | Không đổi | Không |
-
-Giá trị điểm bù: `points = refundAmountVnd / R` với `R` là VND/point. **O-01 BLOCKER:** chưa chốt `R`, precision và rounding; không tự chọn số. Test sử dụng fixture có `R` cố định khi nhóm phê duyệt. Bảo đảm bút toán quy đổi không làm mất giá trị của khách.
+> **Lưu ý:** Hệ thống hoàn tiền 100% bằng tiền mặt chuyển khoản qua Napas247 VietQR; không áp dụng chính sách cộng điểm bù (`CREDIT_COMPENSATION`). Chức năng tích điểm mua hàng thông thường khi hoàn tất đơn vẫn giữ nguyên.
 
 ## 8. Ràng buộc nghiệp vụ ngoài phạm vi
 

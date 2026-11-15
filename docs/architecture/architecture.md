@@ -17,23 +17,23 @@
 | CheckoutModule | Cart quote, promotions, points redemption | Catalog, Inventory, Promotion, Loyalty | 03–04,19,21 |
 | OrdersModule | Order/OrderItem snapshot, state machine, history | Inventory, Payments | 08–11,22–23,29–30,32 |
 | InventoryModule | Stock, recipes, reservations, audit ledger | PostgreSQL | 08–09,23,31 |
-| PaymentsModule | VNPay URL/IPN/QueryDr, Mock adapter, idempotency | `PaymentProvider`, Provider external | 12–18 |
-| CancellationModule | Refund state/outbox/reconciliation, CANCELLED | Orders, Payments, Loyalty | 22–28 |
-| LoyaltyModule | Earn/spend/return/compensate as append-only ledger | User/Order/Refund | 20–21,26–27 |
+| PaymentsModule | VNPay URL/IPN/QueryDr, Mock adapter, idempotency (chỉ thu tiền) | `PaymentProvider`, Provider external | 12–18 |
+| CancellationModule | Refund state machine (PENDING/IN_PROGRESS/FAILED/UNKNOWN/COMPLETED), VietQR, CANCELLED | Orders, Payments, Barista | 22–28 |
+| LoyaltyModule | Tích/tiêu/hoàn điểm mua hàng (append-only ledger) | User/Order | 20–21 |
 | HealthModule | readiness/liveness, structured logs | DB, logger | NFR-10,14 |
 
 ## 2. Các nguyên tắc thiết kế quan trọng
 
 1. **Server authority:** Giá và tổng tiền trên backend, integer VND; snapshot line-items khi tạo đơn, không tin client total.
-2. **Transaction boundary:** Postgres transaction đảm bảo đặt đơn/giữ nguyên liệu/promo/point reserve atomic, optimistic row version hoặc `SELECT ... FOR UPDATE` phù hợp cho inventory. External VNPay I/O không nằm trong transaction DB dài.
-3. **State machine độc lập:** Order, PaymentAttempt, Refund, CancellationRequest độc lập; chỉ service/domain method mới đổi state và kiểm 409.
-4. **Idempotency:** uniqueness `(operation, idempotencyKey, principal)`, payloadHash; các callback provider định danh bằng providerTxnRef; `LoyaltyTransaction` compensation uniqueness theo `originRefundId`.
+2. **Transaction boundary:** Postgres transaction đảm bảo đặt đơn/giữ nguyên liệu/promo/point reserve atomic, optimistic locking (Ingredient.version). External VNPay I/O không nằm trong transaction DB dài.
+3. **State machine độc lập:** `Order.CANCELLED` độc lập hoàn toàn với trạng thái `Refund` (`PENDING`, `IN_PROGRESS`, `FAILED`, `UNKNOWN`, `COMPLETED`); chỉ service/domain method mới đổi state và kiểm 409.
+4. **Idempotency:** uniqueness `(operation, idempotencyKey, principal)`, payloadHash; các callback provider định danh bằng providerTxnRef; không sinh trùng lặp nghĩa vụ hoàn tiền.
 5. **Webhook security:** VNPay IPN phải xác minh signature/merchant/amount/txnRef; dùng replay-safe transaction. ReturnUrl chỉ hiển thị và poll status. QueryDr khi trạng thái chưa rõ.
-6. **Refund failure:** `Refund.FAILED` xác nhận → cancel + credit bù trong transaction; `UNKNOWN`/timeout → chờ đối soát, không bù. Chặn Barista khi cancellation pending.
-7. **Reconciliation:** Trường hợp provider kết quả muộn/collision phải có audit flag/manual process để tránh hai lợi ích cùng tồn tại.
+6. **Manual VietQR Refund:** Khách hủy đơn PAID cung cấp ngân hàng và STK; Order chuyển CANCELLED ngay và sinh 1 `Refund PENDING`. Màn hình Barista KDS sinh mã Napas247 VietQR chứa đầy đủ thông tin để Barista dùng App ngân hàng chuyển khoản thủ công. Xác nhận giao dịch thành công chuyển `Refund` sang `COMPLETED`. Không áp dụng điểm bù `CREDIT_COMPENSATION`.
+7. **Reconciliation & Auditing:** Giao dịch hoàn tiền chưa rõ kết quả được gán `UNKNOWN` để đối soát sao kê ngân hàng trước khi cho phép Barista thử lại, không tự động suy diễn thành công hay thất bại.
 8. **Domain-driven organization:** Module không query bảng của nhau vô tội vạ, service APIs cho domain contracts; adapter VNPay nằm ranh giới infrastructure.
 
-## 3. PaymentProvider contract (dự kiến)
+## 3. PaymentProvider contract (Thu tiền trực tuyến)
 
 ```ts
 interface PaymentProvider {
@@ -43,35 +43,33 @@ interface PaymentProvider {
   }): Promise<{ redirectUrl?: string; providerTxnRef: string }>;
   verifyNotification(raw: Record<string, string>): Promise<VerifiedNotification>;
   queryPayment(ref: string): Promise<PaymentResolution>;
-  refund(input: { paymentRef: string; amountVnd: number; requestId: string }): Promise<RefundResolution>;
-  queryRefund(requestId: string): Promise<RefundResolution>; // nếu provider không hỗ trợ trực tiếp, dùng đối soát hỗ trợ
 }
 ```
 
-**Lưu ý:** Interface ở mức dự kiến, không khẳng định VNPay có API queryRefund riêng biệt; adapter có thể kết hợp API QueryDr và nghiệp vụ đối soát tùy contract thực tế. Không đưa Mock vào production public.
+**Lưu ý:** `PaymentProvider` chuyên trách thu tiền trực tuyến qua VNPay Sandbox (và Mock phục vụ test). Quy trình hoàn tiền được thực hiện theo cơ chế **Manual VietQR Barista Refund (ADR-009)**, độc lập hoàn toàn với `PaymentProvider` để bảo đảm tính khả thi thực tế và tức thì tại quầy.
 
 ## 4. Dữ liệu và migration
 
 - **PostgreSQL** là source of truth; Prisma schema mới được thiết kế theo [CLASS-01](../diagrams/class-domain.puml) và [CLASS-02](../diagrams/class-inventory.puml), có migration/seed đi cùng PR code.
-- Money = integer VND (`BigInt` hoặc `Int` với giới hạn an toàn; quyết định khi implement). VNPay dùng `amount * 100` ở boundary adapter. Số điểm ledger dùng `Decimal`; `R` chưa chốt (O-01).
-- Bảng/unique: `PaymentAttempt(unique(operation,key,actor))`, `PaymentAttempt.unique(providerTxnRef)`, `Refund.unique(providerRequestId)`, `CancellationRequest.unique(orderId active)`, `LoyaltyTransaction.unique(originRefundId,type)` (partial unique nếu dùng postgres constraint SQL), `InventoryReservation.unique(orderId,ingredientId,source)`.
-- `OutboxEvent` khuyến nghị cho việc gọi/tái xử lý refund và reconcile; chống side effect được gửi trước commit. Không giữ lock DB qua HTTP tới VNPay.
+- Money = integer VND (`Int` với giới hạn an toàn). VNPay dùng `amount * 100` ở boundary adapter. Điểm tích lũy tính theo tỷ lệ chuẩn 1 điểm / 1.000đ.
+- Bảng/unique: `PaymentAttempt(unique(operation,key,actor))`, `PaymentAttempt.unique(providerTxnRef)`, `Refund(unique(orderId, active))`, `RefundAttempt`, `InventoryReservation.unique(orderId,ingredientId)`.
 
-## 5. API dự kiến (chưa có source)
+## 5. API dự kiến
 
 | API | Auth | Mục đích | FR |
 |---|---|---|---|
 | GET /products; GET /products/:id | public | menu/chi tiết | 01/02 |
 | POST /auth/register; POST /auth/login | public | tài khoản/JWT | 05/06 |
 | POST /orders | Customer | create transactional + stock reserve | 04,08–10,19,21 |
-| GET /orders; GET /orders/:id | owner | tracking/history | 11,32 |
-| POST /orders/:id/payments | owner | VNPay URL/Mock, idempotency | 12,13,16,18 |
-| GET /payments/vnpay/ipn | signed by provider | authoritative payment processing | 14/15/17 |
-| GET /payments/vnpay/return | public display | redirect only, no PAID mutation | 17 |
-| POST /orders/:id/cancel | owner | cancellation / refund / compensation | 22–28 |
-| GET /barista/orders; PATCH /orders/:id/status | Barista | handling queue/status | 29,30 |
+| GET /orders/me; GET /orders/:id | owner/Barista | tracking/history | 11,32 |
+| POST /payments/vnpay/create-url | Customer | sinh URL thanh toán VNPay | 12,13,16,18 |
+| GET /payments/vnpay/verify | signed by provider | xác thực IPN/Return, cập nhật PAID | 14/15/17 |
+| POST /orders/:id/cancel | owner/Barista | hủy đơn, hoàn kho, tạo Refund PENDING | 22–24,27,28 |
+| GET /barista/refunds/:id/qr | Barista | sinh mã Napas247 VietQR hoàn tiền | 25 |
+| PATCH /orders/:id/confirm-refund | Barista | xác nhận đã chuyển khoản hoàn tất | 26 |
+| GET /orders (queue); PATCH /orders/:id/status | Barista | handling queue/status | 29,30 |
 | POST /inventory/adjustments | Manager | inventory audit adjustments | 31 |
-| GET /health | public internal probing | readiness | NFR-14 |
+| GET /api/health | public internal probing | readiness & DB health | NFR-14 |
 
 **HTTP 409** cho transition không hợp lệ. API contract/DTO sẽ chuẩn hóa khi code. Cancellation refunds có thể trả **202 Accepted** khi đang refund/reconcile để tránh timeout request và mô tả `CancellationRequest` status.
 
@@ -125,6 +123,7 @@ Thứ tự pha chế duy nhất: `PAID -> PREPARING -> READY -> COMPLETED`. Khi 
 | ADR-003 | PostgreSQL + Prisma, transaction + inventory |
 | ADR-004 | VNPay Sandbox qua PaymentProvider |
 | ADR-005 | JWT + RBAC security |
-| ADR-006 | Cancel/refund/loyalty compensation |
+| ADR-006 | Cancel/refund/loyalty compensation (Superseded by ADR-009) |
 | ADR-007 | CI/CD + health/log/secrets/deploy |
 | ADR-008 | Promo/loyalty ledger |
+| ADR-009 | Hoàn tiền chuyển khoản VietQR thủ công qua Barista |

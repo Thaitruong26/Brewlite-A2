@@ -13,8 +13,8 @@ rectangle "UC-CHK-01 Checkout & Cancellation" {
  usecase "UC-08 Xác thực IPN / QueryDr" as IPN
  usecase "UC-12 Theo dõi" as TRACK
  usecase "UC-09 Hủy unpaid" as CANCEL1
- usecase "UC-10 Hủy PAID / Refund" as CANCEL2
- usecase "Bù điểm khi refund FAILED" as COMP
+ usecase "UC-10 Hủy PAID" as CANCEL2
+ usecase "Tạo VietQR & xác nhận hoàn tiền" as REFUND_QR
  usecase "UC-13 Pha chế" as PREP
 }
 C --> CART
@@ -23,12 +23,12 @@ C --> PAY
 C --> TRACK
 C --> CANCEL1
 C --> CANCEL2
+B --> REFUND_QR
 B --> PREP
 V --> IPN
-V --> CANCEL2
 ORDER ..> AUTH : <<include>>
 ORDER ..> VALIDATE : <<include>>
 PAY ..> IPN : <<triggers asynchronously>>
-CANCEL2 ..> COMP : <<extend>> [refund confirmed FAILED]
+CANCEL2 ..> REFUND_QR : <<triggers pending refund>>
 PREP ..> IPN : <<requires PAID>>
 @enduml

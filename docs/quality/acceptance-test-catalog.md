@@ -29,11 +29,11 @@
 | T-FR-21 | Điểm dùng không vượt số dư, bị giữ/khấu trừ một lần và được trả khi hủy | FR-21 |
 | T-FR-22 | Cancel khi PREPARING/READY/COMPLETED/CANCELLED trả 409, không đổi dữ liệu | FR-22 |
 | T-FR-23 | PENDING/PAYMENT_FAILED -> CANCELLED; hoàn giữ kho, promo, điểm một lần | FR-23 |
-| T-FR-24 | PAID tạo 1 refund request đến đúng VNPay giao dịch gốc trước khi finalize cancel | FR-24 |
-| T-FR-25 | Refund SUCCESS: CANCELLED; release stock/benefits một lần; không cấp điểm bù | FR-25 |
-| T-FR-26 | Refund xác nhận FAILED: CANCELLED, lưu Refund FAILED và CREDIT_COMPENSATION đủ giá trị, 1 ledger duy nhất | FR-26 |
-| T-FR-27 | 2 request hủy đồng thời/callback lặp chỉ 1 refund intent và 1 bút toán bù; trạng thái không lùi | FR-27 |
-| T-FR-28 | Timeout/UNKNOWN không được coi FAILED; chặn PREPARING, đối soát trước khi cộng điểm hoặc hoàn tất cancel | FR-28 |
+| T-FR-24 | Khách nhập ngân hàng và STK hợp lệ; đơn chuyển CANCELLED, tạo đúng một Refund PENDING, hoàn tài nguyên một lần | FR-24 |
+| T-FR-25 | QR chứa ngân hàng, STK, đúng số tiền thực trả và mã tham chiếu đơn; chỉ hiển thị cho nhân viên có quyền | FR-25 |
+| T-FR-26 | Sau khi kiểm tra giao dịch thành công, nhân viên lưu bằng chứng; Refund chuyển COMPLETED. Không cộng điểm bù | FR-26 |
+| T-FR-27 | Refund FAILED được thử lại có kiểm soát; không tạo nghĩa vụ hoàn tiền thứ hai, không xác nhận thành công hai lần | FR-27 |
+| T-FR-28 | Refund UNKNOWN phải được đối soát trước khi thử lại; không tự coi là thất bại hoặc thành công | FR-28 |
 | T-FR-29 | Barista xem PAID; Customer không được xem hàng đợi nội bộ | FR-29 |
 | T-FR-30 | PAID -> PREPARING -> READY -> COMPLETED; bước nhảy không hợp lệ trả 409 | FR-30 |
 | T-FR-31 | Manager cập nhật tồn kho qua ledger, không sửa âm và có audit actor/reason | FR-31 |
@@ -67,11 +67,11 @@
 | INT-01 | 10 user cùng đặt sản phẩm, chỉ đủ kho 5 | Tối đa 5 thành công, kho không âm, số lượng release/hold đúng |
 | INT-02 | ReturnUrl thành công tới trước IPN, IPN giả mạo/HMAC sai | Không false PAID, phát hiện IPN sai; chỉ verified IPN/QueryDr được cập nhật |
 | INT-03 | Gửi lại POST payment cùng key/payload 10 lần; payload khác cùng key | 1 PaymentAttempt business-effect; conflict nếu payload khác |
-| INT-04 | PAID -> cancel -> refund confirmed SUCCESS | Order CANCELLED, refund SUCCESS, 0 điểm bù, kho release 1 lần |
-| INT-05 | PAID -> cancel -> refund confirmed FAILED | Order CANCELLED, refund FAILED, 1 compensation ledger tương đương tiền (R đã chốt) |
-| INT-06 | PAID -> cancel -> refund timeout/UNKNOWN | WAITING_RECONCILIATION, 0 compensation, không PREPARING |
-| INT-07 | Cancel PREPARING/READY/COMPLETED/CANCELLED | HTTP 409, trạng thái không đổi |
-| INT-08 | 2 cancel đồng thời + retry callbacks | Một Refund request/compensation/release |
+| INT-04 | PAID -> khách hủy kèm STK hợp lệ -> tạo Refund PENDING | Order CANCELLED ngay, tạo đúng 1 Refund PENDING, kho/promo/loyalty release 1 lần, 0 điểm bù |
+| INT-05 | Refund PENDING -> Barista quét VietQR chuyển khoản thành công -> xác nhận lưu evidence | Refund COMPLETED, audit lưu baristaId và bằng chứng giao dịch |
+| INT-06 | Refund chuyển khoản chưa rõ kết quả -> đánh dấu UNKNOWN | Refund UNKNOWN, khóa thử lại, yêu cầu đối soát sao kê ngân hàng |
+| INT-07 | Cancel khi PREPARING/READY/COMPLETED/CANCELLED | HTTP 409 Conflict, trạng thái không đổi |
+| INT-08 | 2 cancel đồng thời hoặc retry cancel request | Chỉ 1 Refund PENDING, 1 lần hoàn tài nguyên, Idempotent response |
 | E2E-01 | Menu → options → cart → login → order → VNPay sandbox → verified IPN → barista complete | Full end-to-end hoàn tất, UI mobile 375px không cuộn ngang |
 
 ## Fixtures bắt buộc

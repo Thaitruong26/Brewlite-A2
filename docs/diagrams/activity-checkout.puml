@@ -28,7 +28,7 @@ else (Không)
   stop
 endif
 |Customer|
-:Chọn VNPay Sandbox;
+:Chọn phương thức thanh toán thẻ (VNPay);
 |Next.js UI|
 :Gửi payment intent + idempotency key;
 |NestJS API + DB|
@@ -37,7 +37,7 @@ endif
 :Thanh toán sandbox;
 :Callback IPN;
 |NestJS API + DB|
-:Xác minh chữ ký, amount, txnRef;
+:Xác minh chữ ký HMAC, amount, txnRef;
 if (IPN hợp lệ và thành công?) then (Có)
   :Payment SUCCESS, Order PAID;
 else (Không)
@@ -63,24 +63,38 @@ endif
 |Customer|
 :Xem trạng thái / có thể yêu cầu hủy;
 if (Yêu cầu hủy?) then (Có)
+  |Customer|
+  :Nhập ngân hàng & STK thụ hưởng;
   |NestJS API + DB|
-  if (Order PAID?) then (Có)
-    :Khóa PREPARING, tạo Refund;
-    |VNPay Sandbox|
-    :Thực thi refund;
-    |NestJS API + DB|
-    if (Refund SUCCESS?) then (Có)
-       :CANCELLED + release resources;
+  if (Order PAID và chưa PREPARING?) then (Hợp lệ)
+    :BEGIN transaction;
+    :Order chuyển CANCELLED ngay;
+    :Release kho, promo, điểm đã dùng;
+    :Thu hồi điểm đã tích của đơn;
+    :Tạo Refund PENDING;
+    :COMMIT;
+    |Barista|
+    :Xem danh sách hoàn tiền PENDING trên KDS;
+    :Nhận xử lý (claim Refund IN_PROGRESS);
+    :Hệ thống sinh mã Napas247 VietQR;
+    :Quét QR chuyển tiền thủ công qua Banking App;
+    if (Chuyển khoản thành công?) then (Có)
+      :Bấm xác nhận + lưu bằng chứng;
+      |NestJS API + DB|
+      :Refund COMPLETED + audit log;
     else (Không)
-       if (Refund confirmed FAILED?) then (Có)
-          :CANCELLED + release + points compensation once;
-       else (UNKNOWN)
-          :WAITING_RECONCILIATION;
-          :Không cấp điểm cho đến khi có kết quả;
-       endif
+      if (Chưa rõ kết quả?) then (Có)
+        |Barista|
+        :Đánh dấu UNKNOWN;
+        :Đối soát sao kê trước khi chuyển lại;
+      else (Thất bại)
+        |Barista|
+        :Đánh dấu FAILED;
+        :Cho phép thử lại có kiểm soát (RefundAttempt);
+      endif
     endif
   else (Không)
-    :Hủy PENDING/FAILED hoặc 409 nếu PREPARING+;
+    :Hủy PENDING/FAILED hoặc trả 409 nếu PREPARING+;
   endif
   stop
 else (Không)

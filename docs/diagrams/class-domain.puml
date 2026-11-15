@@ -2,86 +2,97 @@
 skinparam classAttributeIconSize 0
 hide empty methods
 left to right direction
+
 class User {
   +id: UUID
-+email: String
-+role: Role
+  +email: String
+  +role: Role
 }
 class Product {
   +id: UUID
-+name: String
-+active: Boolean
+  +name: String
+  +active: Boolean
 }
 class ProductVariant {
   +id: UUID
-+size: String
-+priceVnd: Long
+  +size: String
+  +priceVnd: Long
 }
 class Order {
   +id: UUID
-+status: OrderStatus
-+totalVnd: Long
-+version: Int
+  +status: OrderStatus
+  +totalVnd: Long
+  +version: Int
 }
 class OrderItem {
   +id: UUID
-+qty: Int
-+unitPriceSnapshotVnd: Long
-+optionsSnapshot: JSON
+  +qty: Int
+  +unitPriceSnapshotVnd: Long
+  +optionsSnapshot: JSON
 }
 class Payment {
   +id: UUID
-+status: PaymentStatus
-+provider: PaymentProviderType
+  +status: PaymentStatus
+  +provider: PaymentProviderType
 }
 class PaymentAttempt {
   +id: UUID
-+idempotencyKey: String
-+requestHash: String
-+providerTxnRef: String
+  +idempotencyKey: String
+  +requestHash: String
+  +providerTxnRef: String
 }
 class Refund {
   +id: UUID
-+status: RefundStatus
-+amountVnd: Long
-+providerRequestId: String
+  +orderId: UUID
+  +status: RefundStatus
+  +amountVnd: Long
+  +bankCode: String
+  +accountNumber: String
+  +accountName: String
+  +confirmedBy: UUID?
+  +evidenceRef: String?
 }
-class CancellationRequest {
+class RefundAttempt {
   +id: UUID
-+state: CancellationStatus
-+requestedAt: DateTime
+  +refundId: UUID
+  +baristaId: UUID
+  +attemptNo: Int
+  +status: RefundStatus
+  +failureReason: String?
+  +startedAt: DateTime
+  +finishedAt: DateTime?
 }
 class Promotion {
   +id: UUID
-+code: String
-+quota: Int
+  +code: String
+  +quota: Int
 }
 class PromotionRedemption {
   +id: UUID
-+status: ReservationStatus
+  +status: ReservationStatus
 }
 class LoyaltyTransaction {
   +id: UUID
-+type: LoyaltyType
-+points: Decimal
-+amountVndEquivalent: Long
-+originRefundId: UUID?
+  +type: LoyaltyType
+  +points: Decimal
+  +amountVndEquivalent: Long
 }
 class InventoryReservation {
   +id: UUID
-+status: ReservationStatus
-+releasedAt: DateTime?
+  +status: ReservationStatus
+  +releasedAt: DateTime?
 }
 interface PaymentProvider {
   +createPaymentIntent(...)
-+verifyNotification(...)
-+queryPayment(...)
-+refund(...)
+  +verifyNotification(...)
+  +queryPayment(...)
 }
 class VNPaySandboxAdapter
 class MockPaymentAdapter
+
 PaymentProvider <|.. VNPaySandboxAdapter
 PaymentProvider <|.. MockPaymentAdapter
+
 User "1" -- "0..*" Order : places
 User "1" -- "0..*" LoyaltyTransaction : has
 Product "1" -- "0..*" ProductVariant
@@ -89,14 +100,14 @@ Order "1" *-- "1..*" OrderItem
 ProductVariant "1" -- "0..*" OrderItem : snapshot source
 Order "1" -- "0..*" Payment
 Payment "1" *-- "1..*" PaymentAttempt
-Payment "1" -- "0..*" Refund
-Order "1" -- "0..1" CancellationRequest
+Order "1" -- "0..1" Refund : triggers on cancel
+Refund "1" *-- "0..*" RefundAttempt : logs
 Order "1" -- "0..*" InventoryReservation
 Promotion "1" -- "0..*" PromotionRedemption
 Order "1" -- "0..*" PromotionRedemption
 Order "1" -- "0..*" LoyaltyTransaction
-Refund "1" -- "0..1" LoyaltyTransaction : compensation unique
-Payment ..> PaymentProvider : calls
+Payment ..> PaymentProvider : calls for collection
+
 enum OrderStatus {
   PENDING
   PAYMENT_FAILED
@@ -113,21 +124,16 @@ enum PaymentStatus {
   UNKNOWN
 }
 enum RefundStatus {
-  REQUESTED
-  SUCCESS
+  PENDING
+  IN_PROGRESS
   FAILED
   UNKNOWN
-}
-enum CancellationStatus {
-  WAITING_PROVIDER
-  WAITING_RECONCILIATION
-  SETTLED
+  COMPLETED
 }
 enum LoyaltyType {
   EARNED
   REDEEMED
-  RETURNED
-  CREDIT_COMPENSATION
+  REVERSED
 }
 enum ReservationStatus {
   HELD
@@ -143,10 +149,11 @@ enum PaymentProviderType {
   VNPAY
   MOCK
 }
+
 Order ..> OrderStatus
 Payment ..> PaymentStatus
 Refund ..> RefundStatus
-CancellationRequest ..> CancellationStatus
+RefundAttempt ..> RefundStatus
 LoyaltyTransaction ..> LoyaltyType
 InventoryReservation ..> ReservationStatus
 User ..> Role
