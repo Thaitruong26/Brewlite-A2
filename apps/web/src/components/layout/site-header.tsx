@@ -7,12 +7,6 @@ import { useAuthStore } from "@/store/auth-store";
 import { useCartStore, selectTotalItems } from "@/store/cart-store";
 import { api, getAccessToken, saveSession } from "@/lib/api";
 
-const NAV_LINKS = [
-  { href: "/menu",   label: "Thực đơn" },
-  { href: "/cart",   label: "Giỏ hàng", hasCart: true },
-  { href: "/orders", label: "Lịch sử" },
-];
-
 /**
  * SiteHeader — Client Component
  */
@@ -63,7 +57,7 @@ function SiteHeaderContent() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#e5e7dc] bg-[#f5f7f2]/95 backdrop-blur-md shrink-0 pt-[env(safe-area-inset-top,0px)]">
-      <div className="flex h-14 w-full items-center justify-between px-3.5">
+      <div className="flex h-14 md:h-16 w-full max-w-7xl mx-auto items-center justify-between px-3.5 sm:px-6 lg:px-8">
 
         {/* ── Logo ─────────────────────────────────────────── */}
         <Link
@@ -72,21 +66,70 @@ function SiteHeaderContent() {
           className="flex items-center gap-2 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-[#183d2c]"
         >
           <span
-            className="grid size-8 place-items-center rounded-full bg-[#183d2c] text-base text-[#fbf8ef]"
+            className="grid size-8 md:size-9 place-items-center rounded-full bg-[#183d2c] text-base md:text-lg text-[#fbf8ef]"
             aria-hidden="true"
           >
             ☕
           </span>
           <div className="leading-tight">
-            <p className="text-sm font-bold tracking-tight text-[#183d2c]">BrewLite</p>
-            <p className="text-[9px] font-medium text-[#66736a]">
+            <p className="text-sm md:text-base font-bold tracking-tight text-[#183d2c]">BrewLite</p>
+            <p className="text-[9px] md:text-[10px] font-medium text-[#66736a]">
               Artisan Coffee
             </p>
           </div>
         </Link>
 
-        {/* ── Auth ─────────────────────────────────────────── */}
-        <div className="flex items-center gap-2">
+        {/* ── Desktop Navigation Links ────────────────────── */}
+        <nav aria-label="Điều hướng trang web" className="hidden md:flex items-center gap-8">
+          <Link
+            href="/"
+            className={[
+              "text-sm font-semibold transition-colors hover:text-[#183d2c]",
+              pathname === "/" ? "text-[#183d2c] border-b-2 border-[#183d2c] pb-1" : "text-[#55695d]",
+            ].join(" ")}
+          >
+            Trang chủ
+          </Link>
+          <Link
+            href="/menu"
+            className={[
+              "text-sm font-semibold transition-colors hover:text-[#183d2c]",
+              pathname === "/menu" ? "text-[#183d2c] border-b-2 border-[#183d2c] pb-1" : "text-[#55695d]",
+            ].join(" ")}
+          >
+            Thực đơn
+          </Link>
+          <Link
+            href="/orders"
+            className={[
+              "text-sm font-semibold transition-colors hover:text-[#183d2c]",
+              pathname === "/orders" ? "text-[#183d2c] border-b-2 border-[#183d2c] pb-1" : "text-[#55695d]",
+            ].join(" ")}
+          >
+            Lịch sử đơn
+          </Link>
+        </nav>
+
+        {/* ── Auth & Desktop Cart ─────────────────────────── */}
+        <div className="flex items-center gap-2.5">
+          {/* Nút giỏ hàng trên Desktop */}
+          <Link
+            href="/cart"
+            className="hidden md:flex items-center gap-2 rounded-full border border-[#d6ddd3] bg-white px-3.5 py-1.5 text-xs font-bold text-[#183d2c] shadow-2xs hover:bg-[#eef3eb] transition-all"
+            aria-label="Giỏ hàng"
+          >
+            <span className="relative flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="size-4.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+              </svg>
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 flex size-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </span>
+            <span>Giỏ hàng</span>
+          </Link>
           {user?.role === "BARISTA" && (
             <Link
               href="/barista"

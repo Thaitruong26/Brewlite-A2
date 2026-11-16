@@ -236,7 +236,7 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="w-full px-4 py-4 flex flex-col gap-5">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-5 flex flex-col gap-5">
       {/* Tiêu đề trang */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-[#183d2c]">Thanh toán</h1>
@@ -269,9 +269,9 @@ export default function CheckoutPage() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-6 w-full">
-            {/* Khối trên: Danh sách món & Thông tin đơn */}
-            <div className="space-y-6 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-start">
+            {/* Khối trái: Chi tiết đơn hàng */}
+            <div className="space-y-6 w-full lg:col-span-7 xl:col-span-7">
               <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
                 <div className="flex items-center justify-between border-b border-stone-100 pb-4 mb-4">
                   <div>
@@ -426,8 +426,8 @@ export default function CheckoutPage() {
               </section>
             </div>
 
-            {/* Khối dưới: Chọn phương thức Ví / Thẻ & Tổng tiền & Nút Xác nhận trả */}
-            <div className="space-y-6 w-full">
+            {/* Khối phải: Chọn phương thức Ví / Thẻ & Tổng tiền & Nút Xác nhận trả */}
+            <div className="space-y-6 w-full lg:col-span-5 xl:col-span-5 lg:sticky lg:top-24">
               <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-stone-900">

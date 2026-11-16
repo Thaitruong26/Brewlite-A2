@@ -318,7 +318,7 @@ function MenuContent() {
   const isError = !showFixtures && query.isError;
 
   return (
-    <div className="w-full px-3.5 py-3">
+    <div className="w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
 
       {/* ── Hero ── */}
       <HeroBanner />
@@ -388,8 +388,8 @@ function MenuContent() {
 
       {/* ── Loading skeleton ── */}
       {isLoading && (
-        <div className="mt-4 space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
         </div>
       )}
 
@@ -445,11 +445,11 @@ function MenuContent() {
         </div>
       )}
 
-      {/* ── Product list (Chuẩn danh sách 1 cột dọc Mobile) ── */}
+      {/* ── Product list (Responsive grid: 1 cột mobile, 2 cột tablet, 3-4 cột desktop) ── */}
       {result && products.length > 0 && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
           {products.map((product, idx) => (
-            <ProductCard key={product.id} product={product} priority={idx < 2} />
+            <ProductCard key={product.id} product={product} priority={idx < 4} />
           ))}
         </div>
       )}

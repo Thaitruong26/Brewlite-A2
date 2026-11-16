@@ -126,11 +126,11 @@ function ProductOptions({ product }: { product: ProductDetail }) {
   }
 
   return (
-    <div className="w-full px-3.5 py-4">
+    <div className="w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-6xl mx-auto">
       <Link href="/menu" className="inline-flex items-center gap-1 text-xs font-semibold text-amber-900 hover:underline">
         ← Quay lại thực đơn
       </Link>
-      <div className="mt-3 flex flex-col gap-5 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm">
+      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 rounded-3xl border border-stone-200/80 bg-white p-5 sm:p-6 md:p-8 shadow-sm">
         {/* Khung ảnh nghệ thuật */}
         <div className="space-y-4">
           <div className="relative aspect-4/3 sm:aspect-square w-full overflow-hidden rounded-2xl bg-stone-100 shadow-inner group border border-stone-200/80">

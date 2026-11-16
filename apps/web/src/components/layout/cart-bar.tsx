@@ -15,7 +15,7 @@ function CartBarContent() {
   if (pathname?.startsWith("/barista") || totalItems === 0) return null;
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-30 mx-auto w-full max-w-[440px] px-3 pb-2 mb-[env(safe-area-inset-bottom,0px)] pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-200">
+    <div className="md:hidden fixed bottom-16 left-0 right-0 z-30 mx-auto w-full max-w-[440px] px-3 pb-2 mb-[env(safe-area-inset-bottom,0px)] pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-200">
       <Link
         href="/cart"
         className="pointer-events-auto flex items-center justify-between rounded-2xl bg-[#183d2c] px-4 py-3 shadow-xl transition-all duration-200 hover:bg-[#24563e] active:scale-[0.98]"

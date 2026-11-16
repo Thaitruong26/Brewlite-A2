@@ -56,7 +56,7 @@ function BottomNavContent() {
   return (
     <nav
       aria-label="Điều hướng chính"
-      className="fixed bottom-0 left-0 right-0 z-40 mx-auto w-full max-w-[440px] border-t border-[#e5e7dc] bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 mx-auto w-full max-w-[440px] border-t border-[#e5e7dc] bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]"
     >
       <div className="flex h-16 items-stretch">
         {NAV_ITEMS.map(({ href, label, icon }) => {

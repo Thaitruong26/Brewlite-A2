@@ -220,14 +220,14 @@ export default function CartPage() {
   };
 
   return (
-    <div className="w-full px-3.5 py-4">
+    <div className="w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-extrabold text-[#183d2c]">Giỏ hàng</h1>
         {items.length > 0 && (
           <button
             type="button"
             onClick={clearCart}
-            className="text-xs font-semibold text-stone-500 hover:text-red-700 hover:underline"
+            className="text-xs font-semibold text-stone-500 hover:text-red-700 hover:underline cursor-pointer"
           >
             Xóa hết ({items.length} món)
           </button>
@@ -256,10 +256,10 @@ export default function CartPage() {
           </Link>
         </section>
       ) : (
-        <div className="mt-6 flex flex-col gap-6 w-full">
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-start">
           <section
             aria-label="Danh sách món trong giỏ"
-            className="space-y-4 w-full"
+            className="space-y-4 w-full lg:col-span-7 xl:col-span-8"
           >
             {items.map((item) => (
               <CartRow
@@ -271,7 +271,7 @@ export default function CartPage() {
             ))}
           </section>
 
-          <aside className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm lg:sticky lg:top-6">
+          <aside className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24">
             <h2 className="text-lg font-bold text-[#183d2c]">
               Tóm tắt đơn hàng
             </h2>

@@ -39,26 +39,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       style={{ colorScheme: "light" }}
       className={`${inter.variable} ${playfair.variable}`}
     >
-      <body className="min-h-screen min-h-dvh bg-[#f5f7f2] md:bg-[#eaede6] text-[#21372b] antialiased selection:bg-emerald-500 selection:text-white">
+      <body className="min-h-screen min-h-dvh bg-[#f5f7f2] text-[#21372b] antialiased selection:bg-emerald-500 selection:text-white">
         <AppProviders>
           {/* 
-            Mobile-First Shell:
-            - Trên điện thoại thật (mobile): Chiếm trọn 100% màn hình, không khung viền giả lập, cuộn tự nhiên mượt mà theo trình duyệt điện thoại.
-            - Trên máy tính (desktop): Căn giữa gọn gàng dạng mobile container (max-w-[440px]) với viền mềm và đổ bóng tinh tế.
+            Responsive Layout Shell:
+            - Trên điện thoại (mobile): Chiếm trọn 100% màn hình, điều hướng dưới đáy (BottomNav) tự nhiên.
+            - Trên máy tính (desktop): Tự động mở rộng sang chuẩn website hiện đại (max-w-7xl), thanh điều hướng ngang trên Header.
           */}
-          <div className="mx-auto w-full max-w-[440px] min-h-screen min-h-dvh bg-[#f5f7f2] flex flex-col relative md:shadow-2xl md:border-x md:border-[#e2e6dc]">
-            {/* Header ứng dụng di động */}
+          <div className="mx-auto w-full max-w-7xl min-h-screen min-h-dvh bg-[#f5f7f2] flex flex-col relative md:shadow-xs">
+            {/* Header ứng dụng di động & Desktop navbar */}
             <SiteHeader />
 
-            {/* Vùng nội dung màn hình chính - cuộn tự nhiên, padding đáy để không bị BottomNav và CartBar che */}
-            <main className="flex-1 w-full pb-28">
+            {/* Vùng nội dung chính - pb-28 trên mobile để tránh thanh đáy, md:pb-12 trên desktop */}
+            <main className="flex-1 w-full pb-28 md:pb-12">
               {children}
             </main>
 
-            {/* Thanh giỏ hàng nổi khi có món */}
+            {/* Thanh giỏ hàng nổi khi có món (Mobile only) */}
             <CartBar />
 
-            {/* Thanh điều hướng cố định dưới đáy */}
+            {/* Thanh điều hướng cố định dưới đáy (Mobile only) */}
             <BottomNav />
           </div>
         </AppProviders>

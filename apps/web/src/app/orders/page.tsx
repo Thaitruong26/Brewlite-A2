@@ -108,7 +108,7 @@ export default function OrdersPage() {
   const meta = data?.page.meta;
 
   return (
-    <div className="w-full px-3.5 py-4">
+    <div className="w-full px-3.5 sm:px-6 lg:px-8 py-5 max-w-5xl mx-auto">
       {/* Tiêu đề & thanh công cụ */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
