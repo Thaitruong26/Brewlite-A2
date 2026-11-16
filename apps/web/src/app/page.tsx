@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <section className="relative w-full flex flex-col md:grid md:grid-cols-2 md:items-center md:gap-12 px-4 sm:px-6 lg:px-8 py-6 md:py-16">
       {/* ── Text content ─────────────────────── */}
-      <div className="flex flex-col items-start">
+      <div className="flex flex-col items-start w-full max-w-md mx-auto md:max-w-xl md:mx-0">
         {/* Eye-brow */}
         <div className="mb-3 flex items-center gap-2">
           <span
@@ -36,12 +36,12 @@ export default function Home() {
         </h1>
 
         {/* Description */}
-        <p className="mt-4 text-sm sm:text-base leading-relaxed text-[#66736a] max-w-xl">
+        <p className="mt-4 text-sm sm:text-base leading-relaxed text-[#66736a]">
           Chọn thức uống yêu thích từ thực đơn BrewLite. Đặt món gọn nhẹ, giao nhận nhanh chóng tại quầy.
         </p>
 
         {/* CTAs */}
-        <div className="mt-6 w-full max-w-sm">
+        <div className="mt-6 w-full">
           <Link
             href="/menu"
             className="group flex w-full min-h-[50px] items-center justify-center gap-2 rounded-2xl bg-[#183d2c] px-6 text-sm font-semibold text-white shadow-md transition-colors duration-200 hover:bg-[#24563e] active:scale-[0.99]"
@@ -57,7 +57,7 @@ export default function Home() {
         </div>
 
         {/* Trust badges */}
-        <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2">
+        <div className="mt-6 flex flex-wrap gap-2 w-full">
           {[
             { icon: "☕", label: "Rang mộc thủ công" },
             { icon: "🌿", label: "Nguyên liệu tươi" },
@@ -72,7 +72,7 @@ export default function Home() {
       </div>
 
       {/* ── Image card ──────────────────────── */}
-      <div className="relative mx-auto mt-4 md:mt-0 w-full max-w-md lg:max-w-none">
+      <div className="relative mx-auto mt-6 md:mt-0 w-full max-w-md lg:max-w-none">
         {/* Decorative tilted slab */}
         <div
           className="absolute inset-0 rotate-1 rounded-3xl bg-[#e6eadc]"
