@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createPaymentApi, formatVND, getOrderByIdApi, simulateVnpayCompleteApi } from "@/lib/api";
+import { formatVND, getOrderByIdApi, simulateVnpayCompleteApi } from "@/lib/api";
 
 type Step = "SELECT_METHOD" | "NCB_CARD" | "NCB_OTP" | "QR_CODE";
 
@@ -102,22 +102,6 @@ function VnpayMockContent() {
     setIsWaitingBarista(true);
   };
 
-  const handleBaristaConfirmQuick = async () => {
-    if (!orderId || isProcessing) return;
-    setIsProcessing(true);
-    try {
-      const idempotencyKey = `vnpay-${orderId}-${Date.now()}`;
-      await createPaymentApi(
-        { orderId, method: "CARD" },
-        idempotencyKey
-      );
-    } catch {
-      // Polling sẽ tự kiểm tra trạng thái
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex flex-col items-center justify-center p-3 sm:p-6 text-stone-800 font-sans">
       {/* ── Main VNPAY Card ── */}
@@ -199,18 +183,7 @@ function VnpayMockContent() {
                 </p>
               </div>
 
-              {/* Nút dành cho Barista xác nhận nhanh hoặc demo tại chỗ */}
-              <div className="pt-2 space-y-2">
-                <button
-                  type="button"
-                  disabled={isProcessing}
-                  onClick={handleBaristaConfirmQuick}
-                  className="w-full rounded-xl border-2 border-dashed border-emerald-600 bg-emerald-50/80 py-3 text-xs font-bold text-emerald-900 hover:bg-emerald-100 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <span>⚡</span>
-                  <span>{isProcessing ? "Đang xác nhận..." : "Xác nhận đã nhận tiền tại quầy"}</span>
-                </button>
-
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => setIsWaitingBarista(false)}

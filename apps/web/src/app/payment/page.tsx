@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ApiError,
   cancelOrderApi,
-  createPaymentApi,
   formatVND,
   getOrderByIdApi,
 } from "@/lib/api";
@@ -24,7 +23,6 @@ function PaymentContent() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60);
   const [isCancelling, setIsCancelling] = useState<boolean>(false);
-  const [isConfirmingPaid, setIsConfirmingPaid] = useState<boolean>(false);
   const [isSuccessRedirecting, setIsSuccessRedirecting] = useState<boolean>(false);
   const [clientNotified, setClientNotified] = useState<boolean>(false);
 
@@ -114,28 +112,6 @@ function PaymentContent() {
       clearInterval(pollInterval);
     };
   }, [orderId, isSuccessRedirecting, router]);
-
-  // Xác nhận đã nhận tiền (Dành cho Barista hoặc chế độ kiểm thử tại quầy)
-  const handleConfirmPaid = async () => {
-    if (!orderId || isConfirmingPaid) return;
-    setIsConfirmingPaid(true);
-    try {
-      const idempotencyKey = `pay-${orderId}-${Date.now()}`;
-      await createPaymentApi(
-        { orderId: Number(orderId), method: "WALLET" },
-        idempotencyKey,
-      );
-      const updated = await getOrderByIdApi(orderId);
-      setOrder(updated);
-      setIsSuccessRedirecting(true);
-      setTimeout(() => {
-        router.push(`/orders/${updated.id}`);
-      }, 1500);
-    } catch (err: any) {
-      alert(err?.message || "Không thể xác nhận thanh toán. Vui lòng thử lại.");
-      setIsConfirmingPaid(false);
-    }
-  };
 
   // Xử lý tự động hủy đơn khi hết 15 phút
   const handleAutoCancel = async () => {
@@ -411,21 +387,6 @@ function PaymentContent() {
                   {clientNotified
                     ? "✓ Đã báo chuyển tiền · Quầy Barista đang đối soát số dư..."
                     : "Tôi đã chuyển tiền thành công"}
-                </button>
-
-                {/* Nút dành cho Barista hoặc kiểm thử demo tại quầy */}
-                <button
-                  type="button"
-                  disabled={isConfirmingPaid}
-                  onClick={handleConfirmPaid}
-                  className="w-full rounded-xl border-2 border-dashed border-emerald-600 bg-emerald-50/70 py-2.5 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  <span>⚡</span>
-                  <span>
-                    {isConfirmingPaid
-                      ? "Đang xác nhận nhận tiền..."
-                      : "Xác nhận đã nhận tiền tại quầy"}
-                  </span>
                 </button>
               </div>
 
