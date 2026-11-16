@@ -56,9 +56,9 @@ function BottomNavContent() {
   return (
     <nav
       aria-label="Điều hướng chính"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 mx-auto w-full max-w-[440px] border-t border-[#e5e7dc] bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 w-full border-t border-[#e5e7dc] bg-white/95 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_20px_rgba(0,0,0,0.05)]"
     >
-      <div className="flex h-16 items-stretch">
+      <div className="flex h-16 items-stretch w-full max-w-lg mx-auto px-2">
         {NAV_ITEMS.map(({ href, label, icon }) => {
           const active = pathname === href || (href === "/menu" && pathname === "/");
           const isCart = href === "/cart";

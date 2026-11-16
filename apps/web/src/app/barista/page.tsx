@@ -789,7 +789,7 @@ export default function BaristaPage() {
   return (
     <div className="min-h-full bg-[#f7f5ef] text-[#1e3429] pb-8">
       {/* Mobile Barista Subheader */}
-      <div className="sticky top-0 z-20 border-b border-[#e2e5dc] bg-[#fbfaf6]/95 backdrop-blur-md px-3 py-2 shadow-2xs">
+      <div className="sticky top-14 md:top-16 z-20 border-b border-[#e2e5dc] bg-[#fbfaf6]/95 backdrop-blur-md px-3 py-2 shadow-2xs">
         <nav aria-label="Khu vực quầy" className="grid grid-cols-3 gap-1 rounded-xl bg-[#edece5] p-1 text-xs font-bold text-center">
           <button
             type="button"

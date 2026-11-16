@@ -56,7 +56,7 @@ function SiteHeaderContent() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[#e5e7dc] bg-[#f5f7f2]/95 backdrop-blur-md shrink-0 pt-[env(safe-area-inset-top,0px)]">
+    <header className="sticky top-0 inset-x-0 z-30 w-full border-b border-[#e5e7dc] bg-[#f5f7f2]/95 backdrop-blur-md shrink-0">
       <div className="flex h-14 md:h-16 w-full max-w-7xl mx-auto items-center justify-between px-3.5 sm:px-6 lg:px-8">
 
         {/* ── Logo ─────────────────────────────────────────── */}

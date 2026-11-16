@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             - Trên điện thoại (mobile): Chiếm trọn 100% màn hình, điều hướng dưới đáy (BottomNav) tự nhiên.
             - Trên máy tính (desktop): Tự động mở rộng sang chuẩn website hiện đại (max-w-7xl), thanh điều hướng ngang trên Header.
           */}
-          <div className="mx-auto w-full max-w-7xl min-h-screen min-h-dvh bg-[#f5f7f2] flex flex-col relative md:shadow-xs">
+          <div className="mx-auto w-full max-w-7xl min-h-screen min-h-dvh bg-[#f5f7f2] flex flex-col relative md:shadow-xs overflow-x-clip">
             {/* Header ứng dụng di động & Desktop navbar */}
             <SiteHeader />
 

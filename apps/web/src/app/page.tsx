@@ -75,7 +75,7 @@ export default function Home() {
       <div className="relative mx-auto mt-4 md:mt-0 w-full max-w-md lg:max-w-none">
         {/* Decorative tilted slab */}
         <div
-          className="absolute -inset-2 rotate-[1.5deg] rounded-3xl bg-[#e6eadc]"
+          className="absolute inset-0 rotate-1 rounded-3xl bg-[#e6eadc]"
           aria-hidden="true"
         />
 
