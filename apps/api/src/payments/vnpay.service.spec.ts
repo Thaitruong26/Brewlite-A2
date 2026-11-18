@@ -276,12 +276,13 @@ describe('VnpayService (P0 VNPay Security & Verification)', () => {
       expect(loyaltyService.award).not.toHaveBeenCalled();
     });
 
-    it('xác thực thành công (00): chuyển order sang PAID, tạo Payment và tích điểm loyalty', async () => {
+    it('xác thực thành công (00 + 00): chỉ xác minh và hiển thị kết quả, không ghi đè DB (DB do IPN phụ trách)', async () => {
       const params = signParams({
         vnp_TmnCode: TEST_TMN,
         vnp_TxnRef: '10_123456',
         vnp_Amount: '5000000',
         vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '00',
         vnp_TransactionNo: 'VNP_TRANS_999',
       });
 
@@ -292,30 +293,40 @@ describe('VnpayService (P0 VNPay Security & Verification)', () => {
         status: 'PENDING',
       };
       prisma.order.findUnique.mockResolvedValue(mockOrder);
-      prisma.order.update.mockResolvedValue({ ...mockOrder, status: 'PAID' });
-      prisma.payment.create.mockResolvedValue({ id: 101, status: 'SUCCESS' });
 
       const res = await service.verifyReturnUrl(params);
 
       expect(res.isSuccess).toBe(true);
       expect(res.responseCode).toBe('00');
-      expect(prisma.order.update).toHaveBeenCalledWith({
-        where: { id: 10 },
-        data: { status: 'PAID' },
+      expect(res.message).toMatch(/thành công/i);
+      // verifyReturnUrl tách rời hoàn toàn khỏi DB mutations:
+      expect(prisma.order.update).not.toHaveBeenCalled();
+      expect(prisma.payment.create).not.toHaveBeenCalled();
+      expect(loyaltyService.award).not.toHaveBeenCalled();
+    });
+
+    it('từ chối khi vnp_ResponseCode là 00 nhưng vnp_TransactionStatus khác 00', async () => {
+      const params = signParams({
+        vnp_TmnCode: TEST_TMN,
+        vnp_TxnRef: '10_123456',
+        vnp_Amount: '5000000',
+        vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '02', // Giao dịch chưa hoàn tất hoặc nghi vấn
+        vnp_TransactionNo: 'VNP_TRANS_999',
       });
-      expect(prisma.payment.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            orderId: 10,
-            amount: 50000,
-            method: 'CARD',
-            status: 'SUCCESS',
-            idempotencyKey: 'vnpay-10_123456',
-            requestHash: 'vnpay-VNP_TRANS_999',
-          }),
-        }),
-      );
-      expect(loyaltyService.award).toHaveBeenCalledWith(expect.anything(), mockOrder);
+
+      const mockOrder = {
+        id: 10,
+        userId: 1,
+        total: 50000,
+        status: 'PENDING',
+      };
+      prisma.order.findUnique.mockResolvedValue(mockOrder);
+
+      const res = await service.verifyReturnUrl(params);
+
+      expect(res.isSuccess).toBe(false);
+      expect(prisma.order.update).not.toHaveBeenCalled();
     });
 
     it('xử lý khi khách hàng hủy giao dịch tại cổng VNPay (ResponseCode khác 00)', async () => {
@@ -324,6 +335,7 @@ describe('VnpayService (P0 VNPay Security & Verification)', () => {
         vnp_TxnRef: '10_123456',
         vnp_Amount: '5000000',
         vnp_ResponseCode: '24', // Người dùng hủy giao dịch
+        vnp_TransactionStatus: '24',
       });
 
       const mockOrder = {
@@ -338,11 +350,146 @@ describe('VnpayService (P0 VNPay Security & Verification)', () => {
 
       expect(res.isSuccess).toBe(false);
       expect(res.responseCode).toBe('24');
+      // Không update DB trong verifyReturnUrl
+      expect(prisma.order.update).not.toHaveBeenCalled();
+      expect(prisma.payment.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyIpn (IPN Webhook Server-to-Server Settlement)', () => {
+    function signParams(params: Record<string, string>, secret: string = TEST_SECRET): Record<string, string> {
+      const sortedKeys = Object.keys(params).sort();
+      const signData = sortedKeys
+        .filter((k) => params[k] !== undefined && params[k] !== '')
+        .map((k) => `${k}=${encodeURIComponent(params[k]).replace(/%20/g, '+')}`)
+        .join('&');
+
+      const secureHash = createHmac('sha512', secret).update(Buffer.from(signData, 'utf-8')).digest('hex');
+      return { ...params, vnp_SecureHash: secureHash };
+    }
+
+    it('cập nhật đơn sang PAID, tạo Payment và tích lũy điểm khi IPN hợp lệ (00 + 00)', async () => {
+      const params = signParams({
+        vnp_TmnCode: TEST_TMN,
+        vnp_TxnRef: '10_123456',
+        vnp_Amount: '5000000',
+        vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '00',
+        vnp_TransactionNo: 'VNP_IPN_999',
+      });
+
+      const mockOrder = {
+        id: 10,
+        userId: 1,
+        total: 50000,
+        status: 'PENDING',
+      };
+      prisma.order.findUnique.mockResolvedValue(mockOrder);
+      prisma.order.update.mockResolvedValue({ ...mockOrder, status: 'PAID' });
+      prisma.payment.create.mockResolvedValue({ id: 101, status: 'SUCCESS' });
+
+      const res = await service.verifyIpn(params);
+
+      expect(res).toEqual({ RspCode: '00', Message: 'Confirm Success' });
+      expect(prisma.order.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: { status: 'PAID' },
+      });
+      expect(prisma.payment.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            orderId: 10,
+            amount: 50000,
+            method: 'CARD',
+            status: 'SUCCESS',
+            idempotencyKey: 'vnpay-10_123456',
+            requestHash: 'vnpay-VNP_IPN_999',
+          }),
+        }),
+      );
+      expect(loyaltyService.award).toHaveBeenCalledWith(expect.anything(), mockOrder);
+    });
+
+    it('từ chối khi ResponseCode là 00 nhưng TransactionStatus khác 00 trong IPN', async () => {
+      const params = signParams({
+        vnp_TmnCode: TEST_TMN,
+        vnp_TxnRef: '10_123456',
+        vnp_Amount: '5000000',
+        vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '02',
+        vnp_TransactionNo: 'VNP_IPN_999',
+      });
+
+      const mockOrder = {
+        id: 10,
+        userId: 1,
+        total: 50000,
+        status: 'PENDING',
+      };
+      prisma.order.findUnique.mockResolvedValue(mockOrder);
+
+      const res = await service.verifyIpn(params);
+
+      expect(res).toEqual({ RspCode: '00', Message: 'Confirm Success' });
       expect(prisma.order.update).toHaveBeenCalledWith({
         where: { id: 10 },
         data: { status: 'PAYMENT_FAILED' },
       });
       expect(prisma.payment.create).not.toHaveBeenCalled();
+    });
+
+    it('trả về RspCode 97 khi sai chữ ký HMAC trong IPN', async () => {
+      const params = signParams(
+        {
+          vnp_TmnCode: TEST_TMN,
+          vnp_TxnRef: '10_123456',
+          vnp_Amount: '5000000',
+          vnp_ResponseCode: '00',
+          vnp_TransactionStatus: '00',
+        },
+        'FORGED_SECRET',
+      );
+
+      const res = await service.verifyIpn(params);
+      expect(res).toEqual({ RspCode: '97', Message: 'Invalid Checksum' });
+    });
+
+    it('trả về RspCode 04 khi sai số tiền trong IPN', async () => {
+      const params = signParams({
+        vnp_TmnCode: TEST_TMN,
+        vnp_TxnRef: '10_123456',
+        vnp_Amount: '3000000',
+        vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '00',
+      });
+
+      prisma.order.findUnique.mockResolvedValue({
+        id: 10,
+        total: 50000,
+        status: 'PENDING',
+      });
+
+      const res = await service.verifyIpn(params);
+      expect(res).toEqual({ RspCode: '04', Message: 'Invalid amount' });
+    });
+
+    it('trả về RspCode 02 khi đơn đã được xác nhận PAID trước đó (Idempotency)', async () => {
+      const params = signParams({
+        vnp_TmnCode: TEST_TMN,
+        vnp_TxnRef: '10_123456',
+        vnp_Amount: '5000000',
+        vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '00',
+      });
+
+      prisma.order.findUnique.mockResolvedValue({
+        id: 10,
+        total: 50000,
+        status: 'PAID',
+      });
+
+      const res = await service.verifyIpn(params);
+      expect(res).toEqual({ RspCode: '02', Message: 'Order already confirmed' });
     });
   });
 });

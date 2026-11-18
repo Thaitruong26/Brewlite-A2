@@ -176,9 +176,14 @@ export default function CheckoutPage() {
       // Nếu chọn Cổng VNPay Sandbox (Bắt buộc theo ADR-004):
       if (paymentMethod === "VNPAY") {
         setStepStatus("PROCESSING_PAYMENT");
-        const { paymentUrl, simulatorUrl } = await createVnpayUrlApi(orderToPay.id);
+        const { paymentUrl } = await createVnpayUrlApi(orderToPay.id);
+
+        if (!paymentUrl) {
+          throw new Error("Không tạo được URL thanh toán VNPay");
+        }
+
         clearCart();
-        window.location.href = simulatorUrl || paymentUrl || "/payment";
+        window.location.assign(paymentUrl);
         return;
       }
 

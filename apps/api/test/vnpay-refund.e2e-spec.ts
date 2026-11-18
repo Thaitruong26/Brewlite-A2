@@ -177,12 +177,13 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
       expect(res.body.paymentUrl).toContain('vnp_SecureHash=');
     });
 
-    it('GET /api/payments/vnpay/verify xác thực callback hợp lệ và chuyển đơn sang PAID', async () => {
+    it('GET /api/payments/vnpay/verify xác thực callback hợp lệ và hiển thị thông tin thành công mà không trực tiếp sửa DB', async () => {
       const params = signVnpayParams({
         vnp_TmnCode: TEST_TMN,
         vnp_TxnRef: '10_1700000000',
         vnp_Amount: '5000000', // 50,000 VND
         vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '00',
         vnp_TransactionNo: 'VNPAY_TXN_001',
       });
 
@@ -197,14 +198,9 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
         responseCode: '00',
       });
 
-      // Kiểm tra trạng thái đơn trong mock DB đã sang PAID
-      expect(orders.get(10)?.status).toBe(OrderStatus.PAID);
-      // Kiểm tra bản ghi payment đã được tạo
-      expect(payments.size).toBe(1);
-      const createdPayment = Array.from(payments.values())[0];
-      expect(createdPayment.orderId).toBe(10);
-      expect(createdPayment.amount).toBe(50000);
-      expect(createdPayment.status).toBe('SUCCESS');
+      // verifyReturnUrl chỉ xác thực cho UI, không trực tiếp mutate DB (để IPN xử lý)
+      expect(orders.get(10)?.status).toBe(OrderStatus.PENDING);
+      expect(payments.size).toBe(0);
     });
 
     it('GET /api/payments/vnpay/verify từ chối khi phát hiện giả mạo số tiền (P0.2 Amount Tampering)', async () => {
@@ -250,12 +246,13 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
       });
     });
 
-    it('GET /api/payments/vnpay/ipn xác thực hợp lệ theo chuẩn VNPay RspCode: 00', async () => {
+    it('GET /api/payments/vnpay/ipn xác thực hợp lệ theo chuẩn VNPay RspCode: 00 và cập nhật đơn sang PAID', async () => {
       const params = signVnpayParams({
         vnp_TmnCode: TEST_TMN,
         vnp_TxnRef: '10_1700000000',
         vnp_Amount: '5000000',
         vnp_ResponseCode: '00',
+        vnp_TransactionStatus: '00',
         vnp_TransactionNo: 'VNPAY_IPN_001',
       });
 
@@ -268,6 +265,15 @@ describe('VNPay & VietQR Refund End-to-End Tests (E2E)', () => {
         RspCode: '00',
         Message: 'Confirm Success',
       });
+
+      // Kiểm tra trạng thái đơn trong mock DB đã sang PAID từ IPN
+      expect(orders.get(10)?.status).toBe(OrderStatus.PAID);
+      // Kiểm tra bản ghi payment đã được tạo bởi IPN
+      expect(payments.size).toBe(1);
+      const createdPayment = Array.from(payments.values())[0];
+      expect(createdPayment.orderId).toBe(10);
+      expect(createdPayment.amount).toBe(50000);
+      expect(createdPayment.status).toBe('SUCCESS');
     });
 
     it('GET /api/payments/vnpay/ipn trả về RspCode: 97 khi sai chữ ký HMAC', async () => {

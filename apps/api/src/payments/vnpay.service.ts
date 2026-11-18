@@ -344,52 +344,11 @@ export class VnpayService {
       };
     }
 
-    const isSuccess = responseCode === '00';
+    const isSuccess =
+      query['vnp_ResponseCode'] === '00' &&
+      query['vnp_TransactionStatus'] === '00';
 
     if (isSuccess) {
-      // 6. Cập nhật trạng thái đơn sang PAID và ghi nhận Payment nguyên tử trong transaction
-      await this.prisma.$transaction(async (tx) => {
-        const currentOrder = await tx.order.findUnique({
-          where: { id: orderId },
-        });
-
-        if (!currentOrder || currentOrder.status === 'CANCELLED') {
-          throw new BadRequestException('Đơn hàng không hợp lệ hoặc đã bị hủy');
-        }
-
-        if (currentOrder.status === 'PENDING' || currentOrder.status === 'PAYMENT_FAILED') {
-          await tx.order.update({
-            where: { id: orderId },
-            data: { status: 'PAID' },
-          });
-
-          await tx.payment.create({
-            data: {
-              orderId,
-              amount: currentOrder.total,
-              method: 'CARD', // Thẻ ATM/Nội địa qua cổng VNPay
-              status: 'SUCCESS',
-              idempotencyKey: `vnpay-${txnRef}`,
-              requestHash: `vnpay-${transactionNo || txnRef}`,
-              responseSnapshot: {
-                provider: 'VNPAY',
-                transactionNo,
-                bankCode: query['vnp_BankCode'],
-                cardType: query['vnp_CardType'],
-                payDate: query['vnp_PayDate'],
-              },
-            },
-          });
-
-          // Tích điểm thưởng cho khách (1 điểm / 1.000đ)
-          try {
-            await this.loyaltyService.award(tx, currentOrder);
-          } catch {
-            // Bỏ qua nếu đơn đã được tích điểm
-          }
-        }
-      });
-
       return {
         isSuccess: true,
         orderId,
@@ -400,21 +359,16 @@ export class VnpayService {
       };
     }
 
-    // Nếu không thành công (Hủy hoặc lỗi giao dịch)
-    if (order.status === 'PENDING') {
-      await this.prisma.order.update({
-        where: { id: orderId },
-        data: { status: 'PAYMENT_FAILED' },
-      }).catch(() => {});
-    }
-
     return {
       isSuccess: false,
       orderId,
       amount,
       responseCode,
       transactionNo,
-      message: responseCode === '24' ? 'Khách hàng đã hủy giao dịch trên cổng VNPay' : 'Thanh toán VNPay không thành công',
+      message:
+        responseCode === '24'
+          ? 'Khách hàng đã hủy giao dịch trên cổng VNPay'
+          : 'Thanh toán VNPay không thành công',
     };
   }
 
@@ -502,7 +456,9 @@ export class VnpayService {
       return { RspCode: '02', Message: 'Order already confirmed' };
     }
 
-    const isSuccess = responseCode === '00';
+    const isSuccess =
+      query['vnp_ResponseCode'] === '00' &&
+      query['vnp_TransactionStatus'] === '00';
 
     if (isSuccess) {
       await this.prisma.$transaction(async (tx) => {
