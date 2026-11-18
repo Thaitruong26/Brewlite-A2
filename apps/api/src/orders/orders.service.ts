@@ -853,7 +853,16 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      const { bank, account } = this.parseVietQrRef(payment.refundRef);
+      const { bank, account, status: currentRefundStatus } = this.parseVietQrRef(payment.refundRef);
+
+      if (currentRefundStatus === 'UNKNOWN') {
+        throw new BadRequestException({
+          code: 'REFUND_IN_RECONCILIATION',
+          message:
+            'Giao dịch đang ở trạng thái Đối soát (UNKNOWN), tuyệt đối không được thử lại ngay để tránh hoàn tiền trùng lặp cho khách hàng',
+        });
+      }
+
       const targetBank = dto?.refundBank?.trim() || bank;
       const targetAccount = dto?.refundAccount?.trim() || account;
       const pendingRef = `VIETQR:${targetBank}:${targetAccount}:PENDING`;

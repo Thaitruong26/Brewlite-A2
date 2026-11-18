@@ -50,6 +50,17 @@ type RecipeIngredient = {
   ingredientId?: number;
 };
 
+const BANK_NAMES: Record<string, string> = {
+  VCB: "Vietcombank",
+  MB: "MB Bank",
+  TCB: "Techcombank",
+  TPB: "TPBank",
+  VPB: "VPBank",
+  ACB: "ACB",
+  ICB: "VietinBank",
+  BIDV: "BIDV",
+};
+
 // Từ điển công thức chuẩn đồng bộ 100% với database (backend/prisma/seed.ts)
 const PRODUCT_RECIPES: Record<string, RecipeIngredient[]> = {
   "Trà Sữa Truyền Thống": [
@@ -292,6 +303,10 @@ export default function BaristaPage() {
   const [refundBank, setRefundBank] = useState("VCB");
   const [refundAccount, setRefundAccount] = useState("");
   const [refundProof, setRefundProof] = useState("");
+  const [isVerifiedWithBank, setIsVerifiedWithBank] = useState(false);
+  const [showTroubleshoot, setShowTroubleshoot] = useState(false);
+  const [showFullAccount, setShowFullAccount] = useState(false);
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [isRefunding, setIsRefunding] = useState(false);
   const [refundedOrders, setRefundedOrders] = useState<number[]>([]);
 
@@ -309,6 +324,10 @@ export default function BaristaPage() {
   const openRefundModal = (order: BaristaOrder) => {
     setRefundOrder(order);
     setRefundProof("");
+    setIsVerifiedWithBank(false);
+    setShowTroubleshoot(false);
+    setShowFullAccount(false);
+    setIsEditingAccount(false);
     let acc = "";
     let bank = "MB";
     if (order.refundRef && order.refundRef.startsWith("VIETQR:")) {
@@ -325,7 +344,11 @@ export default function BaristaPage() {
 
   const handleConfirmRefund = async (orderId: number) => {
     if (!refundProof.trim()) {
-      alert("Vui lòng nhập mã giao dịch hoặc bằng chứng chuyển khoản thành công trước khi xác nhận!");
+      alert("Vui lòng nhập mã giao dịch ngân hàng trước khi xác nhận!");
+      return;
+    }
+    if (!isVerifiedWithBank) {
+      alert("Vui lòng tích cam kết đã đối chiếu lịch sử giao dịch ngân hàng thành công!");
       return;
     }
     setIsRefunding(true);
@@ -342,6 +365,7 @@ export default function BaristaPage() {
       });
       setRefundOrder(null);
       setRefundProof("");
+      setIsVerifiedWithBank(false);
       setNotice(`Đã xác nhận hoàn tiền thành công cho đơn #${orderId}!`);
       // Reload orders to reflect update
       getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
@@ -388,9 +412,14 @@ export default function BaristaPage() {
   };
 
   const handleRetryRefund = async (orderId: number) => {
+    if (refundOrder?.refundStatus === "UNKNOWN") {
+      alert("Đơn hàng đang ở trạng thái Đối soát (UNKNOWN). Tuyệt đối không được chuyển tiền lại ngay để tránh hoàn tiền trùng lặp cho khách hàng!");
+      return;
+    }
     setIsRefunding(true);
     try {
       await retryRefund(orderId, refundBank, refundAccount);
+      setRefundOrder(null);
       setNotice(`Đã đặt lại trạng thái hoàn tiền đơn #${orderId} về PENDING để thử lại.`);
       getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
     } catch (e: any) {
@@ -1441,149 +1470,326 @@ export default function BaristaPage() {
         </div>
       )}
 
-      {/* POPUP HOÀN TIỀN CHO KHÁCH (HIỆN MÃ QR CHUYỂN KHOẢN LẠI) */}
-      {refundOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl space-y-4">
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-[#eeede7] pb-3">
-              <div>
-                <h3 className="text-lg font-bold text-[#145332]">Hoàn tiền cho khách hàng</h3>
-                <p className="text-xs text-[#556358]">Đơn #{refundOrder.id} · {refundOrder.customer}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRefundOrder(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+      {/* POPUP HOÀN TIỀN CHO KHÁCH (THEO CHUẨN THIẾT KẾ TASK 5) */}
+      {refundOrder && (() => {
+        const isValidAccount = Boolean(
+          refundAccount &&
+          /^\d{6,19}$/.test(refundAccount.trim()) &&
+          refundAccount.trim() !== "00000000" &&
+          !refundAccount.toLowerCase().includes("file")
+        );
 
-            {/* Thông tin số tiền */}
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3.5 text-center">
-              <p className="text-xs text-red-600 font-semibold uppercase tracking-wider">Số tiền cần hoàn trả lại</p>
-              <p className="text-2xl font-black text-red-700 mt-1">{money(refundOrder.total)}</p>
-            </div>
+        const isFailed = refundOrder.refundStatus === "FAILED";
+        const isUnknown = refundOrder.refundStatus === "UNKNOWN";
 
-            {/* Thông tin tài khoản nhận lại tiền của khách */}
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-[#2c3d32] mb-1">Ngân hàng của khách:</label>
-                <select
-                  value={refundBank}
-                  onChange={(e) => setRefundBank(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 p-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#145332]"
-                >
-                  <option value="MB">MB Bank (Quân Đội)</option>
-                  <option value="VCB">Vietcombank</option>
-                  <option value="TCB">Techcombank</option>
-                  <option value="TPB">TPBank</option>
-                  <option value="VPB">VPBank</option>
-                  <option value="ACB">ACB</option>
-                  <option value="ICB">VietinBank</option>
-                  <option value="BIDV">BIDV</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-[#2c3d32] mb-1">Số tài khoản của khách:</label>
-                <input
-                  type="text"
-                  value={refundAccount}
-                  onChange={(e) => setRefundAccount(e.target.value)}
-                  placeholder="Nhập số tài khoản khách cấp (ví dụ: 0987654321)..."
-                  className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#145332]"
-                />
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs">
+            <div className="w-full max-w-md rounded-2xl bg-[#141414] border border-[#262626] text-white p-5 sm:p-6 shadow-2xl space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                    Hoàn tiền đơn #{refundOrder.id}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                      isFailed
+                        ? "bg-red-950/80 text-red-400 border-red-800"
+                        : isUnknown
+                          ? "bg-amber-950/80 text-amber-400 border-amber-800"
+                          : "bg-[#2d1804] text-[#f97316] border-[#9a3412]/60"
+                    }`}
+                  >
+                    {isFailed
+                      ? "Chuyển thất bại"
+                      : isUnknown
+                        ? "Đang đối soát"
+                        : "Chờ hoàn tiền"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRefundOrder(null)}
+                    className="text-neutral-400 hover:text-white text-lg font-bold cursor-pointer ml-1"
+                    aria-label="Đóng"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-[#2c3d32] mb-1">
-                  Mã giao dịch / Bằng chứng chuyển khoản <span className="text-red-500">*</span>:
+              {/* SỐ TIỀN CẦN HOÀN */}
+              <div className="text-center py-1">
+                <p className="text-[11px] font-bold tracking-widest uppercase text-neutral-400">
+                  SỐ TIỀN CẦN HOÀN
+                </p>
+                <p className="text-3xl font-black text-white mt-1 tracking-tight">
+                  {money(refundOrder.total)}
+                </p>
+              </div>
+
+              {/* 1. Thông tin khách đã cung cấp */}
+              <div className="space-y-2 border-t border-[#262626] pt-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    1. Thông tin khách đã cung cấp
+                  </h4>
+                  {!isEditingAccount ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAccount(true)}
+                      className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer"
+                    >
+                      Xác minh / Cập nhật STK
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingAccount(false)}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
+                    >
+                      ✓ Khóa lại
+                    </button>
+                  )}
+                </div>
+
+                {!isEditingAccount ? (
+                  <div className="space-y-1.5 rounded-xl bg-neutral-900/90 border border-neutral-800 p-3 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Ngân hàng</span>
+                      <span className="font-bold text-white">
+                        {BANK_NAMES[refundBank] || refundBank}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-400">Số tài khoản</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">
+                          {showFullAccount
+                            ? refundAccount
+                            : refundAccount
+                              ? `•••• ${refundAccount.slice(-4)}`
+                              : "(Chưa cung cấp)"}
+                        </span>
+                        {refundAccount && (
+                          <button
+                            type="button"
+                            onClick={() => setShowFullAccount(!showFullAccount)}
+                            className="text-[10px] text-neutral-400 hover:text-white underline cursor-pointer"
+                          >
+                            {showFullAccount ? "Ẩn" : "Hiện"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2 rounded-xl bg-neutral-900 border border-neutral-700 p-3 text-xs">
+                    <div>
+                      <label className="block text-neutral-400 mb-1">Ngân hàng thụ hưởng:</label>
+                      <select
+                        value={refundBank}
+                        onChange={(e) => setRefundBank(e.target.value)}
+                        className="w-full rounded-lg bg-neutral-800 border border-neutral-700 text-white p-2 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      >
+                        <option value="MB">MB Bank (Quân Đội)</option>
+                        <option value="VCB">Vietcombank</option>
+                        <option value="TCB">Techcombank</option>
+                        <option value="TPB">TPBank</option>
+                        <option value="VPB">VPBank</option>
+                        <option value="ACB">ACB</option>
+                        <option value="ICB">VietinBank</option>
+                        <option value="BIDV">BIDV</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-neutral-400 mb-1">Số tài khoản mới:</label>
+                      <input
+                        type="text"
+                        value={refundAccount}
+                        onChange={(e) => setRefundAccount(e.target.value)}
+                        placeholder="Nhập số tài khoản hợp lệ..."
+                        className="w-full rounded-lg bg-neutral-800 border border-neutral-700 text-white p-2 text-xs font-mono font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-neutral-500 italic">
+                  Chỉ đọc. Nếu thông tin sai, yêu cầu khách cập nhật và xác minh lại.
+                </p>
+              </div>
+
+              {/* 2. Chuyển khoản hoàn tiền */}
+              <div className="space-y-2 border-t border-[#262626] pt-3">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  2. Chuyển khoản hoàn tiền
+                </h4>
+                <p className="text-[11px] text-neutral-400 leading-relaxed">
+                  Hiển thị VietQR sau khi STK hợp lệ. Barista dùng ứng dụng ngân hàng để chuyển khoản.
+                </p>
+
+                {isValidAccount ? (
+                  <div className="flex flex-col items-center justify-center p-3.5 rounded-xl bg-neutral-900 border border-neutral-800">
+                    <img
+                      src={`https://img.vietqr.io/image/${refundBank}-${refundAccount.trim()}-compact2.png?amount=${refundOrder.total}&addInfo=Hoan%20tien%20don%20${refundOrder.id}`}
+                      alt="Mã VietQR hoàn tiền"
+                      className="w-44 h-44 object-contain rounded-xl bg-white p-1.5 shadow-md"
+                    />
+                    <p className="text-xs text-neutral-300 mt-2 font-mono text-center">
+                      Nội dung chuyển khoản: <strong className="text-emerald-400">Hoan tien don #{refundOrder.id}</strong>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 rounded-xl bg-neutral-900/60 border border-dashed border-neutral-800 text-center">
+                    <div className="text-2xl text-neutral-500 mb-1.5 font-mono">
+                      ⛶
+                    </div>
+                    <p className="text-xs font-semibold text-neutral-300">
+                      Vị trí mã VietQR của khách
+                    </p>
+                    <p className="text-[10px] text-neutral-500 mt-1 max-w-xs leading-normal">
+                      {refundAccount && refundAccount !== "00000000"
+                        ? `STK "${refundAccount}" không phải số tài khoản hợp lệ. Chặn tạo QR để đảm bảo an toàn.`
+                        : "Chưa có số tài khoản hợp lệ từ khách. Barista vui lòng liên hệ khách để bổ sung."}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Ghi nhận kết quả chuyển khoản */}
+              <div className="space-y-2.5 border-t border-[#262626] pt-3">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                  3. Ghi nhận kết quả chuyển khoản
+                </h4>
+
+                <div>
+                  <label className="block text-[11px] text-neutral-400 mb-1">
+                    Mã giao dịch ngân hàng
+                  </label>
+                  <input
+                    type="text"
+                    value={refundProof}
+                    onChange={(e) => setRefundProof(e.target.value)}
+                    placeholder="Nhập sau khi ngân hàng xác nhận thành công"
+                    className="w-full rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder:text-neutral-600 p-2.5 text-xs font-mono font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <label className="flex items-start gap-2 text-[11px] text-neutral-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isVerifiedWithBank}
+                    onChange={(e) => setIsVerifiedWithBank(e.target.checked)}
+                    className="mt-0.5 rounded border-neutral-700 bg-neutral-900 text-emerald-600 focus:ring-emerald-600 cursor-pointer"
+                  />
+                  <span className="leading-snug">
+                    Tôi đã đối chiếu lịch sử giao dịch trên App ngân hàng và xác nhận tiền đã trừ thành công.
+                  </span>
                 </label>
-                <input
-                  type="text"
-                  value={refundProof}
-                  onChange={(e) => setRefundProof(e.target.value)}
-                  placeholder="Nhập mã giao dịch ngân hàng (VD: FT24001928, MB987654...)"
-                  className="w-full rounded-xl border border-gray-300 p-2.5 text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#145332]"
-                  required
-                />
-                <p className="text-[10px] text-stone-500 mt-1">Bắt buộc nhập mã giao dịch thành công để đối soát và kích hoạt hoàn tất nghĩa vụ.</p>
-              </div>
 
-              {/* Mã QR VietQR tự động sinh cho Barista quét app ngân hàng */}
-              <div className="flex flex-col items-center justify-center p-3.5 rounded-xl bg-[#f8f9fa] border border-[#e9ecef]">
-                <p className="text-xs text-[#495057] mb-2 font-medium text-center">
-                  Barista mở App Ngân hàng trên điện thoại quét mã dưới đây để chuyển trả lại cho khách:
-                </p>
-                <img
-                  src={`https://img.vietqr.io/image/${refundBank}-${refundAccount || "00000000"}-compact2.png?amount=${refundOrder.total}&addInfo=Hoan%20tien%20don%20${refundOrder.id}`}
-                  alt="Mã VietQR hoàn tiền"
-                  className="w-44 h-44 object-contain rounded-xl shadow-xs border bg-white p-1"
-                />
-                <p className="text-[11px] text-[#6c757d] mt-2">
-                  Nội dung tự động: <b>Hoan tien don #{refundOrder.id}</b>
-                </p>
-              </div>
-            </div>
-
-            {/* Nút thao tác */}
-            <div className="space-y-2 pt-2">
-              <div className="flex gap-2">
                 <button
                   type="button"
-                  disabled={isRefunding || !refundProof.trim()}
+                  disabled={isRefunding || !refundProof.trim() || !isVerifiedWithBank}
                   onClick={() => handleConfirmRefund(refundOrder.id)}
-                  className="flex-1 rounded-xl bg-[#145332] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0f4328] transition cursor-pointer shadow-sm disabled:opacity-50"
+                  className="w-full rounded-xl bg-emerald-800 hover:bg-emerald-700 py-2.5 text-xs font-bold text-white transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                 >
-                  {isRefunding ? "Đang xử lý..." : "✓ Xác nhận chuyển thành công"}
+                  <span>✓</span>
+                  <span>{isRefunding ? "Đang xử lý..." : "Xác nhận đã hoàn tiền thành công"}</span>
                 </button>
               </div>
 
-              {/* Các thao tác đối soát & thất bại FAILED -> retry, UNKNOWN -> đối soát */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* Xử lý sự cố */}
+              <div className="space-y-2.5 border-t border-[#262626] pt-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-neutral-400">Gặp sự cố chuyển tiền?</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowTroubleshoot(!showTroubleshoot)}
+                    className="font-bold text-neutral-200 hover:text-white underline cursor-pointer"
+                  >
+                    {showTroubleshoot ? "Ẩn xử lý sự cố ▲" : "Xử lý sự cố"}
+                  </button>
+                </div>
+
+                {showTroubleshoot && (
+                  <div className="rounded-xl bg-neutral-900/90 border border-neutral-800 p-3 space-y-2.5 animate-in fade-in">
+                    <p className="text-[11px] font-bold text-neutral-300">
+                      Chọn thao tác xử lý sự cố chuyển tiền:
+                    </p>
+
+                    {isUnknown ? (
+                      <div className="p-3 rounded-lg bg-amber-950/40 border border-amber-800/80 text-xs text-amber-200 space-y-1.5">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                          <span>⚠️</span>
+                          <span>Đang trong diện đối soát ngân hàng (UNKNOWN)</span>
+                        </div>
+                        <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                          Hệ thống đã khóa nút chuyển lại (Retry) để ngăn ngừa chuyển tiền trùng lặp cho khách hàng.
+                          Vui lòng kiểm tra sao kê ngân hàng. Nếu xác nhận tiền đã trừ, hãy nhập mã giao dịch ở Mục 3 và xác nhận thành công.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <button
+                          type="button"
+                          disabled={isRefunding}
+                          onClick={() => handleFailRefund(refundOrder.id)}
+                          className="rounded-xl border border-red-900/70 bg-red-950/30 p-2.5 text-left text-red-300 hover:bg-red-950/60 transition cursor-pointer"
+                        >
+                          <div className="font-bold flex items-center gap-1">
+                            <span>⚠️</span>
+                            <span>Ngân hàng báo thất bại</span>
+                          </div>
+                          <p className="text-[10px] text-red-400/80 mt-1 leading-normal">
+                            Sai STK, tài khoản khóa. Tiền chưa chuyển đi. Cho phép cập nhật STK & thử lại.
+                          </p>
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isRefunding}
+                          onClick={() => handleHoldRefund(refundOrder.id)}
+                          className="rounded-xl border border-amber-900/70 bg-amber-950/30 p-2.5 text-left text-amber-300 hover:bg-amber-950/60 transition cursor-pointer"
+                        >
+                          <div className="font-bold flex items-center gap-1">
+                            <span>🔍</span>
+                            <span>Chưa rõ kết quả / Treo lệnh</span>
+                          </div>
+                          <p className="text-[10px] text-amber-400/80 mt-1 leading-normal">
+                            App mất mạng, treo lệnh, chưa rõ tiền đã chuyển hay chưa. Khóa chuyển lại để đối soát.
+                          </p>
+                        </button>
+                      </div>
+                    )}
+
+                    {isFailed && (
+                      <div className="pt-2 border-t border-neutral-800">
+                        <button
+                          type="button"
+                          disabled={isRefunding}
+                          onClick={() => handleRetryRefund(refundOrder.id)}
+                          className="w-full rounded-xl border border-blue-900/60 bg-blue-950/40 p-2 text-xs font-bold text-blue-300 hover:bg-blue-950/70 transition cursor-pointer text-center"
+                        >
+                          🔄 Xác nhận STK mới & Cho phép chuyển tiền lại (Retry)
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <button
                   type="button"
-                  disabled={isRefunding}
-                  onClick={() => handleFailRefund(refundOrder.id)}
-                  className="rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700 hover:bg-red-100 transition cursor-pointer disabled:opacity-50"
+                  onClick={() => setRefundOrder(null)}
+                  className="w-full py-2 rounded-xl border border-neutral-800 text-xs font-semibold text-neutral-400 hover:text-white hover:bg-neutral-900 transition cursor-pointer"
                 >
-                  ⚠️ Báo chuyển thất bại
-                </button>
-                <button
-                  type="button"
-                  disabled={isRefunding}
-                  onClick={() => handleHoldRefund(refundOrder.id)}
-                  className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-800 hover:bg-amber-100 transition cursor-pointer disabled:opacity-50"
-                >
-                  🔍 Báo treo / Đối soát
+                  Đóng
                 </button>
               </div>
-
-              {(refundOrder.refundStatus === "FAILED" || refundOrder.refundStatus === "UNKNOWN") && (
-                <button
-                  type="button"
-                  disabled={isRefunding}
-                  onClick={() => handleRetryRefund(refundOrder.id)}
-                  className="w-full rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition cursor-pointer disabled:opacity-50"
-                >
-                  🔄 Lưu STK mới & Đặt lại về chờ chuyển (Retry)
-                </button>
-              )}
-
-              <button
-                type="button"
-                disabled={isRefunding}
-                onClick={() => setRefundOrder(null)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
-              >
-                Đóng
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

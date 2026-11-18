@@ -1094,5 +1094,30 @@ describe('OrdersService', () => {
       expect(res.refundBank).toBe('TCB');
       expect(res.refundAccount).toBe('new456');
     });
+
+    it('retryRefund: chặn thử lại khi giao dịch đang ở trạng thái UNKNOWN (đang đối soát)', async () => {
+      const cancelledOrder = {
+        id: 112,
+        total: 55000,
+        status: OrderStatus.CANCELLED,
+        payments: [
+          {
+            id: 75,
+            status: 'SUCCESS',
+            amount: 55000,
+            refundRef: 'VIETQR:MB:123456:UNKNOWN:Napas nghẽn lệnh',
+          },
+        ],
+      };
+
+      prismaMock.order.findUnique.mockResolvedValue(cancelledOrder);
+
+      await expect(
+        service.retryRefund(112, mockUserBarista, {
+          refundBank: 'MB',
+          refundAccount: '123456',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 });
