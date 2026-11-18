@@ -11,6 +11,16 @@ import { ApiError } from "@/lib/api/client";
 const formatVnd = (amount: number) =>
   `${new Intl.NumberFormat("vi-VN").format(amount)} đ`;
 
+const statusTitle: Record<string, string> = {
+  PENDING: "Đang chờ thanh toán",
+  PAID: "Thanh toán thành công",
+  PREPARING: "Đơn hàng đang được pha chế",
+  READY: "Đồ uống đã sẵn sàng",
+  COMPLETED: "Đơn hàng đã hoàn tất",
+  PAYMENT_FAILED: "Thanh toán thất bại",
+  CANCELLED: "Đơn hàng đã hủy",
+};
+
 function OrderConfirmationContent() {
   const params = useParams<{ id: string }>();
   const orderId = Number(params.id);
@@ -52,16 +62,31 @@ function OrderConfirmationContent() {
     };
   }, [orderId]);
 
+  const isPaidStatus = Boolean(
+    order && ["PAID", "PREPARING", "READY", "COMPLETED"].includes(order.status)
+  );
+  const isPending = order?.status === "PENDING";
+
   return (
     <RequireAuth>
       <main className="mx-auto min-h-screen max-w-2xl px-4 py-12">
         <section className="rounded-2xl border border-gray-200 p-6 sm:p-8">
           <div className="text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-700">
-              ✓
-            </div>
+            {isPaidStatus ? (
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-700">
+                ✓
+              </div>
+            ) : isPending ? (
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-3xl text-amber-700">
+                ⏱
+              </div>
+            ) : (
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-3xl text-red-700">
+                ✕
+              </div>
+            )}
             <h1 className="mt-4 text-2xl font-bold text-[#183d2c]">
-              Thông tin đơn hàng
+              {order ? statusTitle[order.status] || "Thông tin đơn hàng" : "Thông tin đơn hàng"}
             </h1>
             <p className="mt-2 text-gray-600">
               Cảm ơn bạn đã đặt hàng tại BrewLite.
@@ -108,7 +133,13 @@ function OrderConfirmationContent() {
               </ul>
 
               <div className="mt-4 flex justify-between border-t border-gray-200 pt-4 text-lg font-bold">
-                <span>Tổng thanh toán</span>
+                <span>
+                  {order.status === "CANCELLED"
+                    ? "Giá trị đơn đã hủy"
+                    : isPaidStatus
+                      ? "Tổng đã thanh toán"
+                      : "Tổng tiền đơn hàng"}
+                </span>
                 <span>{formatVnd(order.total)}</span>
               </div>
 
@@ -118,9 +149,11 @@ function OrderConfirmationContent() {
                 </p>
               )}
 
-              <p className="mt-6 rounded-xl bg-amber-50 p-4 text-center font-medium text-amber-900">
-                Mời tới quầy lấy nước!
-              </p>
+              {order.status === "READY" && (
+                <p className="mt-6 rounded-xl bg-amber-50 p-4 text-center font-medium text-amber-900 animate-pulse">
+                  ☕ Mời tới quầy lấy nước!
+                </p>
+              )}
             </div>
           ) : null}
 

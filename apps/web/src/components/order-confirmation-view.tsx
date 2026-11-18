@@ -6,6 +6,16 @@ import { CancelOrder } from "@/components/cancel-order";
 import { ApiError, formatVND, getOrderByIdApi } from "@/lib/api";
 import { OrderResponse, OrderStatus } from "@/types/order";
 
+const statusTitle: Record<OrderStatus, string> = {
+  PENDING: "Đang chờ thanh toán",
+  PAID: "Thanh toán thành công",
+  PREPARING: "Đơn hàng đang được pha chế",
+  READY: "Đồ uống đã sẵn sàng",
+  COMPLETED: "Đơn hàng đã hoàn tất",
+  PAYMENT_FAILED: "Thanh toán thất bại",
+  CANCELLED: "Đơn hàng đã hủy",
+};
+
 const STATUS_BADGE_MAP: Record<
   OrderStatus,
   { label: string; className: string }
@@ -49,8 +59,8 @@ const SIMPLIFIED_STEPS = [
 function getSimplifiedStepIndex(status: string): number {
   if (status === "READY") return 1;
   if (status === "COMPLETED") return 2;
-  if (status === "CANCELLED" || status === "PAYMENT_FAILED") return -1;
-  return 0; // PAID, PREPARING, PENDING
+  if (status === "CANCELLED" || status === "PAYMENT_FAILED" || status === "PENDING") return -1;
+  return 0; // PAID, PREPARING
 }
 
 const ORDER_STEPS: OrderStatus[] = [
@@ -194,6 +204,8 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
     className: "bg-stone-100 text-stone-800 border-stone-300",
   };
   const currentStepIdx = getSimplifiedStepIndex(order.status);
+  const isPaidStatus = ["PAID", "PREPARING", "READY", "COMPLETED"].includes(order.status);
+  const isPending = order.status === "PENDING";
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col">
@@ -227,20 +239,43 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
 
 
-        {/* Thẻ xác nhận chính: Mã đơn, trạng thái PAID và dòng "Mời tới quầy lấy nước" */}
+        {/* Thẻ xác nhận chính: Mã đơn, trạng thái đơn hàng */}
         <section className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm text-center relative overflow-hidden">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl mx-auto mb-4 shadow-xs">
-            ✓
-          </div>
+          {/* Biểu tượng trạng thái: Chỉ hiện dấu ✓ màu xanh khi đã thanh toán thành công */}
+          {isPaidStatus ? (
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl mx-auto mb-4 shadow-xs">
+              ✓
+            </div>
+          ) : isPending ? (
+            <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-3xl mx-auto mb-4 shadow-xs">
+              ⏱
+            </div>
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-3xl mx-auto mb-4 shadow-xs">
+              ✕
+            </div>
+          )}
 
-          <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">
-            Xác nhận đơn hàng
+          <p
+            className={`text-xs font-bold uppercase tracking-widest ${
+              isPaidStatus
+                ? "text-emerald-700"
+                : isPending
+                  ? "text-amber-700"
+                  : "text-red-700"
+            }`}
+          >
+            {isPaidStatus
+              ? "Xác nhận đơn hàng"
+              : isPending
+                ? "Chờ thanh toán đơn hàng"
+                : "Trạng thái đơn hàng"}
           </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
-            {order.status === "CANCELLED" ? "Đơn hàng đã hủy" : "Đặt hàng thành công"}
+            {statusTitle[order.status] || "Thông tin đơn hàng"}
           </h1>
 
-          {/* Mã đơn & Trạng thái PAID */}
+          {/* Mã đơn & Trạng thái */}
           <div className="mt-5 inline-flex flex-wrap items-center justify-center gap-3 bg-stone-50 border border-stone-200 px-5 py-3 rounded-2xl">
             <div className="text-left">
               <span className="block text-[11px] uppercase tracking-wider text-stone-500 font-semibold">
@@ -265,19 +300,60 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
             </div>
           </div>
 
-          {/* Dòng chữ bắt buộc: "Mời tới quầy lấy nước" */}
-          {order.status !== "CANCELLED" && <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 max-w-md mx-auto">
-            <p className="text-lg font-extrabold text-amber-950 flex items-center justify-center gap-2">
-              <span>☕</span>
-              <span>Mời tới quầy lấy nước</span>
-            </p>
-            <p className="text-xs text-amber-800 mt-1">
-              Vui lòng đọc mã đơn <strong>{displayCode}</strong> cho Barista tại
-              quầy nhận đồ uống.
-            </p>
-          </div>
+          {/* Dòng chữ: "Mời tới quầy lấy nước" (Chỉ hiển thị khi đơn READY) */}
+          {order.status === "READY" && (
+            <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 max-w-md mx-auto animate-pulse">
+              <p className="text-lg font-extrabold text-amber-950 flex items-center justify-center gap-2">
+                <span>☕</span>
+                <span>Mời tới quầy lấy nước</span>
+              </p>
+              <p className="text-xs text-amber-800 mt-1">
+                Đồ uống đã pha xong! Vui lòng đọc mã đơn <strong>{displayCode}</strong> cho Barista tại quầy nhận đồ uống.
+              </p>
+            </div>
+          )}
 
-          }
+          {/* Hướng dẫn khi đang chờ thanh toán (PENDING) */}
+          {order.status === "PENDING" && (
+            <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 max-w-md mx-auto">
+              <p className="text-base font-extrabold text-amber-950 flex items-center justify-center gap-2">
+                <span>⏱</span>
+                <span>Đơn hàng đang chờ thanh toán</span>
+              </p>
+              <p className="text-xs text-amber-800 mt-1">
+                Vui lòng hoàn tất thanh toán để đơn hàng được chuyển vào quầy pha chế.
+              </p>
+              <div className="mt-3">
+                <Link
+                  href={`/payment?orderId=${order.id}`}
+                  className="inline-block px-5 py-2.5 rounded-xl bg-amber-800 text-white font-bold text-xs hover:bg-amber-900 transition-colors shadow-xs"
+                >
+                  Tiến hành thanh toán ngay →
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Hướng dẫn khi thanh toán thất bại (PAYMENT_FAILED) */}
+          {order.status === "PAYMENT_FAILED" && (
+            <div className="mt-6 p-4 rounded-2xl bg-red-50 border border-red-200 max-w-md mx-auto">
+              <p className="text-base font-extrabold text-red-950 flex items-center justify-center gap-2">
+                <span>⚠️</span>
+                <span>Thanh toán không thành công</span>
+              </p>
+              <p className="text-xs text-red-800 mt-1">
+                Giao dịch chưa hoàn tất hoặc bị từ chối. Quý khách có thể thử lại bằng phương thức khác.
+              </p>
+              <div className="mt-3">
+                <Link
+                  href={`/payment?orderId=${order.id}`}
+                  className="inline-block px-5 py-2.5 rounded-xl bg-red-800 text-white font-bold text-xs hover:bg-red-900 transition-colors shadow-xs"
+                >
+                  Thử lại thanh toán →
+                </Link>
+              </div>
+            </div>
+          )}
           {/* Tiến trình trạng thái đơn hàng (State Machine) */}
           {currentStepIdx !== -1 && (
             <div className="mt-7 pt-6 border-t border-stone-100">
@@ -441,7 +517,13 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
             ) : null}
 
             <div className="flex justify-between items-baseline pt-2 border-t border-stone-100">
-              <span className="font-bold text-stone-900">{order.status === "CANCELLED" ? "Giá trị đơn đã hủy" : "Tổng đã thanh toán"}</span>
+              <span className="font-bold text-stone-900">
+                {order.status === "CANCELLED"
+                  ? "Giá trị đơn đã hủy"
+                  : isPaidStatus
+                    ? "Tổng đã thanh toán"
+                    : "Tổng tiền đơn hàng"}
+              </span>
               <span className="text-xl font-extrabold text-amber-900">
                 {formatVND(order.total)}
               </span>
@@ -450,50 +532,119 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
         </section>
 
         {/* Thông tin giao dịch thanh toán (payments) */}
-        {order.payments && order.payments.length > 0 && (
+        {order.payments && order.payments.length > 0 ? (
           <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
             <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">
               Thông tin giao dịch thanh toán
             </h2>
             <div className="space-y-2.5">
-              {order.payments.map((p, idx) => (
-                <div
-                  key={p.id || idx}
-                  className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
-                >
-                  <div className="space-y-0.5">
-                    <div className="font-bold text-stone-900 flex items-center gap-2">
-                      <span>
-                        Phương thức:{" "}
-                        {p.method === "WALLET"
-                          ? "Ví điện tử (WALLET)"
-                          : "Thẻ ngân hàng (CARD)"}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded font-semibold ${
-                          p.status === "SUCCESS" && !p.refundedAt
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {p.refundedAt ? "Đã hoàn tiền" : p.status === "SUCCESS" ? "Đã thanh toán" : p.status === "PROCESSING" ? "Đang xử lý" : "Thanh toán thất bại"}
-                      </span>
+              {order.payments.map((p, idx) => {
+                const isSuccess = p.status === "SUCCESS";
+                const isPending =
+                  p.status === "PROCESSING" ||
+                  (p.status as string) === "PENDING";
+                const isRefunded = Boolean(p.refundedAt);
+
+                return (
+                  <div
+                    key={p.id || idx}
+                    className="p-3.5 rounded-xl bg-stone-50 border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="font-bold text-stone-900 flex items-center gap-2">
+                        <span>
+                          Phương thức:{" "}
+                          {p.method === "WALLET"
+                            ? "Ví điện tử (WALLET)"
+                            : p.method === "VNPAY"
+                              ? "Cổng VNPay Sandbox"
+                              : "Thẻ ngân hàng (CARD)"}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded font-semibold ${
+                            isRefunded
+                              ? "bg-purple-100 text-purple-800"
+                              : isSuccess
+                                ? "bg-emerald-100 text-emerald-800"
+                                : isPending
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {isRefunded
+                            ? "Đã hoàn tiền"
+                            : isSuccess
+                              ? "Đã thanh toán"
+                              : isPending
+                                ? "Chờ thanh toán"
+                                : "Thanh toán thất bại"}
+                        </span>
+                      </div>
+                      {p.refundedAt && (
+                        <p className="text-stone-600">
+                          Đã hoàn tiền {formatVND(p.refundedAmount ?? p.amount)} ·{" "}
+                          {new Date(p.refundedAt).toLocaleString("vi-VN")}
+                        </p>
+                      )}
+                      {p.providerRef && (
+                        <p className="text-stone-500 font-mono">
+                          Mã giao dịch: {p.providerRef}
+                        </p>
+                      )}
                     </div>
-                    {p.refundedAt && <p className="text-stone-600">Đã hoàn tiền {formatVND(p.refundedAmount ?? p.amount)} · {new Date(p.refundedAt).toLocaleString("vi-VN")}</p>}
-                    {p.providerRef && (
-                      <p className="text-stone-500 font-mono">
-                        Mã giao dịch: {p.providerRef}
-                      </p>
-                    )}
+                    <div className="font-bold text-sm text-stone-900">
+                      {formatVND(p.amount)}
+                    </div>
                   </div>
-                  <div className="font-bold text-sm text-stone-900">
-                    {formatVND(p.amount)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
-        )}
+        ) : order.status === "PENDING" ? (
+          <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">
+              Thông tin giao dịch thanh toán
+            </h2>
+            <div className="p-3.5 rounded-xl bg-amber-50/60 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="space-y-0.5">
+                <div className="font-bold text-stone-900 flex items-center gap-2">
+                  <span>Trạng thái:</span>
+                  <span className="px-2 py-0.5 rounded font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                    Chờ thanh toán
+                  </span>
+                </div>
+                <p className="text-stone-500">
+                  Chưa ghi nhận giao dịch thanh toán thành công cho đơn hàng này.
+                </p>
+              </div>
+              <div className="font-bold text-sm text-amber-900">
+                {formatVND(order.total)}
+              </div>
+            </div>
+          </section>
+        ) : order.status === "PAYMENT_FAILED" ? (
+          <section className="bg-white rounded-2xl border border-stone-200 p-6 shadow-sm">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-stone-700 mb-3">
+              Thông tin giao dịch thanh toán
+            </h2>
+            <div className="p-3.5 rounded-xl bg-red-50/60 border border-red-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <div className="space-y-0.5">
+                <div className="font-bold text-stone-900 flex items-center gap-2">
+                  <span>Trạng thái:</span>
+                  <span className="px-2 py-0.5 rounded font-semibold bg-red-100 text-red-800 border border-red-300">
+                    Thanh toán thất bại
+                  </span>
+                </div>
+                <p className="text-stone-500">
+                  Giao dịch thanh toán chưa thành công hoặc đã bị từ chối/hủy.
+                </p>
+              </div>
+              <div className="font-bold text-sm text-red-900">
+                {formatVND(order.total)}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {/* Các nút điều hướng cuối trang */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
