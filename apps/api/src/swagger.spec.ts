@@ -50,11 +50,9 @@ describe('Swagger Documentation & Postman Export', () => {
     expect(document).toBeDefined();
     expect(document.paths).toBeDefined();
 
-    // Verify paths count
     const paths = Object.keys(document.paths);
     expect(paths.length).toBeGreaterThan(15);
 
-    // Save swagger openapi & postman collection to apps/api/postman
     const apiPostmanDir = path.resolve(process.cwd(), 'postman');
     if (!fs.existsSync(apiPostmanDir)) {
       fs.mkdirSync(apiPostmanDir, { recursive: true });
@@ -64,7 +62,7 @@ describe('Swagger Documentation & Postman Export', () => {
     fs.writeFileSync(path.join(apiPostmanDir, 'brewlite-api.swagger.json'), swaggerJsonContent, 'utf-8');
     console.log(`Saved OpenAPI JSON to apps/api/postman/`);
 
-    // Generate Postman Collection v2.1
+    // Generate 1:1 Postman Collection matching Swagger UI
     const postmanCollection = generatePostmanCollection(document);
     const postmanJsonContent = JSON.stringify(postmanCollection, null, 2);
     fs.writeFileSync(path.join(apiPostmanDir, 'BrewLite_API.postman_collection.json'), postmanJsonContent, 'utf-8');
@@ -112,7 +110,7 @@ function generatePostmanCollection(openapi: any) {
     info: {
       name: 'BrewLite API - Postman Collection',
       description:
-        'Bộ sưu tập đầy đủ 34 API cho dự án BrewLite A2. Hỗ trợ biến môi trường baseUrl, tự động lưu JWT token khi đăng nhập và tự sinh idempotency-key.',
+        'Bộ sưu tập 34 API chuẩn 1:1 theo Swagger UI BrewLite A2. Hỗ trợ biến môi trường baseUrl, tự động lưu JWT token khi đăng nhập và tự sinh idempotency-key.',
       schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
     },
     variable: [
@@ -130,16 +128,70 @@ function generatePostmanCollection(openapi: any) {
     item: [],
   };
 
+  const TAG_ORDER = [
+    'Auth',
+    'Products',
+    'Toppings',
+    'Ingredients',
+    'Orders',
+    'Payments',
+    'Promotions',
+    'Health',
+    'App',
+  ];
+
+  const TAG_META: Record<string, { title: string; desc: string }> = {
+    Auth: {
+      title: '1. Auth',
+      desc: 'Đăng ký, đăng nhập và xác thực người dùng',
+    },
+    Products: {
+      title: '2. Products',
+      desc: 'Quản lý danh mục thực đơn và công thức pha chế sản phẩm',
+    },
+    Toppings: {
+      title: '3. Toppings',
+      desc: 'Quản lý danh sách và định lượng nguyên liệu topping',
+    },
+    Ingredients: {
+      title: '4. Ingredients',
+      desc: 'Quản lý kho nguyên vật liệu, cảnh báo tồn kho và lịch sử biến động',
+    },
+    Orders: {
+      title: '5. Orders',
+      desc: 'Đặt hàng, xem danh sách, cập nhật trạng thái đơn và xử lý hoàn tiền',
+    },
+    Payments: {
+      title: '6. Payments',
+      desc: 'Thanh toán trực tiếp, cổng thanh toán điện tử VNPay và hoàn tất giả lập',
+    },
+    Promotions: {
+      title: '7. Promotions',
+      desc: 'Kiểm tra và áp dụng mã voucher giảm giá',
+    },
+    Health: {
+      title: '8. Health',
+      desc: 'Kiểm tra trạng thái máy chủ và kết nối CSDL (Health Check)',
+    },
+    App: {
+      title: '9. App',
+      desc: 'Kiểm tra hoạt động dịch vụ gốc (Root API)',
+    },
+  };
+
   const tagGroups: Record<string, any[]> = {};
+  for (const tag of TAG_ORDER) {
+    tagGroups[tag] = [];
+  }
 
   for (const [routePath, methods] of Object.entries<any>(openapi.paths)) {
     for (const [httpMethod, op] of Object.entries<any>(methods)) {
-      const tag = op.tags?.[0] || 'Default';
+      const tag = op.tags?.[0] || 'App';
       if (!tagGroups[tag]) {
         tagGroups[tag] = [];
       }
 
-      // Convert path `/api/products/:id` or `/products/{id}` to Postman `{{baseUrl}}/products/:id`
+      // Convert Swagger route `/api/products/{id}` to Postman `{{baseUrl}}/products/:id`
       let cleanPath = routePath.replace(/^\/api\//, '').replace(/^\//, '');
       const pathSegments = cleanPath.split('/').map((seg) => {
         if (seg.startsWith('{') && seg.endsWith('}')) {
@@ -185,16 +237,22 @@ function generatePostmanCollection(openapi: any) {
         },
       ];
 
-      // Security (Bearer Token)
+      // Native Postman Auth (Bearer lock)
       const hasBearer = op.security && op.security.some((s: any) => 'bearer' in s);
-      if (hasBearer) {
-        headers.push({
-          key: 'Authorization',
-          value: 'Bearer {{accessToken}}',
-          type: 'text',
-          description: 'Access token tự động cập nhật sau khi gọi Auth Login',
-        });
-      }
+      const authConfig: any = hasBearer
+        ? {
+            type: 'bearer',
+            bearer: [
+              {
+                key: 'token',
+                value: '{{accessToken}}',
+                type: 'string',
+              },
+            ],
+          }
+        : {
+            type: 'noauth',
+          };
 
       // Idempotency-key header if required
       if (routePath.includes('payments') || routePath.includes('orders')) {
@@ -212,7 +270,6 @@ function generatePostmanCollection(openapi: any) {
       if (['post', 'put', 'patch'].includes(httpMethod.toLowerCase())) {
         let sampleBody: any = {};
 
-        // Custom samples for key endpoints
         if (routePath.includes('auth/login')) {
           sampleBody = {
             username: 'customer1',
@@ -239,18 +296,40 @@ function generatePostmanCollection(openapi: any) {
             ],
             notes: 'Ít đường, nhiều đá',
           };
+        } else if (routePath.includes('orders') && routePath.includes('status')) {
+          sampleBody = { status: 'PREPARING' };
         } else if (routePath.includes('payments/vnpay/create-url')) {
           sampleBody = { orderId: 1 };
         } else if (routePath.includes('payments/vnpay/simulate-complete')) {
           sampleBody = { orderId: 1 };
+        } else if (routePath === '/api/payments' || routePath === '/payments') {
+          sampleBody = {
+            orderId: 1,
+            method: 'WALLET',
+            mockResult: 'SUCCESS',
+          };
         } else if (routePath.includes('promotions/validate')) {
           sampleBody = { code: 'CHAOBANMOI', orderTotal: 50000 };
+        } else if (routePath.includes('recipe') && httpMethod.toLowerCase() === 'put') {
+          sampleBody = {
+            items: [
+              {
+                ingredientId: 1,
+                quantity: 18,
+              },
+            ],
+          };
         } else if (routePath.includes('ingredients') && httpMethod.toLowerCase() === 'post') {
           sampleBody = {
             name: 'Cà phê Robusta Đắk Lắk',
             unit: 'gram',
             currentStock: 1000,
             safetyStock: 200,
+          };
+        } else if (routePath.includes('ingredients') && httpMethod.toLowerCase() === 'patch') {
+          sampleBody = {
+            name: 'Cà phê Robusta Đắk Lắk',
+            safetyStock: 250,
           };
         } else if (routePath.includes('stock')) {
           sampleBody = { quantity: 500, reason: 'Nhập kho đầu ca' };
@@ -303,10 +382,17 @@ function generatePostmanCollection(openapi: any) {
         });
       }
 
+      // Format request name matching Swagger UI: [Route Path] - [Summary]
+      const fullDisplayRoute = routePath.startsWith('/') ? routePath : `/${routePath}`;
+      const requestName = op.summary
+        ? `${fullDisplayRoute} ${op.summary}`
+        : fullDisplayRoute;
+
       const requestItem: any = {
-        name: `${httpMethod.toUpperCase()} ${op.summary || cleanPath}`,
+        name: requestName,
         request: {
           method: httpMethod.toUpperCase(),
+          auth: authConfig,
           header: headers,
           url: urlObj,
           description: op.description || op.summary || '',
@@ -325,12 +411,16 @@ function generatePostmanCollection(openapi: any) {
     }
   }
 
-  // Convert tag groups into Postman folders
-  for (const [tag, items] of Object.entries(tagGroups)) {
-    collection.item.push({
-      name: `${tag} Module`,
-      item: items,
-    });
+  // Convert tag groups into Postman folders with exact metadata
+  for (const tag of TAG_ORDER) {
+    const items = tagGroups[tag];
+    if (items && items.length > 0) {
+      const meta = TAG_META[tag] || { title: tag, desc: '' };
+      collection.item.push({
+        name: `${meta.title} (${meta.desc})`,
+        item: items,
+      });
+    }
   }
 
   return collection;
