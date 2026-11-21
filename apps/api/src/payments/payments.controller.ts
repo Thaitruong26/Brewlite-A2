@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiHeader,
   ApiOperation,
   ApiTags,
@@ -23,7 +24,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 
-@ApiTags('payments')
+@ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
   constructor(
@@ -53,6 +54,15 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Tạo URL thanh toán VNPay Sandbox (ADR-004)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        orderId: { type: 'number', example: 10, description: 'ID của đơn hàng cần thanh toán' },
+      },
+      required: ['orderId'],
+    },
+  })
   async createVnpayUrl(
     @Body('orderId') orderId: number,
     @Req() req: Request,
@@ -76,6 +86,18 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Tạo query callback ký HMAC-SHA512 từ Simulator (Chỉ dành cho môi trường thử nghiệm)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        orderId: { type: 'number', example: 10 },
+        txnRef: { type: 'string', example: '10_1700000000' },
+        amount: { type: 'number', example: 5000000 },
+        responseCode: { type: 'string', example: '00', default: '00' },
+      },
+      required: ['orderId', 'txnRef', 'amount'],
+    },
+  })
   simulateComplete(
     @Body('orderId') orderId: number,
     @Body('txnRef') txnRef: string,
