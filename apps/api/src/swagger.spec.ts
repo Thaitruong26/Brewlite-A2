@@ -54,27 +54,21 @@ describe('Swagger Documentation & Postman Export', () => {
     const paths = Object.keys(document.paths);
     expect(paths.length).toBeGreaterThan(15);
 
-    // Save swagger openapi file
-    const rootDocsDir = path.resolve(process.cwd(), '../../docs');
+    // Save swagger openapi & postman collection to apps/api/postman
     const apiPostmanDir = path.resolve(process.cwd(), 'postman');
-    if (!fs.existsSync(rootDocsDir)) {
-      fs.mkdirSync(rootDocsDir, { recursive: true });
-    }
     if (!fs.existsSync(apiPostmanDir)) {
       fs.mkdirSync(apiPostmanDir, { recursive: true });
     }
 
     const swaggerJsonContent = JSON.stringify(document, null, 2);
-    fs.writeFileSync(path.join(rootDocsDir, 'brewlite-api.swagger.json'), swaggerJsonContent, 'utf-8');
     fs.writeFileSync(path.join(apiPostmanDir, 'brewlite-api.swagger.json'), swaggerJsonContent, 'utf-8');
-    console.log(`Saved OpenAPI JSON to root docs/ and apps/api/postman/`);
+    console.log(`Saved OpenAPI JSON to apps/api/postman/`);
 
     // Generate Postman Collection v2.1
     const postmanCollection = generatePostmanCollection(document);
     const postmanJsonContent = JSON.stringify(postmanCollection, null, 2);
-    fs.writeFileSync(path.join(rootDocsDir, 'BrewLite_API.postman_collection.json'), postmanJsonContent, 'utf-8');
     fs.writeFileSync(path.join(apiPostmanDir, 'BrewLite_API.postman_collection.json'), postmanJsonContent, 'utf-8');
-    console.log(`Saved Postman Collection to root docs/ and apps/api/postman/`);
+    console.log(`Saved Postman Collection to apps/api/postman/`);
 
     // Generate Environments
     const localEnv = {
