@@ -56,19 +56,58 @@ describe('Swagger Documentation & Postman Export', () => {
 
     // Save swagger openapi file
     const rootDocsDir = path.resolve(process.cwd(), '../../docs');
+    const apiPostmanDir = path.resolve(process.cwd(), 'postman');
     if (!fs.existsSync(rootDocsDir)) {
       fs.mkdirSync(rootDocsDir, { recursive: true });
     }
+    if (!fs.existsSync(apiPostmanDir)) {
+      fs.mkdirSync(apiPostmanDir, { recursive: true });
+    }
 
-    const swaggerPath = path.join(rootDocsDir, 'brewlite-api.swagger.json');
-    fs.writeFileSync(swaggerPath, JSON.stringify(document, null, 2), 'utf-8');
-    console.log(`Saved OpenAPI JSON to: ${swaggerPath}`);
+    const swaggerJsonContent = JSON.stringify(document, null, 2);
+    fs.writeFileSync(path.join(rootDocsDir, 'brewlite-api.swagger.json'), swaggerJsonContent, 'utf-8');
+    fs.writeFileSync(path.join(apiPostmanDir, 'brewlite-api.swagger.json'), swaggerJsonContent, 'utf-8');
+    console.log(`Saved OpenAPI JSON to root docs/ and apps/api/postman/`);
 
     // Generate Postman Collection v2.1
     const postmanCollection = generatePostmanCollection(document);
-    const postmanPath = path.join(rootDocsDir, 'BrewLite_API.postman_collection.json');
-    fs.writeFileSync(postmanPath, JSON.stringify(postmanCollection, null, 2), 'utf-8');
-    console.log(`Saved Postman Collection to: ${postmanPath}`);
+    const postmanJsonContent = JSON.stringify(postmanCollection, null, 2);
+    fs.writeFileSync(path.join(rootDocsDir, 'BrewLite_API.postman_collection.json'), postmanJsonContent, 'utf-8');
+    fs.writeFileSync(path.join(apiPostmanDir, 'BrewLite_API.postman_collection.json'), postmanJsonContent, 'utf-8');
+    console.log(`Saved Postman Collection to root docs/ and apps/api/postman/`);
+
+    // Generate Environments
+    const localEnv = {
+      id: 'brewlite-local-environment',
+      name: 'BrewLite Local',
+      values: [
+        { key: 'baseUrl', value: 'http://localhost:4000/api', enabled: true },
+        { key: 'accessToken', value: '', enabled: true },
+        { key: 'currentOrderId', value: '1', enabled: true },
+      ],
+      _postman_variable_scope: 'environment',
+    };
+    const prodEnv = {
+      id: 'brewlite-production-environment',
+      name: 'BrewLite Production (Render)',
+      values: [
+        { key: 'baseUrl', value: 'https://brewlite-a2-api.onrender.com/api', enabled: true },
+        { key: 'accessToken', value: '', enabled: true },
+        { key: 'currentOrderId', value: '1', enabled: true },
+      ],
+      _postman_variable_scope: 'environment',
+    };
+    fs.writeFileSync(
+      path.join(apiPostmanDir, 'BrewLite_Local.postman_environment.json'),
+      JSON.stringify(localEnv, null, 2),
+      'utf-8',
+    );
+    fs.writeFileSync(
+      path.join(apiPostmanDir, 'BrewLite_Production.postman_environment.json'),
+      JSON.stringify(prodEnv, null, 2),
+      'utf-8',
+    );
+    console.log(`Saved Postman Environments to apps/api/postman/`);
 
     await app.close();
   });
