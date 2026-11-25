@@ -360,20 +360,20 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
           };
         } else if (routePath.includes('ingredients') && httpMethod.toLowerCase() === 'post') {
           sampleBody = {
-            name: 'Cà phê Robusta Đắk Lắk',
-            unit: 'gram',
-            currentStock: 1000,
-            safetyStock: 200,
+            name: 'Sữa đặc Phương Nam',
+            unit: 'G',
+            stock: 1000,
+            lowThreshold: 200,
           };
         } else if (routePath.includes('ingredients') && httpMethod.toLowerCase() === 'patch') {
           sampleBody = {
-            name: 'Cà phê Robusta Đắk Lắk',
-            safetyStock: 250,
+            name: 'Sữa đặc Phương Nam Cao Cấp',
+            lowThreshold: 250,
           };
         } else if (routePath.includes('stock')) {
           sampleBody = { quantity: 500, note: 'Nhập thêm nguyên liệu tại quầy Barista' };
         } else if (routePath.includes('adjust')) {
-          sampleBody = { newStock: 1200, reason: 'Kiểm kê định kỳ' };
+          sampleBody = { actualStock: 1200, reason: 'Kiểm kê định kỳ cuối ngày' };
         } else if (routePath.includes('cancel')) {
           sampleBody = {
             reason: 'Khách đổi ý không muốn uống nữa',

@@ -558,7 +558,7 @@
             "description": "Tạo mới nguyên liệu (Barista)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Cà phê Robusta Đắk Lắk\",\n  \"unit\": \"gram\",\n  \"currentStock\": 1000,\n  \"safetyStock\": 200\n}",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam\",\n  \"unit\": \"G\",\n  \"stock\": 1000,\n  \"lowThreshold\": 200\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -609,7 +609,7 @@
             "description": "Cập nhật thông tin nguyên liệu (Barista)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Cà phê Robusta Đắk Lắk\",\n  \"safetyStock\": 250\n}",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam Cao Cấp\",\n  \"lowThreshold\": 250\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -654,7 +654,7 @@
             "description": "Nhập thêm tồn kho nguyên liệu (Barista)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Cà phê Robusta Đắk Lắk\",\n  \"unit\": \"gram\",\n  \"currentStock\": 1000,\n  \"safetyStock\": 200\n}",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam\",\n  \"unit\": \"G\",\n  \"stock\": 1000,\n  \"lowThreshold\": 200\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -706,7 +706,7 @@
             "description": "Kiểm kê hoặc ghi nhận hao hụt nguyên liệu (Barista)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Cà phê Robusta Đắk Lắk\",\n  \"unit\": \"gram\",\n  \"currentStock\": 1000,\n  \"safetyStock\": 200\n}",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam\",\n  \"unit\": \"G\",\n  \"stock\": 1000,\n  \"lowThreshold\": 200\n}",
               "options": {
                 "raw": {
                   "language": "json"
