@@ -71,9 +71,9 @@ describe('Swagger Documentation & Postman Export', () => {
     // Generate Environments
     const localEnv = {
       id: 'brewlite-local-environment',
-      name: 'BrewLite Local',
+      name: 'BrewLite Local (Docker Port 4001)',
       values: [
-        { key: 'baseUrl', value: 'http://localhost:4000/api', enabled: true },
+        { key: 'baseUrl', value: 'http://localhost:4001/api', enabled: true },
         { key: 'accessToken', value: '', enabled: true },
         { key: 'currentOrderId', value: '1', enabled: true },
       ],
@@ -102,7 +102,7 @@ describe('Swagger Documentation & Postman Export', () => {
     console.log(`Saved Postman Environments to apps/api/postman/`);
 
     await app.close();
-  });
+  }, 30000);
 });
 
 function generatePostmanCollection(openapi: any) {
@@ -116,7 +116,7 @@ function generatePostmanCollection(openapi: any) {
     variable: [
       {
         key: 'baseUrl',
-        value: 'http://localhost:4000/api',
+        value: 'http://localhost:4001/api',
         type: 'string',
       },
       {
