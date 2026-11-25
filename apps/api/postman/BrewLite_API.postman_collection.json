@@ -819,7 +819,7 @@
             "description": "Tạo đơn ở trạng thái PENDING, server tự tính giá bằng PricingService, giữ hàng bằng optimistic locking (Product.version).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderType\": \"DINE_IN\",\n  \"tableNumber\": \"B01\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"sizeId\": 1,\n      \"quantity\": 1,\n      \"toppingIds\": [\n        1\n      ]\n    }\n  ],\n  \"notes\": \"Ít đường, nhiều đá\"\n}",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"size\": \"M\",\n      \"quantity\": 1,\n      \"toppingIds\": [\n        1\n      ],\n      \"note\": \"Ít đường, nhiều đá\"\n    }\n  ],\n  \"promoCode\": \"BREW10\",\n  \"usePoints\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1052,7 +1052,7 @@
             "description": "Chủ đơn hoặc barista hủy đơn: hoàn lại tồn kho, hoàn usedCount mã giảm giá, thu hồi điểm thưởng. Ghi nhận tài khoản ngân hàng để Barista hoàn tiền VietQR.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderType\": \"DINE_IN\",\n  \"tableNumber\": \"B01\",\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"sizeId\": 1,\n      \"quantity\": 1,\n      \"toppingIds\": [\n        1\n      ]\n    }\n  ],\n  \"notes\": \"Ít đường, nhiều đá\"\n}",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": 1,\n      \"size\": \"M\",\n      \"quantity\": 1,\n      \"toppingIds\": [\n        1\n      ],\n      \"note\": \"Ít đường, nhiều đá\"\n    }\n  ],\n  \"promoCode\": \"BREW10\",\n  \"usePoints\": false\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1111,7 +1111,7 @@
             "description": "Chỉ nhân viên Barista mới có quyền xác nhận đã hoàn tất giao dịch chuyển tiền VietQR cho đơn hủy.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"transactionCode\": \"BANK_TX_987654\"\n}",
+              "raw": "{\n  \"refundRef\": \"FT2401928374\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1170,7 +1170,7 @@
             "description": "Đánh dấu quy trình hoàn tiền thất bại với lý do cụ thể, chuyển sang FAILED để xử lý lại.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Sai số tài khoản hoặc ngân hàng bảo trì\"\n}",
+              "raw": "{\n  \"reason\": \"Tài khoản người nhận không tồn tại hoặc bị đóng\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1229,7 +1229,7 @@
             "description": "Treo giao dịch hoàn tiền khi trạng thái ngân hàng chưa rõ ràng để đối soát trước khi hoàn tất.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Giao dịch đang xử lý / Nghi vấn đối soát\"\n}",
+              "raw": "{\n  \"note\": \"Lệnh chuyển khoản đang xử lý tại Napas, chờ đối soát\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1288,7 +1288,7 @@
             "description": "Cho phép Barista thử lại giao dịch hoàn tiền, có thể cập nhật thông tin tài khoản/ngân hàng nếu khách cung cấp lại.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"reason\": \"Đã xác minh lại STK hợp lệ\"\n}",
+              "raw": "{\n  \"refundBank\": \"VCB\",\n  \"refundAccount\": \"0123456789\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

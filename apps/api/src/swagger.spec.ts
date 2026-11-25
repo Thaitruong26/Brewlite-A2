@@ -284,17 +284,17 @@ function generatePostmanCollection(openapi: any) {
           };
         } else if (routePath.includes('orders') && httpMethod.toLowerCase() === 'post') {
           sampleBody = {
-            orderType: 'DINE_IN',
-            tableNumber: 'B01',
             items: [
               {
                 productId: 1,
-                sizeId: 1,
+                size: 'M',
                 quantity: 1,
                 toppingIds: [1],
+                note: 'Ít đường, nhiều đá',
               },
             ],
-            notes: 'Ít đường, nhiều đá',
+            promoCode: 'BREW10',
+            usePoints: false,
           };
         } else if (routePath.includes('orders') && routePath.includes('status')) {
           sampleBody = { status: 'PREPARING' };
@@ -337,19 +337,18 @@ function generatePostmanCollection(openapi: any) {
           sampleBody = { newStock: 1200, reason: 'Kiểm kê định kỳ' };
         } else if (routePath.includes('cancel')) {
           sampleBody = {
-            reason: 'Đổi ý',
-            bankCode: '970436',
-            accountNumber: '123456789',
-            accountHolder: 'NGUYEN VAN A',
+            reason: 'Khách đổi ý không muốn uống nữa',
+            refundBank: 'MB',
+            refundAccount: '0987654321',
           };
         } else if (routePath.includes('confirm-refund')) {
-          sampleBody = { transactionCode: 'BANK_TX_987654' };
+          sampleBody = { refundRef: 'FT2401928374' };
         } else if (routePath.includes('fail-refund')) {
-          sampleBody = { reason: 'Sai số tài khoản hoặc ngân hàng bảo trì' };
+          sampleBody = { reason: 'Tài khoản người nhận không tồn tại hoặc bị đóng' };
         } else if (routePath.includes('hold-refund')) {
-          sampleBody = { reason: 'Giao dịch đang xử lý / Nghi vấn đối soát' };
+          sampleBody = { note: 'Lệnh chuyển khoản đang xử lý tại Napas, chờ đối soát' };
         } else if (routePath.includes('retry-refund')) {
-          sampleBody = { reason: 'Đã xác minh lại STK hợp lệ' };
+          sampleBody = { refundBank: 'VCB', refundAccount: '0123456789' };
         }
 
         body = {
