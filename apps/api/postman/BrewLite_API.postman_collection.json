@@ -11,8 +11,23 @@
       "type": "string"
     },
     {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "baristaToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "accessToken",
       "value": "",
+      "type": "string"
+    },
+    {
+      "key": "currentOrderId",
+      "value": "1",
       "type": "string"
     }
   ],
@@ -59,7 +74,7 @@
           "response": []
         },
         {
-          "name": "/api/auth/login Đăng nhập, trả về JWT access_token",
+          "name": "/api/auth/login (1. Đăng nhập Khách - Lưu customerToken)",
           "request": {
             "method": "POST",
             "auth": {
@@ -83,7 +98,61 @@
               ],
               "variable": []
             },
-            "description": "Đăng nhập, trả về JWT access_token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@brewlite.com\",\n  \"password\": \"Demo@1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Đăng nhập bằng tài khoản Khách hàng và tự động lưu vào biến {{customerToken}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "const token = response.access_token || response.accessToken;",
+                  "if (token) {",
+                  "    pm.collectionVariables.set(\"customerToken\", token);",
+                  "    pm.environment.set(\"customerToken\", token);",
+                  "    console.log(\"Đã lưu customerToken thành công!\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "/api/auth/login (2. Đăng nhập Barista - Lưu baristaToken)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "variable": []
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"barista@brewlite.com\",\n  \"password\": \"Barista@123\"\n}",
@@ -92,9 +161,9 @@
                   "language": "json"
                 }
               }
-            }
+            },
+            "description": "Đăng nhập bằng tài khoản Barista và tự động lưu vào biến {{baristaToken}}"
           },
-          "response": [],
           "event": [
             {
               "listen": "test",
@@ -102,15 +171,17 @@
                 "type": "text/javascript",
                 "exec": [
                   "const response = pm.response.json();",
-                  "if (response.access_token) {",
-                  "    pm.collectionVariables.set(\"accessToken\", response.access_token);",
-                  "    pm.environment.set(\"accessToken\", response.access_token);",
-                  "    console.log(\"Đã tự động lưu access_token vào Postman Variable!\");",
+                  "const token = response.access_token || response.accessToken;",
+                  "if (token) {",
+                  "    pm.collectionVariables.set(\"baristaToken\", token);",
+                  "    pm.environment.set(\"baristaToken\", token);",
+                  "    console.log(\"Đã lưu baristaToken thành công!\");",
                   "}"
                 ]
               }
             }
-          ]
+          ],
+          "response": []
         },
         {
           "name": "/api/auth/me Lấy thông tin người dùng hiện tại",
@@ -121,7 +192,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -251,7 +322,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -294,7 +365,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -379,7 +450,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -422,7 +493,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -533,7 +604,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -577,7 +648,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -673,7 +744,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -725,7 +796,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -787,7 +858,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -827,7 +898,23 @@
               }
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "if (response && response.id) {",
+                  "    pm.collectionVariables.set(\"currentOrderId\", String(response.id));",
+                  "    pm.environment.set(\"currentOrderId\", String(response.id));",
+                  "    console.log(\"Đã tự động lưu currentOrderId =\", response.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "/api/orders Hàng đợi đơn của quán (Mở rộng Barista - Mục 6.15)",
@@ -838,7 +925,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -900,7 +987,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -963,7 +1050,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -994,7 +1081,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1012,7 +1099,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -1044,7 +1131,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1071,7 +1158,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -1103,7 +1190,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1130,7 +1217,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -1162,7 +1249,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1189,7 +1276,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -1221,7 +1308,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1248,7 +1335,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -1280,7 +1367,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1307,7 +1394,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{baristaToken}}",
                   "type": "string"
                 }
               ]
@@ -1339,7 +1426,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "1",
+                  "value": "{{currentOrderId}}",
                   "description": "ID đơn hàng"
                 }
               ]
@@ -1371,7 +1458,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -1422,7 +1509,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]
@@ -1475,7 +1562,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{accessToken}}",
+                  "value": "{{customerToken}}",
                   "type": "string"
                 }
               ]

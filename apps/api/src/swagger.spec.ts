@@ -74,12 +74,14 @@ describe('Swagger Documentation & Postman Export', () => {
     fs.writeFileSync(path.join(apiPostmanDir, 'BrewLite_Frontend_API.postman_collection.json'), frontendJsonContent, 'utf-8');
     console.log(`Saved Frontend-Only Postman Collection to apps/api/postman/`);
 
-    // Generate Environments
+    // Generate Environments with dual tokens (Customer & Barista)
     const localEnv = {
       id: 'brewlite-local-environment',
       name: 'BrewLite Local (Docker Port 4001)',
       values: [
         { key: 'baseUrl', value: 'http://localhost:4001/api', enabled: true },
+        { key: 'customerToken', value: '', enabled: true },
+        { key: 'baristaToken', value: '', enabled: true },
         { key: 'accessToken', value: '', enabled: true },
         { key: 'currentOrderId', value: '1', enabled: true },
       ],
@@ -90,6 +92,8 @@ describe('Swagger Documentation & Postman Export', () => {
       name: 'BrewLite Production (Render)',
       values: [
         { key: 'baseUrl', value: 'https://brewlite-a2-api.onrender.com/api', enabled: true },
+        { key: 'customerToken', value: '', enabled: true },
+        { key: 'baristaToken', value: '', enabled: true },
         { key: 'accessToken', value: '', enabled: true },
         { key: 'currentOrderId', value: '1', enabled: true },
       ],
@@ -155,8 +159,23 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
         type: 'string',
       },
       {
+        key: 'customerToken',
+        value: '',
+        type: 'string',
+      },
+      {
+        key: 'baristaToken',
+        value: '',
+        type: 'string',
+      },
+      {
         key: 'accessToken',
         value: '',
+        type: 'string',
+      },
+      {
+        key: 'currentOrderId',
+        value: '1',
         type: 'string',
       },
     ],
@@ -250,9 +269,15 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
       // Path variables
       const pathParams = op.parameters?.filter((p: any) => p.in === 'path') || [];
       for (const p of pathParams) {
+        const defaultVal =
+          routePath.includes('/orders/') && p.name === 'id'
+            ? '{{currentOrderId}}'
+            : p.example
+              ? String(p.example)
+              : '1';
         urlObj.variable.push({
           key: p.name,
-          value: p.example ? String(p.example) : '1',
+          value: defaultVal,
           description: p.description || '',
         });
       }
@@ -277,7 +302,14 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
         },
       ];
 
-      // Native Postman Auth (Bearer lock)
+      // Native Postman Auth (Bearer lock) — Dual token support (baristaToken vs customerToken)
+      const isBaristaRoute =
+        routePath.includes('/recipe') ||
+        routePath.includes('/ingredients') ||
+        (routePath === '/api/orders' && httpMethod.toLowerCase() === 'get') ||
+        routePath.includes('/status') ||
+        routePath.includes('-refund');
+
       const hasBearer = op.security && op.security.some((s: any) => 'bearer' in s);
       const authConfig: any = hasBearer
         ? {
@@ -285,7 +317,7 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
             bearer: [
               {
                 key: 'token',
-                value: '{{accessToken}}',
+                value: isBaristaRoute ? '{{baristaToken}}' : '{{customerToken}}',
                 type: 'string',
               },
             ],
@@ -401,19 +433,19 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
         };
       }
 
-      // Test Script for Auto-save JWT Token
+      // Test Script for Auto-save JWT Token or Order ID
       const events: any[] = [];
-      if (routePath.includes('auth/login')) {
+      if (routePath === '/api/orders' && httpMethod.toLowerCase() === 'post') {
         events.push({
           listen: 'test',
           script: {
             type: 'text/javascript',
             exec: [
               'const response = pm.response.json();',
-              'if (response.access_token) {',
-              '    pm.collectionVariables.set("accessToken", response.access_token);',
-              '    pm.environment.set("accessToken", response.access_token);',
-              '    console.log("Đã tự động lưu access_token vào Postman Variable!");',
+              'if (response && response.id) {',
+              '    pm.collectionVariables.set("currentOrderId", String(response.id));',
+              '    pm.environment.set("currentOrderId", String(response.id));',
+              '    console.log("Đã tự động lưu currentOrderId =", response.id);',
               '}',
             ],
           },
@@ -425,6 +457,79 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
       const requestName = op.summary
         ? `${fullDisplayRoute} ${op.summary}`
         : fullDisplayRoute;
+
+      if (routePath.includes('auth/login')) {
+        // 1. Customer Login
+        tagGroups[tag].push({
+          name: `${fullDisplayRoute} (1. Đăng nhập Khách - Lưu customerToken)`,
+          request: {
+            method: 'POST',
+            auth: { type: 'noauth' },
+            header: headers,
+            url: urlObj,
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ email: 'demo@brewlite.com', password: 'Demo@1234' }, null, 2),
+              options: { raw: { language: 'json' } },
+            },
+            description: 'Đăng nhập bằng tài khoản Khách hàng và tự động lưu vào biến {{customerToken}}',
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'const response = pm.response.json();',
+                  'const token = response.access_token || response.accessToken;',
+                  'if (token) {',
+                  '    pm.collectionVariables.set("customerToken", token);',
+                  '    pm.environment.set("customerToken", token);',
+                  '    console.log("Đã lưu customerToken thành công!");',
+                  '}',
+                ],
+              },
+            },
+          ],
+          response: [],
+        });
+
+        // 2. Barista Login
+        tagGroups[tag].push({
+          name: `${fullDisplayRoute} (2. Đăng nhập Barista - Lưu baristaToken)`,
+          request: {
+            method: 'POST',
+            auth: { type: 'noauth' },
+            header: headers,
+            url: urlObj,
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ email: 'barista@brewlite.com', password: 'Barista@123' }, null, 2),
+              options: { raw: { language: 'json' } },
+            },
+            description: 'Đăng nhập bằng tài khoản Barista và tự động lưu vào biến {{baristaToken}}',
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'const response = pm.response.json();',
+                  'const token = response.access_token || response.accessToken;',
+                  'if (token) {',
+                  '    pm.collectionVariables.set("baristaToken", token);',
+                  '    pm.environment.set("baristaToken", token);',
+                  '    console.log("Đã lưu baristaToken thành công!");',
+                  '}',
+                ],
+              },
+            },
+          ],
+          response: [],
+        });
+        continue;
+      }
 
       const requestItem: any = {
         name: requestName,
