@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "BrewLite API - Postman Collection",
-    "description": "Bộ sưu tập 34 API chuẩn 1:1 theo Swagger UI BrewLite A2. Hỗ trợ biến môi trường baseUrl, tự động lưu JWT token khi đăng nhập và tự sinh idempotency-key.",
+    "name": "BrewLite Full API - Postman Collection",
+    "description": "Bộ sưu tập đầy đủ 34 API theo Swagger UI BrewLite A2.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -48,7 +48,7 @@
             "description": "Đăng ký tài khoản mới (role: CUSTOMER)",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"newcustomer\",\n  \"password\": \"Password123!\",\n  \"fullName\": \"Nguyen Van A\",\n  \"phone\": \"0901234567\"\n}",
+              "raw": "{\n  \"email\": \"customer.new@brewlite.com\",\n  \"password\": \"Password@123\",\n  \"fullName\": \"Nguyễn Văn A\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -86,7 +86,7 @@
             "description": "Đăng nhập, trả về JWT access_token",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"customer1\",\n  \"password\": \"Password123!\"\n}",
+              "raw": "{\n  \"email\": \"barista@brewlite.com\",\n  \"password\": \"Barista@123\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1626,7 +1626,7 @@
             "description": "Kiểm tra mã khuyến mãi và tính tiền giảm",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"CHAOBANMOI\",\n  \"orderTotal\": 50000\n}",
+              "raw": "{\n  \"code\": \"BREW10\",\n  \"orderValue\": 60000\n}",
               "options": {
                 "raw": {
                   "language": "json"

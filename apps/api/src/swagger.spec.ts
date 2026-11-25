@@ -62,11 +62,17 @@ describe('Swagger Documentation & Postman Export', () => {
     fs.writeFileSync(path.join(apiPostmanDir, 'brewlite-api.swagger.json'), swaggerJsonContent, 'utf-8');
     console.log(`Saved OpenAPI JSON to apps/api/postman/`);
 
-    // Generate 1:1 Postman Collection matching Swagger UI
-    const postmanCollection = generatePostmanCollection(document);
+    // Generate Full Postman Collection v2.1
+    const postmanCollection = generatePostmanCollection(document, false);
     const postmanJsonContent = JSON.stringify(postmanCollection, null, 2);
     fs.writeFileSync(path.join(apiPostmanDir, 'BrewLite_API.postman_collection.json'), postmanJsonContent, 'utf-8');
-    console.log(`Saved Postman Collection to apps/api/postman/`);
+    console.log(`Saved Full Postman Collection to apps/api/postman/`);
+
+    // Generate Frontend-Only Postman Collection (Only APIs used in apps/web)
+    const frontendCollection = generatePostmanCollection(document, true);
+    const frontendJsonContent = JSON.stringify(frontendCollection, null, 2);
+    fs.writeFileSync(path.join(apiPostmanDir, 'BrewLite_Frontend_API.postman_collection.json'), frontendJsonContent, 'utf-8');
+    console.log(`Saved Frontend-Only Postman Collection to apps/api/postman/`);
 
     // Generate Environments
     const localEnv = {
@@ -105,12 +111,41 @@ describe('Swagger Documentation & Postman Export', () => {
   }, 30000);
 });
 
-function generatePostmanCollection(openapi: any) {
+const FRONTEND_ROUTES = new Set([
+  'POST /api/auth/login',
+  'POST /api/auth/register',
+  'GET /api/auth/me',
+  'GET /api/products',
+  'GET /api/products/{id}',
+  'GET /api/products/{id}/recipe',
+  'GET /api/ingredients',
+  'POST /api/ingredients/{id}/stock',
+  'POST /api/promotions/validate',
+  'POST /api/orders',
+  'GET /api/orders',
+  'GET /api/orders/me',
+  'GET /api/orders/{id}',
+  'POST /api/orders/{id}/cancel',
+  'PATCH /api/orders/{id}/status',
+  'PATCH /api/orders/{id}/confirm-refund',
+  'PATCH /api/orders/{id}/fail-refund',
+  'PATCH /api/orders/{id}/hold-refund',
+  'PATCH /api/orders/{id}/retry-refund',
+  'POST /api/payments',
+  'POST /api/payments/vnpay/create-url',
+  'POST /api/payments/vnpay/simulate-complete',
+  'GET /api/payments/vnpay/verify',
+]);
+
+function generatePostmanCollection(openapi: any, frontendOnly = false) {
   const collection: any = {
     info: {
-      name: 'BrewLite API - Postman Collection',
-      description:
-        'Bộ sưu tập 34 API chuẩn 1:1 theo Swagger UI BrewLite A2. Hỗ trợ biến môi trường baseUrl, tự động lưu JWT token khi đăng nhập và tự sinh idempotency-key.',
+      name: frontendOnly
+        ? 'BrewLite Frontend API - Postman Collection'
+        : 'BrewLite Full API - Postman Collection',
+      description: frontendOnly
+        ? 'Bộ sưu tập các API thực tế được gọi bởi giao diện Frontend (apps/web). Đã sửa 100% Request Body khớp DTO.'
+        : 'Bộ sưu tập đầy đủ 34 API theo Swagger UI BrewLite A2.',
       schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
     },
     variable: [
@@ -186,6 +221,11 @@ function generatePostmanCollection(openapi: any) {
 
   for (const [routePath, methods] of Object.entries<any>(openapi.paths)) {
     for (const [httpMethod, op] of Object.entries<any>(methods)) {
+      const fullRouteKey = `${httpMethod.toUpperCase()} ${routePath}`;
+      if (frontendOnly && !FRONTEND_ROUTES.has(fullRouteKey)) {
+        continue;
+      }
+
       const tag = op.tags?.[0] || 'App';
       if (!tagGroups[tag]) {
         tagGroups[tag] = [];
@@ -272,15 +312,14 @@ function generatePostmanCollection(openapi: any) {
 
         if (routePath.includes('auth/login')) {
           sampleBody = {
-            username: 'customer1',
-            password: 'Password123!',
+            email: 'barista@brewlite.com',
+            password: 'Barista@123',
           };
         } else if (routePath.includes('auth/register')) {
           sampleBody = {
-            username: 'newcustomer',
-            password: 'Password123!',
-            fullName: 'Nguyen Van A',
-            phone: '0901234567',
+            email: 'customer.new@brewlite.com',
+            password: 'Password@123',
+            fullName: 'Nguyễn Văn A',
           };
         } else if (routePath.includes('orders') && httpMethod.toLowerCase() === 'post') {
           sampleBody = {
@@ -309,7 +348,7 @@ function generatePostmanCollection(openapi: any) {
             mockResult: 'SUCCESS',
           };
         } else if (routePath.includes('promotions/validate')) {
-          sampleBody = { code: 'CHAOBANMOI', orderTotal: 50000 };
+          sampleBody = { code: 'BREW10', orderValue: 60000 };
         } else if (routePath.includes('recipe') && httpMethod.toLowerCase() === 'put') {
           sampleBody = {
             items: [
@@ -332,7 +371,7 @@ function generatePostmanCollection(openapi: any) {
             safetyStock: 250,
           };
         } else if (routePath.includes('stock')) {
-          sampleBody = { quantity: 500, reason: 'Nhập kho đầu ca' };
+          sampleBody = { quantity: 500, note: 'Nhập thêm nguyên liệu tại quầy Barista' };
         } else if (routePath.includes('adjust')) {
           sampleBody = { newStock: 1200, reason: 'Kiểm kê định kỳ' };
         } else if (routePath.includes('cancel')) {
