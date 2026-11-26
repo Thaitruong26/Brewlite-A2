@@ -17,7 +17,7 @@
 | Liên kết FR | FR-03/04/06/07/08/09/10/11/12/13/14/15/16/17/18/19/21/22/23/24/25/26/27/28/29/30/32 |
 | Nonfunctional | NFR-03/04/05/06/07/10/14/15 |
 
-Use-case diagram riêng: [use-case-checkout.svg](../diagrams/use-case-checkout.svg); source: [use-case-checkout.puml](../diagrams/use-case-checkout.puml).
+Use-case diagram riêng: [use-case-checkout.svg](use-case-checkout.svg); source: [use-case-checkout.puml](use-case-checkout.puml).
 
 ## 2. Luồng chính — VNPay Sandbox thành công (M-01)
 

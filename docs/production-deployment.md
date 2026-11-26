@@ -3,7 +3,7 @@
 **Dự án:** BrewLite Coffee Ordering System — Assignment 2  
 **Nền tảng chính thức:** **Render Cloud Platform (Singapore / Southeast Asia Region)**  
 **Mô hình kiến trúc:** Containerized Micro-Monolith (Next.js 15 Standalone + NestJS 10 API + Managed PostgreSQL 16)  
-**Tài liệu liên quan:** [DEP-01 Deployment Diagram](diagrams/deployment-production.puml), [ADR-007](architecture/adr/007-delivery-observability.md), [render.yaml](../render.yaml)
+**Tài liệu liên quan:** [DEP-01 Deployment Diagram](architecture/deployment-production.puml), [ADR-007](architecture/adr/007-delivery-observability.md), [render.yaml](../render.yaml)
 
 ---
 

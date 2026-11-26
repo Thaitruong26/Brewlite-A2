@@ -30,5 +30,5 @@ Yêu cầu đồ án cần một kiến trúc triển khai thực tế có phân
 
 ## Truy vết
 - [Deployment Specification (DEP-01)](../../deployment.md)
-- [Deployment Diagram PUML](../../diagrams/deployment-production.puml)
+- [Deployment Diagram PUML](../deployment-production.puml)
 - [Ma trận truy vết](../../traceability-matrix.md)

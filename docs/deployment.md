@@ -4,8 +4,8 @@
 Theo quyết định nhóm tại **O-02** và **ADR-007**, hệ thống BrewLite A2 chốt triển khai chính thức trên nền tảng **Render Cloud Platform (Singapore / Southeast Asia Region)** với mô hình Containerized Web Services và Managed PostgreSQL Database.
 
 **Tài liệu & Diagram nguồn:**
-- PlantUML Source: [deployment-production.puml](diagrams/deployment-production.puml)
-- Diagram SVG: [deployment-production.svg](diagrams/deployment-production.svg)
+- PlantUML Source: [deployment-production.puml](architecture/deployment-production.puml)
+- Diagram SVG: [deployment-production.svg](architecture/deployment-production.svg)
 - Quyết định kiến trúc liên quan: [ADR-007](architecture/adr/007-delivery-observability.md), [ADR-009](architecture/adr/009-manual-vietqr-refund.md)
 - Ma trận truy vết: [traceability-matrix.md](traceability-matrix.md) (DEP-01)
 

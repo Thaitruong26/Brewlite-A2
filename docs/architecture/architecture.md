@@ -6,7 +6,7 @@
 
 **C1 – Context:** Customer và Barista truy cập Next.js mobile-first, Manager quản trị; VNPay Sandbox là hệ thống ngoại vi, gửi signed IPN và nhận refund/QueryDr. Không dùng tiền thật.
 
-**C2 – Containers:** Browser/PWA-optional → Next.js (`apps/web`) → NestJS REST API (`apps/api`) → PostgreSQL (`Prisma` migration). `PaymentProvider` là interface nội bộ NestJS, hai adapter `VNPaySandboxAdapter` (Must) và `MockPaymentAdapter` (test/demo). Đồ thị: [architecture-logical.svg](../diagrams/architecture-logical.svg).
+**C2 – Containers:** Browser/PWA-optional → Next.js (`apps/web`) → NestJS REST API (`apps/api`) → PostgreSQL (`Prisma` migration). `PaymentProvider` là interface nội bộ NestJS, hai adapter `VNPaySandboxAdapter` (Must) và `MockPaymentAdapter` (test/demo). Đồ thị: [architecture-logical.svg](architecture-logical.svg).
 
 **C3 – Components (API):**
 
@@ -110,7 +110,7 @@ tests/                 # unit, integration, e2e
 
 ## 9. ADR & truy vết
 
-ADR-001..ADR-008 ở [adr/](adr/); [DEP-01](../deployment.md) mô tả proposed deployment. Diagram source [architecture-logical.puml](../diagrams/architecture-logical.puml). Ma trận tổng [traceability-matrix.md](../traceability-matrix.md). **Không có production đã deploy hoặc source A2 được tạo ở giai đoạn Task 1–3.**
+ADR-001..ADR-008 ở [adr/](adr/); [DEP-01](../deployment.md) mô tả proposed deployment. Diagram source [architecture-logical.puml](architecture-logical.puml). Ma trận tổng [traceability-matrix.md](../traceability-matrix.md). **Không có production đã deploy hoặc source A2 được tạo ở giai đoạn Task 1–3.**
 
 ## 10. Đồng nhất trạng thái và danh mục ADR
 

@@ -62,15 +62,15 @@
 
 | ID | Mục đích | Source | View |
 |---|---|---|---|
-| UC-ALL | Use case toàn hệ | [use-case-overview.puml](diagrams/use-case-overview.puml) | [SVG](diagrams/use-case-overview.svg) |
-| UC-CHK-01 | Use case checkout | [use-case-checkout.puml](diagrams/use-case-checkout.puml) | [SVG](diagrams/use-case-checkout.svg) |
+| UC-ALL | Use case toàn hệ | [use-case-overview.puml](requirements/use-case-overview.puml) | [SVG](requirements/use-case-overview.svg) |
+| UC-CHK-01 | Use case checkout | [use-case-checkout.puml](requirements/use-case-checkout.puml) | [SVG](requirements/use-case-checkout.svg) |
 | ACT-01 | Activity checkout/hủy/refund | [activity-checkout.puml](diagrams/activity-checkout.puml) | [SVG](diagrams/activity-checkout.svg) |
 | SEQ-01 | Tạo đơn/thanh toán/IPN | [sequence-checkout.puml](diagrams/sequence-checkout.puml) | [SVG](diagrams/sequence-checkout.svg) |
 | SEQ-02 | Hủy/hoàn tiền VietQR | [sequence-cancel-refund.puml](diagrams/sequence-cancel-refund.puml) | [SVG](diagrams/sequence-cancel-refund.svg) |
 | CLASS-01 | Domain core | [class-domain.puml](diagrams/class-domain.puml) | [SVG](diagrams/class-domain.svg) |
 | CLASS-02 | Inventory/recipes | [class-inventory.puml](diagrams/class-inventory.puml) | [SVG](diagrams/class-inventory.svg) |
-| ARC-01 | Logical architecture | [architecture-logical.puml](diagrams/architecture-logical.puml) | [SVG](diagrams/architecture-logical.svg) |
-| DEP-01 | Production deployment blueprint (Render Cloud Platform) | [deployment-production.puml](diagrams/deployment-production.puml) | [SVG](diagrams/deployment-production.svg) |
+| ARC-01 | Logical architecture | [architecture-logical.puml](architecture/architecture-logical.puml) | [SVG](architecture/architecture-logical.svg) |
+| DEP-01 | Production deployment blueprint (Render Cloud Platform) | [deployment-production.puml](architecture/deployment-production.puml) | [SVG](architecture/deployment-production.svg) |
 
 ### Traceability chain ví dụ
 
