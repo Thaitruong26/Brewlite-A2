@@ -8,7 +8,7 @@ database "PostgreSQL" as DB
 participant "Payment Service\n(PaymentProvider)" as Pay
 participant "VNPay Sandbox" as VN
 C -> Web : Menu → cart → checkout
-Web -> API : POST /orders (JWT, items, promotion)
+Web -> API : POST /api/orders (JWT, items, promotion)
 API -> API : Verify JWT / validate DTO / server pricing
 API -> DB : BEGIN; lock/reserve stock + promo
 alt Out of stock / invalid
@@ -21,7 +21,7 @@ else Valid
   API -> DB : COMMIT
   API --> Web : 201 orderId, totalVnd
   C -> Web : Chọn VNPay
-  Web -> API : POST /orders/{id}/payments (Idempotency-Key)
+  Web -> API : POST /api/payments / vnpay/create-url (Idempotency-Key)
   API -> API : Verify JWT/ownership/order status
   API -> DB : Lookup unique key + request hash
   alt Same key and body replay
@@ -30,7 +30,7 @@ else Valid
   else New attempt
     API -> Pay : createPaymentIntent(order, amount)
     Pay --> API : URL + providerTxnRef
-    API -> DB : Store PaymentAttempt PENDING
+    API -> DB : Store Payment PROCESSING
     API --> Web : Signed URL
     Web --> C : HTTP redirect URL
     C -> VN : Browser opens signed payment page
@@ -54,7 +54,7 @@ else Valid
   end
   VN --> C : Browser redirect to ReturnUrl (display only)
   C -> Web : View status
-  Web -> API : GET /orders/{id}
+  Web -> API : GET /api/orders/{id}
   API -> DB : Read authoritative Order state
   DB --> API : Order/Payment state
   API --> Web : PENDING / FAILED / PAID / UNKNOWN

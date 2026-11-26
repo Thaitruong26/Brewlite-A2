@@ -26,7 +26,7 @@
 <text x="210.0" y="152" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Menu → cart → checkout</text>
 <path d="M315 240 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
 <rect x="293.2" y="210" width="253.6" height="24" rx="4" fill="#fff" opacity=".93"/>
-<text x="420.0" y="226" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">POST /orders (JWT, items, promotion)</text>
+<text x="420.0" y="226" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">POST /api/orders (JWT, items, promotion)</text>
 <path d="M525 303 H580 V334 H525" stroke="#334155" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
 <rect x="478.4" y="284" width="293.2" height="24" rx="4" fill="#fff" opacity=".93"/>
 <text x="625" y="300" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Verify JWT / validate DTO / server pricing</text>
@@ -63,7 +63,7 @@
 <text x="210.0" y="1114" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Chọn VNPay</text>
 <path d="M315 1202 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
 <rect x="266.8" y="1172" width="306.4" height="24" rx="4" fill="#fff" opacity=".93"/>
-<text x="420.0" y="1188" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">POST /orders/{id}/payments (Idempotency-Key)</text>
+<text x="420.0" y="1188" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">POST /api/payments / vnpay/create-url (Idempotency-Key)</text>
 <path d="M525 1265 H580 V1296 H525" stroke="#334155" stroke-width="1.6" fill="none" marker-end="url(#ar)"/>
 <rect x="508.1" y="1246" width="233.8" height="24" rx="4" fill="#fff" opacity=".93"/>
 <text x="625" y="1262" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Verify JWT/ownership/order status</text>
@@ -88,7 +88,7 @@
 <text x="735.0" y="1780" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">URL + providerTxnRef</text>
 <path d="M525 1868 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
 <rect x="529.6" y="1838" width="200.8" height="24" rx="4" fill="#fff" opacity=".93"/>
-<text x="630.0" y="1854" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Store PaymentAttempt PENDING</text>
+<text x="630.0" y="1854" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Store Payment PROCESSING</text>
 <path d="M525 1942 H315" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
 <rect x="335.0" y="1912" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
 <text x="420.0" y="1928" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Signed URL</text>
@@ -151,7 +151,7 @@
 <text x="210.0" y="3408" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">View status</text>
 <path d="M315 3496 H525" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
 <rect x="335.0" y="3466" width="170.0" height="24" rx="4" fill="#fff" opacity=".93"/>
-<text x="420.0" y="3482" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">GET /orders/{id}</text>
+<text x="420.0" y="3482" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">GET /api/orders/{id}</text>
 <path d="M525 3570 H735" stroke="#334155" stroke-width="1.5" fill="none" marker-end="url(#ar)"/>
 <rect x="523.0" y="3540" width="214.0" height="24" rx="4" fill="#fff" opacity=".93"/>
 <text x="630.0" y="3556" font-family="DejaVu Sans" font-size="11" text-anchor="middle" fill="#0f172a">Read authoritative Order state</text>
