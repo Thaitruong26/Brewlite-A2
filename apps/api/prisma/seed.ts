@@ -292,6 +292,7 @@ async function main() {
   const users = [
     { email: 'demo@brewlite.com', fullName: 'Khách Demo', password: 'Demo@1234', role: 'CUSTOMER' as const },
     { email: 'barista@brewlite.com', fullName: 'Barista Demo', password: 'Barista@123', role: 'BARISTA' as const },
+    { email: 'manager@brewlite.com', fullName: 'Quản Lý Kho', password: 'Manager@123', role: 'MANAGER' as const },
   ];
   for (const u of users) {
     const passwordHash = await bcrypt.hash(u.password, 10);

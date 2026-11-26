@@ -41,7 +41,7 @@ export class ToppingsController {
   /** 4.8. GET /api/toppings/:id/recipe (Barista) */
   @Get(':id/recipe')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.BARISTA)
+  @Roles(Role.BARISTA, Role.MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lấy công thức topping cho 1 phần (Barista)' })
   @ApiParam({ name: 'id', description: 'ID topping', example: 1 })
@@ -56,7 +56,7 @@ export class ToppingsController {
   /** 4.8. PUT /api/toppings/:id/recipe (Barista) */
   @Put(':id/recipe')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.BARISTA)
+  @Roles(Role.BARISTA, Role.MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cập nhật công thức topping cho 1 phần (Barista)' })
   @ApiParam({ name: 'id', description: 'ID topping', example: 1 })

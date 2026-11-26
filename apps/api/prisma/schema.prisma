@@ -47,6 +47,7 @@ enum Size {
 enum Role {
   CUSTOMER
   BARISTA
+  MANAGER
 }
 
 enum DiscountType {
