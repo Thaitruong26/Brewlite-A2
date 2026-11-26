@@ -21,6 +21,11 @@
       "type": "string"
     },
     {
+      "key": "managerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "accessToken",
       "value": "",
       "type": "string"
@@ -176,6 +181,61 @@
                   "    pm.collectionVariables.set(\"baristaToken\", token);",
                   "    pm.environment.set(\"baristaToken\", token);",
                   "    console.log(\"Đã lưu baristaToken thành công!\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "/api/auth/login (3. Đăng nhập Manager - Lưu managerToken)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@brewlite.com\",\n  \"password\": \"Manager@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Đăng nhập bằng tài khoản Manager và tự động lưu vào biến {{managerToken}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "const token = response.access_token || response.accessToken;",
+                  "if (token) {",
+                  "    pm.collectionVariables.set(\"managerToken\", token);",
+                  "    pm.environment.set(\"managerToken\", token);",
+                  "    console.log(\"Đã lưu managerToken thành công!\");",
                   "}"
                 ]
               }
