@@ -104,4 +104,4 @@ Use-case diagram riêng: [use-case-checkout.svg](use-case-checkout.svg); source:
 
 ## 7. Liên kết nhất quán
 
-[REQ-02](software-requirements-specification.md) → [Activity ACT-01](../diagrams/activity-checkout.puml) → [Sequence SEQ-01](../diagrams/sequence-checkout.puml) + [SEQ-02](../diagrams/sequence-cancel-refund.puml) → [Class CLASS-01](../diagrams/class-domain.puml) → [Architecture](../architecture/architecture.md) → [traceability](../traceability-matrix.md). Các HTTP path **được đề xuất cho A2**, không khẳng định đã tồn tại trong source.
+[REQ-02](software-requirements-specification.md) → [Activity ACT-01](../diagrams/activity-checkout.puml) → [Sequence SEQ-01](../diagrams/sequence-checkout.puml) → [Class CLASS-01](../diagrams/class-domain.puml) → [Architecture](../architecture/architecture.md) → [traceability](../traceability-matrix.md).

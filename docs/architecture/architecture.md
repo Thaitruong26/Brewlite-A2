@@ -6,7 +6,7 @@
 
 **C1 – Context:** Customer và Barista truy cập Next.js mobile-first, Manager quản trị; VNPay Sandbox là hệ thống ngoại vi, gửi signed IPN và nhận refund/QueryDr. Không dùng tiền thật.
 
-**C2 – Containers:** Browser/PWA-optional → Next.js (`apps/web`) → NestJS REST API (`apps/api`) → PostgreSQL (`Prisma` migration). `PaymentProvider` là interface nội bộ NestJS, hai adapter `VNPaySandboxAdapter` (Must) và `MockPaymentAdapter` (test/demo). Đồ thị: [architecture-logical.svg](architecture-logical.svg).
+**C2 – Containers:** Browser/PWA-optional → Next.js (`apps/web`) → NestJS REST API (`apps/api`) → PostgreSQL (`Prisma` migration). `PaymentProvider` là interface nội bộ NestJS, hai adapter `VNPaySandboxAdapter` (Must) và `MockPaymentAdapter` (test/demo). Kiến trúc triển khai xem tại [deployment-production.svg](deployment-production.svg).
 
 **C3 – Components (API):**
 
@@ -50,7 +50,7 @@ interface PaymentProvider {
 
 ## 4. Dữ liệu và migration
 
-- **PostgreSQL** là source of truth; Prisma schema mới được thiết kế theo [CLASS-01](../diagrams/class-domain.puml) và [CLASS-02](../diagrams/class-inventory.puml), có migration/seed đi cùng PR code.
+- **PostgreSQL** là source of truth; Prisma schema được thiết kế theo [CLASS-01](../diagrams/class-domain.puml), có migration/seed đi cùng PR code.
 - Money = integer VND (`Int` với giới hạn an toàn). VNPay dùng `amount * 100` ở boundary adapter. Điểm tích lũy tính theo tỷ lệ chuẩn 1 điểm / 1.000đ.
 - Bảng/unique: `PaymentAttempt(unique(operation,key,actor))`, `PaymentAttempt.unique(providerTxnRef)`, `Refund(unique(orderId, active))`, `RefundAttempt`, `InventoryReservation.unique(orderId,ingredientId)`.
 
@@ -110,7 +110,7 @@ tests/                 # unit, integration, e2e
 
 ## 9. ADR & truy vết
 
-ADR-001..ADR-008 ở [adr/](adr/); [DEP-01](../deployment.md) mô tả proposed deployment. Diagram source [architecture-logical.puml](architecture-logical.puml). Ma trận tổng [traceability-matrix.md](../traceability-matrix.md). **Không có production đã deploy hoặc source A2 được tạo ở giai đoạn Task 1–3.**
+ADR-001..ADR-009 ở [adr/](adr/); [DEP-01](../deployment.md) mô tả deployment trên Render. Diagram source [deployment-production.puml](deployment-production.puml). Ma trận tổng [traceability-matrix.md](../traceability-matrix.md).
 
 ## 10. Đồng nhất trạng thái và danh mục ADR
 
