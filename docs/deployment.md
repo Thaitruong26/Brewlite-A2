@@ -5,7 +5,7 @@ Theo quyết định nhóm tại **O-02** và **ADR-007**, hệ thống BrewLite
 
 **Tài liệu & Diagram nguồn:**
 - PlantUML Source: [deployment-production.puml](diagrams/deployment-production.puml)
-- Graphviz DOT: [deployment-production.dot](diagrams/deployment-production.dot)
+- Diagram SVG: [deployment-production.svg](diagrams/deployment-production.svg)
 - Quyết định kiến trúc liên quan: [ADR-007](architecture/adr/007-delivery-observability.md), [ADR-009](architecture/adr/009-manual-vietqr-refund.md)
 - Ma trận truy vết: [traceability-matrix.md](traceability-matrix.md) (DEP-01)
 
