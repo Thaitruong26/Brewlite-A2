@@ -7,7 +7,7 @@ import { ApiError, formatVND, getOrderByIdApi } from "@/lib/api";
 import { OrderResponse, OrderStatus } from "@/types/order";
 
 const statusTitle: Record<OrderStatus, string> = {
-  PENDING: "Đang chờ thanh toán",
+  PENDING: "Đang chờ nhân viên xác nhận",
   PAID: "Thanh toán thành công",
   PREPARING: "Đơn hàng đang được pha chế",
   READY: "Đồ uống đã sẵn sàng",
@@ -21,7 +21,7 @@ const STATUS_BADGE_MAP: Record<
   { label: string; className: string }
 > = {
   PENDING: {
-    label: "PENDING • Chờ thanh toán",
+    label: "PENDING • Chờ nhân viên xác nhận",
     className: "bg-amber-100 text-amber-900 border-amber-300",
   },
   PAID: {
@@ -268,7 +268,7 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
             {isPaidStatus
               ? "Xác nhận đơn hàng"
               : isPending
-                ? "Chờ thanh toán đơn hàng"
+                ? "Chờ nhân viên xác nhận"
                 : "Trạng thái đơn hàng"}
           </p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 mt-1">
@@ -313,24 +313,16 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
             </div>
           )}
 
-          {/* Hướng dẫn khi đang chờ thanh toán (PENDING) */}
+          {/* Hướng dẫn khi đang chờ nhân viên xác nhận (PENDING) */}
           {order.status === "PENDING" && (
             <div className="mt-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 max-w-md mx-auto">
               <p className="text-base font-extrabold text-amber-950 flex items-center justify-center gap-2">
                 <span>⏱</span>
-                <span>Đơn hàng đang chờ thanh toán</span>
+                <span>Đơn hàng đang chờ nhân viên xác nhận</span>
               </p>
               <p className="text-xs text-amber-800 mt-1">
-                Vui lòng hoàn tất thanh toán để đơn hàng được chuyển vào quầy pha chế.
+                Vui lòng đợi trong giây lát, nhân viên quầy pha chế sẽ xác nhận và chuẩn bị đồ uống cho bạn.
               </p>
-              <div className="mt-3">
-                <Link
-                  href={`/payment?orderId=${order.id}`}
-                  className="inline-block px-5 py-2.5 rounded-xl bg-amber-800 text-white font-bold text-xs hover:bg-amber-900 transition-colors shadow-xs"
-                >
-                  Tiến hành thanh toán ngay →
-                </Link>
-              </div>
             </div>
           )}
 
@@ -576,7 +568,7 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
                             : isSuccess
                               ? "Đã thanh toán"
                               : isPending
-                                ? "Chờ thanh toán"
+                                ? "Chờ nhân viên xác nhận"
                                 : "Thanh toán thất bại"}
                         </span>
                       </div>
@@ -610,7 +602,7 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
                 <div className="font-bold text-stone-900 flex items-center gap-2">
                   <span>Trạng thái:</span>
                   <span className="px-2 py-0.5 rounded font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-                    Chờ thanh toán
+                    Chờ nhân viên xác nhận
                   </span>
                 </div>
                 <p className="text-stone-500">
