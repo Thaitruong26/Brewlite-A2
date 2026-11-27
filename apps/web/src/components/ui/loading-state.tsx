@@ -1,3 +1,4 @@
+// Chức năng: Component giao diện LoadingState. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function LoadingState({ label = "Đang tải..." }: { label?: string }) {
   return (
     <div role="status" aria-live="polite" className="flex min-h-56 flex-col items-center justify-center gap-4 text-sm text-[#66736a]">
@@ -7,7 +8,7 @@ export function LoadingState({ label = "Đang tải..." }: { label?: string }) {
   );
 }
 
-/** Skeleton card cho trang Menu (mobile horizontal layout). */
+// Chức năng: Component giao diện ProductCardSkeleton. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function ProductCardSkeleton() {
   return (
     <div className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm" aria-hidden="true">

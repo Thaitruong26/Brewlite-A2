@@ -32,6 +32,7 @@ export class PaymentsController {
     private readonly vnpayService: VnpayService,
   ) {}
 
+  // Chức năng: Thanh toán trực tiếp (Ví/Thẻ giả lập) có chống trùng Idempotency. Cách hoạt động: Đọc header idempotency-key và gọi PaymentsService.createPayment().
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -50,6 +51,7 @@ export class PaymentsController {
     return this.paymentsService.createPayment(dto, idempotencyKey, user, res);
   }
 
+  // Chức năng: Tạo đường dẫn thanh toán VNPay Sandbox. Cách hoạt động: Nhận orderId và gọi VnpayService.createPaymentUrl() ký HMAC-SHA512.
   @Post('vnpay/create-url')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -82,6 +84,7 @@ export class PaymentsController {
     return { paymentUrl, simulatorUrl };
   }
 
+  // Chức năng: Hàm simulateComplete(orderId, txnRef, amount, responseCode). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   @Post('vnpay/simulate-complete')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -120,12 +123,14 @@ export class PaymentsController {
     return { query };
   }
 
+  // Chức năng: Hàm verifyVnpay(query). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   @Get('vnpay/verify')
   @ApiOperation({ summary: 'Xác thực kết quả thanh toán từ VNPay (Return URL hiển thị kết quả cho khách)' })
   async verifyVnpay(@Query() query: Record<string, string>) {
     return this.vnpayService.verifyReturnUrl(query);
   }
 
+  // Chức năng: Hàm vnpayIpn(query). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   @Get('vnpay/ipn')
   @ApiOperation({ summary: 'Xử lý IPN từ server VNPay (Server-to-Server webhook)' })
   async vnpayIpn(@Query() query: Record<string, string>) {

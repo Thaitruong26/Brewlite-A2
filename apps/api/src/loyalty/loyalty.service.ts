@@ -2,10 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 
 @Injectable()
 export class LoyaltyService {
-  /**
-   * Cộng điểm thưởng cho khách hàng khi đơn hàng chuyển sang PAID
-   * Cứ 1.000đ = 1 điểm. Mỗi đơn chỉ cộng 1 lần.
-   */
+  // Chức năng: Hàm award(tx, order). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async award(tx: any, order: { id: number; userId: number; total: number }) {
     const points = Math.floor(order.total / 1000);
     if (points <= 0) return;

@@ -23,7 +23,6 @@ import {
 } from "@/store/cart";
 import { useRouter } from "next/navigation";
 
-/** Response của POST /promotions/validate (api.md mục 6.7). */
 type PromoResult = {
   code: string;
   type: "PERCENT" | "FIXED";
@@ -33,7 +32,7 @@ type PromoResult = {
   totalAfterDiscount: number;
 };
 
-/** Ánh xạ mã lỗi 422 của POST /promotions/validate sang thông báo tiếng Việt rõ ràng (api.md mục 6.7 & 7). */
+// Chức năng: Hàm describePromoError(err). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 function describePromoError(err: unknown): string {
   if (!(err instanceof ApiError)) {
     return err instanceof Error
@@ -81,6 +80,7 @@ function describePromoError(err: unknown): string {
   }
 }
 
+// Chức năng: Component giao diện CartPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function CartPage() {
   const router = useRouter();
   const hydrated = useCartHydrated();
@@ -93,7 +93,6 @@ export default function CartPage() {
 
   const signedIn = hydrated && Boolean(getToken());
 
-  // Lấy dữ liệu user
   const { data: me } = useQuery({
     queryKey: ["me"],
     enabled: signedIn,
@@ -108,7 +107,6 @@ export default function CartPage() {
     },
   });
   
-  // Khuyến mãi gốc
   const cartSignature = items.map((i) => `${i.key || i.id}:${i.quantity ?? i.qty}`).join("|");
   const [promoCodeInput, setPromoCodeInput] = useState("");
   const [applied, setApplied] = useState<{
@@ -124,7 +122,6 @@ export default function CartPage() {
   
   const discountPromo = promo ? promo.discountAmount : 0;
 
-  // XỬ LÝ ĐIỂM THƯỞNG MỚI THEO YÊU CẦU:
   const loyaltyPoints = typeof me?.loyaltyPoints === "number" ? me.loyaltyPoints : 0;
   const [usePoints, setUsePoints] = useState(false);
 
@@ -134,15 +131,13 @@ export default function CartPage() {
     }
   }, []);
 
-  // Tính tiền giảm từ điểm: 100 điểm = 1000 VNĐ -> 1 điểm = 10 VNĐ
   const pointsDiscountValue = usePoints ? Math.min(loyaltyPoints * 10, Math.max(0, subtotal - discountPromo)) : 0;
 
-  
-  // TỔNG TIỀN MỚI: Tạm tính - Giảm giá Promo - Giảm giá Điểm thưởng (Không để âm)
   const total = Math.max(0, subtotal - discountPromo - pointsDiscountValue);
   
   const estimatedPoints = Math.floor(total / 1000);
 
+  // Chức năng: Hàm validatePromo(e). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async function validatePromo(e: React.FormEvent) {
     e.preventDefault();
     setPromoError("");
@@ -199,8 +194,8 @@ export default function CartPage() {
     }
   }
 
+  // Chức năng: Xử lý sự kiện CheckoutClick. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleCheckoutClick = (e: React.MouseEvent) => {
-    // CHẶN YÊU CẦU ĐĂNG NHẬP
     if (!signedIn) {
       e.preventDefault();
       router.push("/login?redirect=/cart");
@@ -211,7 +206,6 @@ export default function CartPage() {
       setStorePromoCode(promo.code, promo.discountAmount);
     }
     
-    // Lưu tạm trạng thái dùng điểm vào store hoặc localStorage để checkout xài
     if (usePoints) {
       localStorage.setItem('useRewardPoints', 'true');
     } else {
@@ -413,6 +407,7 @@ export default function CartPage() {
   );
 }
 
+// Chức năng: Component giao diện CartRow. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function CartRow({
   item,
   setQuantity,

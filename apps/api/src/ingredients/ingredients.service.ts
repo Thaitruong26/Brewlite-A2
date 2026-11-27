@@ -16,7 +16,7 @@ import { UpdateRecipeDto } from './dto/update-recipe.dto.js';
 export class IngredientsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** GET /ingredients */
+  // Chức năng: Truy vấn danh sách nguyên liệu. Cách hoạt động: Đọc từ bảng Ingredient với phân trang và tính thuộc tính low = (stock <= lowThreshold).
   async findAll(query: GetIngredientsQueryDto) {
     const where: any = {};
     if (query.search?.trim()) {
@@ -61,7 +61,7 @@ export class IngredientsService {
     };
   }
 
-  /** POST /ingredients */
+  // Chức năng: Lưu nguyên liệu mới vào CSDL. Cách hoạt động: Kiểm tra trùng tên (409), mở transaction tạo Ingredient và ghi bản ghi StockMovement nếu stock > 0.
   async create(dto: CreateIngredientDto, userId?: number) {
     const existing = await this.prisma.ingredient.findUnique({
       where: { name: dto.name },
@@ -110,7 +110,7 @@ export class IngredientsService {
     });
   }
 
-  /** PATCH /ingredients/:id */
+  // Chức năng: Cập nhật dữ liệu (update). Cách hoạt động: Xác thực dữ liệu thay đổi và cập nhật trạng thái vào database.
   async update(id: number, dto: UpdateIngredientDto) {
     const existing = await this.prisma.ingredient.findUnique({
       where: { id },
@@ -140,7 +140,7 @@ export class IngredientsService {
     };
   }
 
-  /** POST /ingredients/:id/stock */
+  // Chức năng: Cộng dồn tồn kho an toàn. Cách hoạt động: Mở Prisma transaction tăng trường stock lên quantity và lưu nhật ký StockMovement.
   async addStock(id: number, dto: AddIngredientStockDto, userId?: number) {
     return await this.prisma.$transaction(async (tx) => {
       const existing = await tx.ingredient.findUnique({
@@ -181,7 +181,7 @@ export class IngredientsService {
     });
   }
 
-  /** POST /ingredients/:id/adjust */
+  // Chức năng: Cân chỉnh tồn kho sau kiểm kê. Cách hoạt động: Mở Prisma transaction tính delta = actualStock - currentStock, cập nhật stock và ghi StockMovement.
   async adjustStock(id: number, dto: AdjustIngredientStockDto, userId?: number) {
     return await this.prisma.$transaction(async (tx) => {
       const existing = await tx.ingredient.findUnique({
@@ -229,7 +229,7 @@ export class IngredientsService {
     });
   }
 
-  /** GET /ingredients/:id/movements */
+  // Chức năng: Lấy dữ liệu Movements. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getMovements(id: number, page = 1, limit = 20) {
     const existing = await this.prisma.ingredient.findUnique({
       where: { id },
@@ -273,7 +273,7 @@ export class IngredientsService {
     };
   }
 
-  /** GET /products/:id/recipe */
+  // Chức năng: Lấy dữ liệu ProductRecipe. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getProductRecipe(productId: number) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
@@ -303,7 +303,7 @@ export class IngredientsService {
     };
   }
 
-  /** PUT /products/:id/recipe */
+  // Chức năng: Cập nhật dữ liệu (updateProductRecipe). Cách hoạt động: Xác thực dữ liệu thay đổi và cập nhật trạng thái vào database.
   async updateProductRecipe(productId: number, dto: UpdateRecipeDto) {
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
@@ -315,7 +315,6 @@ export class IngredientsService {
       });
     }
 
-    // Kiểm tra trùng lặp ingredientId
     const ingredientIds = dto.items.map((i) => i.ingredientId);
     if (new Set(ingredientIds).size !== ingredientIds.length) {
       throw new BadRequestException({
@@ -357,7 +356,7 @@ export class IngredientsService {
     return this.getProductRecipe(productId);
   }
 
-  /** GET /toppings/:id/recipe */
+  // Chức năng: Lấy dữ liệu ToppingRecipe. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getToppingRecipe(toppingId: number) {
     const topping = await this.prisma.topping.findUnique({
       where: { id: toppingId },
@@ -386,7 +385,7 @@ export class IngredientsService {
     };
   }
 
-  /** PUT /toppings/:id/recipe */
+  // Chức năng: Cập nhật dữ liệu (updateToppingRecipe). Cách hoạt động: Xác thực dữ liệu thay đổi và cập nhật trạng thái vào database.
   async updateToppingRecipe(toppingId: number, dto: UpdateRecipeDto) {
     const topping = await this.prisma.topping.findUnique({
       where: { id: toppingId },

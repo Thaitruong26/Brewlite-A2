@@ -7,9 +7,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useCartStore, selectTotalItems } from "@/store/cart-store";
 import { api, getAccessToken, saveSession } from "@/lib/api";
 
-/**
- * SiteHeader — Client Component
- */
+// Chức năng: Component giao diện SiteHeaderContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function SiteHeaderContent() {
   const user     = useAuthStore((s) => s.user);
   const signOut  = useAuthStore((s) => s.signOut);
@@ -18,7 +16,6 @@ function SiteHeaderContent() {
   const pathname   = usePathname();
   const signedIn   = Boolean(user);
 
-  // State cho Dropdown Menu Khách hàng
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -39,8 +36,8 @@ function SiteHeaderContent() {
     }
   }, [hydrate, signedIn, pathname]);
 
-  // Xử lý click ra ngoài để đóng Dropdown
   useEffect(() => {
+    // Chức năng: Xử lý sự kiện ClickOutside. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
@@ -50,7 +47,7 @@ function SiteHeaderContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Hàm format tiền tệ VNĐ
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (formatCurrency). Cách hoạt động: Biến đổi tham số đầu vào (amount) thành kết quả chuẩn để hiển thị hoặc tính toán.
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
   };
@@ -130,7 +127,7 @@ function SiteHeaderContent() {
             </span>
             <span>Giỏ hàng</span>
           </Link>
-          {user?.role === "BARISTA" && (
+          {(user?.role === "BARISTA" || user?.role === "MANAGER") && (
             <Link
               href="/barista"
               className={[
@@ -215,6 +212,7 @@ function SiteHeaderContent() {
   );
 }
 
+// Chức năng: Component giao diện SiteHeader. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function SiteHeader() {
   return (
     <Suspense

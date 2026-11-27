@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { ProductImage } from "@/components/products/product-image";
 
-/**
- * Trang chủ — Mobile-first Vertical Layout
- */
+// Chức năng: Component giao diện Home. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function Home() {
   return (
     <section className="relative w-full flex flex-col md:grid md:grid-cols-2 md:items-center md:gap-12 px-4 sm:px-6 lg:px-8 py-6 md:py-16">

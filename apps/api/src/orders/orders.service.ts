@@ -41,8 +41,8 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     private readonly recipeService: RecipeService,
   ) {}
 
+  // Chức năng: Xử lý sự kiện ModuleInit. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   onModuleInit() {
-    // Quét và tự động dọn dẹp các đơn PENDING/PAYMENT_FAILED quá 15 phút định kỳ mỗi 60s
     this.cleanupInterval = setInterval(() => {
       this.cancelExpiredOrders().catch((err) => {
         console.error('Lỗi khi chạy định kỳ cancelExpiredOrders:', err);
@@ -54,6 +54,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // Chức năng: Xử lý sự kiện ModuleDestroy. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   onModuleDestroy() {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
@@ -61,27 +62,19 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Task 6 & Task 10: POST /orders
-   * Tạo đơn hàng ở trạng thái PENDING từ giỏ hàng.
-   * Tính lại giá bằng PricingService (không tin giá client).
-   * Kiểm soát tồn kho theo nguyên liệu bằng transaction và optimistic locking (Ingredient.version).
-   */
+  // Chức năng: Xử lý đặt đơn trọn vẹn trong Transaction. Cách hoạt động: Validate sản phẩm/topping, tính giá bằng PricingService, kiểm tra voucher/điểm thưởng, trừ tồn kho bằng RecipeService & IngredientsService, tạo Order PENDING kèm OrderItem snapshot.
   async createOrder(userId: number, dto: CreateOrderDto) {
     const MAX_RETRIES = 10;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         return await this.prisma.$transaction(async (tx) => {
-          // 1. Giữ tồn kho nguyên liệu theo công thức bằng optimistic locking (Ingredient.version)
           const reservation = await this.reserveStock(tx, dto.items);
 
-          // 2. Tính lại giá trên server (nguồn chân lý duy nhất)
           const pricing = await this.pricingService.calculate(dto.items, tx);
           const subtotal = pricing.subtotal;
           let discountAmount = 0;
 
-          // 4. Áp dụng mã giảm giá (nếu có)
           if (dto.promoCode) {
             const promo = await tx.promoCode.findUnique({
               where: { code: dto.promoCode },
@@ -119,7 +112,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
               });
             }
 
-            // Tính số tiền giảm
             if (promo.type === 'PERCENT') {
               discountAmount = Math.floor((subtotal * promo.value) / 100);
               if (promo.maxDiscount && discountAmount > promo.maxDiscount) {
@@ -130,7 +122,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
             }
             if (discountAmount > subtotal) discountAmount = subtotal;
 
-            // Tăng usedCount nguyên tử trong cùng transaction
             const promoUpdate = await tx.promoCode.updateMany({
               where: {
                 code: promo.code,
@@ -150,7 +141,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
             }
           }
 
-          // 4.1 Áp dụng điểm tích lũy (nếu có yêu cầu: 100 điểm = 1.000đ -> 1 điểm = 10đ)
           let pointsUsed = 0;
           if (dto.usePoints && userId) {
             const currentUser = await tx.user.findUnique({
@@ -174,7 +164,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
           const total = Math.max(0, subtotal - discountAmount);
 
-          // 5. Lưu Order và OrderItem (chụp snapshot tên, topping, giá)
           const newOrder = await tx.order.create({
             data: {
               userId,
@@ -204,7 +193,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
             },
           });
 
-          // 6. Ghi nhật ký biến động kho (StockMovement) cho từng nguyên liệu đã giữ
           for (const [ingredientId, qty] of reservation.orderNeedsMap.entries()) {
             await tx.stockMovement.create({
               data: {
@@ -246,7 +234,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
               message: 'Hệ thống đang bận do nhiều người đặt cùng lúc, vui lòng thử lại',
             });
           }
-          // Nghỉ ngẫu nhiên 10 đến 50 ms rồi thử lại cả transaction
           await new Promise((resolve) =>
             setTimeout(resolve, Math.floor(Math.random() * 41) + 10),
           );
@@ -262,10 +249,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Task 9: GET /orders/me
-   * Lịch sử đơn hàng của người dùng hiện tại (chỉ lấy đơn của req.user.id), sắp xếp mới nhất trước.
-   */
+  // Chức năng: Lấy dữ liệu OrdersMe. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getOrdersMe(userId: number, query: GetOrdersQueryDto) {
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
@@ -334,11 +318,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  /**
-   * Task 9: GET /orders/:id
-   * Chi tiết đơn hàng (kèm items, payments, pointsEarned).
-   * Khách chỉ xem được đơn của mình, Barista được xem mọi đơn.
-   */
+  // Chức năng: Lấy dữ liệu OrderById. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getOrderById(id: number, user: UserContext) {
     const order = await this.prisma.order.findUnique({
       where: { id },
@@ -417,11 +397,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  /**
-   * Task 10: POST /orders/:id/cancel
-   * Hủy đơn hàng: hoàn kho, hoàn lượt dùng mã giảm giá, thu hồi điểm thưởng.
-   * Nếu đơn đã PAID: lưu thông tin tài khoản hoàn tiền để Barista quét mã VietQR chuyển trả lại.
-   */
+  // Chức năng: Xử lý hủy đơn hàng an toàn. Cách hoạt động: Mở transaction kiểm tra trạng thái (chỉ hủy được khi PENDING, PAYMENT_FAILED hoặc PAID), hoàn trả tồn kho, hoàn lại điểm đã dùng, hoàn lượt promo; nếu đơn đã PAID thì lưu yêu cầu hoàn tiền VietQR trạng thái PENDING.
   async cancelOrder(id: number, user: UserContext, dto?: CancelOrderDto) {
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
@@ -446,7 +422,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // Kiểm tra xem có giao dịch đang thanh toán dở dang không
       const hasProcessingPayment = order.payments.some((p) => p.status === 'PROCESSING');
       if (hasProcessingPayment) {
         throw new ConflictException({
@@ -455,13 +430,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // Kiểm tra chuyển trạng thái qua State Machine
       assertTransition(order.status, OrderStatus.CANCELLED);
 
-      // 1. Hoàn kho nguyên liệu theo snapshot consumption
       await this.releaseStock(tx, order);
 
-      // 2. Hoàn lại số lượt sử dụng mã giảm giá (usedCount)
       if (order.promoCode) {
         await tx.promoCode.update({
           where: { code: order.promoCode },
@@ -471,7 +443,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // Hoàn lại điểm tích lũy đã dùng khi đặt đơn (nếu có)
       if (order.pointsUsed > 0 && order.userId) {
         await tx.user.update({
           where: { id: order.userId },
@@ -481,7 +452,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // 3. Nếu đơn đã PAID: thu hồi điểm thưởng và ghi nhận thông tin nhận hoàn tiền VietQR
       if (order.status === OrderStatus.PAID) {
         if (!dto?.refundAccount?.trim()) {
           throw new BadRequestException({
@@ -506,9 +476,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
           });
         }
 
-        // Cập nhật Payment ghi nhận thông tin tài khoản nhận hoàn tiền VietQR
-        // Lưu ý: tách biệt số tiền cần hoàn và số tiền đã hoàn thực tế.
-        // Tại thời điểm hủy đơn: refundedAmount = 0, Barista sẽ quét QR chuyển tiền sau.
         const successfulPayment = order.payments.find((p) => p.status === 'SUCCESS');
         const refString = `VIETQR:${dto.refundBank || 'MB'}:${dto.refundAccount.trim()}:PENDING`;
 
@@ -523,7 +490,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      // 4. Đổi trạng thái sang CANCELLED
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
@@ -540,10 +506,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Barista xác nhận đã chuyển hoàn tiền qua VietQR cho khách
-   * PATCH /orders/:id/confirm-refund
-   */
+  // Chức năng: Hàm confirmRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async confirmRefund(id: number, user: UserContext, dto?: ConfirmRefundDto) {
     if (user.role !== Role.BARISTA) {
       throw new ForbiddenException({
@@ -620,9 +583,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Phân tách mã tham chiếu VietQR để lấy thông tin tài khoản và trạng thái chu trình
-   */
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (parseVietQrRef). Cách hoạt động: Biến đổi tham số đầu vào (refundRef) thành kết quả chuẩn để hiển thị hoặc tính toán.
   public parseVietQrRef(refundRef?: string | null): {
     bank: string;
     account: string;
@@ -654,10 +615,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     return { bank, account, status, extra };
   }
 
-  /**
-   * Barista ghi nhận chuyển khoản hoàn tiền thất bại (FAILED -> chuẩn bị retry)
-   * PATCH /orders/:id/fail-refund
-   */
+  // Chức năng: Hàm failRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async failRefund(id: number, user: UserContext, dto: FailRefundDto) {
     if (user.role !== Role.BARISTA) {
       throw new ForbiddenException({
@@ -732,10 +690,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Barista chuyển trạng thái hoàn tiền sang đối soát / nghi ngờ (UNKNOWN -> đối soát)
-   * PATCH /orders/:id/hold-refund
-   */
+  // Chức năng: Hàm holdRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async holdRefund(id: number, user: UserContext, dto?: HoldRefundDto) {
     if (user.role !== Role.BARISTA) {
       throw new ForbiddenException({
@@ -804,10 +759,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Thử lại hoàn tiền VietQR (chuyển trạng thái về PENDING, cho phép cập nhật STK mới nếu khách báo)
-   * PATCH /orders/:id/retry-refund
-   */
+  // Chức năng: Hàm retryRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async retryRefund(id: number, user: UserContext, dto?: RetryRefundDto) {
     if (user.role !== Role.BARISTA) {
       throw new ForbiddenException({
@@ -887,9 +839,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Tự động hủy một đơn hàng hết hạn thanh toán (hệ thống thực thi, không kiểm tra quyền user).
-   */
+  // Chức năng: Hàm cancelOrderInternal(id). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async cancelOrderInternal(id: number) {
     return await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({
@@ -903,21 +853,17 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       if (!order) return null;
       if (order.status === OrderStatus.CANCELLED) return order;
 
-      // Không hủy nếu có payment đang PROCESSING
       const hasProcessingPayment = order.payments.some((p) => p.status === 'PROCESSING');
       if (hasProcessingPayment) {
         return null;
       }
 
-      // Chỉ hủy khi ở trạng thái PENDING hoặc PAYMENT_FAILED
       if (order.status !== OrderStatus.PENDING && order.status !== OrderStatus.PAYMENT_FAILED) {
         return null;
       }
 
-      // 1. Hoàn kho nguyên liệu theo snapshot consumption
       await this.releaseStock(tx, order);
 
-      // 2. Hoàn lại số lượt sử dụng mã giảm giá (usedCount)
       if (order.promoCode) {
         await tx.promoCode.update({
           where: { code: order.promoCode },
@@ -927,7 +873,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // Hoàn lại điểm tích lũy đã dùng khi đặt đơn (nếu có)
       if (order.pointsUsed > 0 && order.userId) {
         await tx.user.update({
           where: { id: order.userId },
@@ -937,7 +882,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // 3. Đổi trạng thái sang CANCELLED
       const updatedOrder = await tx.order.update({
         where: { id: order.id },
         data: {
@@ -949,9 +893,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Quét và tự động hủy các đơn hàng PENDING hoặc PAYMENT_FAILED đã quá 15 phút.
-   */
+  // Chức năng: Hàm cancelExpiredOrders. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async cancelExpiredOrders(): Promise<number> {
     const expiredBefore = new Date(Date.now() - ORDER_PAYMENT_TIMEOUT_MS);
     const expiredOrders = await this.prisma.order.findMany({
@@ -974,10 +916,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     return count;
   }
 
-  /**
-   * Task 10 & Barista: PATCH /orders/:id/status
-   * Barista chuyển bước đơn hàng: PAID → PREPARING → READY → COMPLETED
-   */
+  // Chức năng: Chuyển đổi trạng thái đơn hàng theo máy trạng thái. Cách hoạt động: Kiểm tra transition hợp lệ, nếu lên COMPLETED thì gọi LoyaltyService cộng điểm thưởng cho khách.
   async updateOrderStatus(id: number, nextStatus: OrderStatus, user: UserContext) {
     if (user.role !== Role.BARISTA) {
       throw new ForbiddenException({
@@ -998,7 +937,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // Kiểm tra chuyển tiếp hợp lệ qua State Machine
       assertTransition(order.status, nextStatus);
 
       const updated = await tx.order.update({
@@ -1008,7 +946,6 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // Nếu đơn chuyển sang PAID (Barista bấm xác nhận tiền), cập nhật payment và tự động cộng điểm thưởng cho khách hàng
       if (nextStatus === OrderStatus.PAID) {
         const existingProcessing = await tx.payment.findFirst({
           where: { orderId: order.id, status: PaymentStatus.PROCESSING },
@@ -1072,11 +1009,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  /**
-   * Barista Queue: GET /orders (Mở rộng Barista - Mục 6.15)
-   * Hàng đợi phục vụ cho nhân viên Barista: lọc status (mặc định PAID, PREPARING, READY),
-   * sắp xếp createdAt tăng dần (cũ nhất lên đầu).
-   */
+  // Chức năng: Lấy dữ liệu BaristaOrders. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getBaristaOrders(query: { status?: string; page?: number; limit?: number }, user: UserContext) {
     if (user.role !== Role.BARISTA) {
       throw new ForbiddenException({
@@ -1177,10 +1110,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  /**
-   * Giữ tồn kho nguyên liệu theo công thức bằng optimistic locking (Ingredient.version).
-   * Sắp xếp ingredientId tăng dần để phòng tránh deadlock.
-   */
+  // Chức năng: Hàm reserveStock(tx, items). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   private async reserveStock(tx: any, items: CreateOrderItemDto[]) {
     const productIds = [...new Set(items.map((i) => i.productId))];
     const toppingIds = [...new Set(items.flatMap((i) => i.toppingIds ?? []))];
@@ -1329,9 +1259,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     return { lineConsumptions, orderNeedsMap };
   }
 
-  /**
-   * Hoàn kho nguyên liệu đúng theo snapshot OrderItem.consumption (không tính lại từ công thức hiện tại).
-   */
+  // Chức năng: Hàm releaseStock(tx, order). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   private async releaseStock(tx: any, order: { id: number; items: any[] }) {
     const releaseMap = new Map<number, number>();
     for (const item of order.items) {

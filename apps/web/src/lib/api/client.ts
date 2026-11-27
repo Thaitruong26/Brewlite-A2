@@ -20,6 +20,7 @@ export class ApiError extends Error {
 
 type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown; authenticated?: boolean };
 
+// Chức năng: Hàm apiRequest(path, options). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { authenticated = false, headers, body, ...init } = options;
   const requestHeaders = new Headers(headers);

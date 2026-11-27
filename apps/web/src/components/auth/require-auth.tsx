@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { readAuth } from "@/lib/api/auth-storage";
 import { LoadingState } from "@/components/ui/loading-state";
 
-/** Wrap any FE2/FE3 page that requires a signed-in user. */
+// Chức năng: Component giao diện RequireAuth. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();

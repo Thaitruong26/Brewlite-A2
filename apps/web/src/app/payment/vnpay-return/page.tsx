@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { API_BASE_URL, formatVND, verifyVnpayCallbackApi } from "@/lib/api";
 
+// Chức năng: Component giao diện VnpayReturnContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function VnpayReturnContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,6 @@ function VnpayReturnContent() {
     verifyVnpayCallbackApi(params)
       .then(async (res) => {
         if (res.isSuccess) {
-          // Đồng bộ IPN dự phòng khi chạy Localhost / Sandbox (VNPay không thể gọi webhook vào localhost)
           try {
             const qs = new URLSearchParams(params).toString();
             await fetch(`${API_BASE_URL}/payments/vnpay/ipn?${qs}`, {
@@ -183,6 +183,7 @@ function VnpayReturnContent() {
   );
 }
 
+// Chức năng: Component giao diện VnpayReturnPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function VnpayReturnPage() {
   return (
     <Suspense

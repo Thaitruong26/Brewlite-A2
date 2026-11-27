@@ -29,15 +29,7 @@ export interface OrderLineInput {
 
 @Injectable()
 export class RecipeService {
-  /**
-   * Tính nhu cầu nguyên liệu cho 1 dòng sản phẩm (đã nhân qty).
-   * Quy tắc:
-   * 1. Nhu cầu món 1 ly = ceil(ProductRecipe.quantity * SizeFactor[size])
-   * 2. Nhu cầu topping 1 ly = sum(ToppingRecipe.quantity)
-   * 3. Nhu cầu 1 ly = nhu cầu món + nhu cầu topping
-   * 4. Nhu cầu dòng = nhu cầu 1 ly * qty
-   * Làm tròn LÊN ở bước nhân size, TRƯỚC khi nhân qty.
-   */
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (calculateLine). Cách hoạt động: Biến đổi tham số đầu vào (product, size, toppings, qty) thành kết quả chuẩn để hiển thị hoặc tính toán.
   calculateLine(
     product: ProductWithRecipes,
     size: SizeKey,
@@ -56,13 +48,11 @@ export class RecipeService {
     const factor = SIZE_FACTOR[size] ?? 1.0;
     const singleCupMap = new Map<number, number>();
 
-    // 1. Nguyên liệu của món chính
     for (const item of productRecipes) {
       const cupNeed = Math.ceil(item.quantity * factor);
       singleCupMap.set(item.ingredientId, (singleCupMap.get(item.ingredientId) || 0) + cupNeed);
     }
 
-    // 2. Nguyên liệu của topping
     for (const topping of toppings) {
       const toppingRecipes = topping.recipes ?? topping.toppingRecipes ?? [];
       for (const item of toppingRecipes) {
@@ -70,7 +60,6 @@ export class RecipeService {
       }
     }
 
-    // 3. Nhân với số ly (qty)
     const lineMap = new Map<number, number>();
     for (const [ingredientId, cupNeed] of singleCupMap.entries()) {
       lineMap.set(ingredientId, cupNeed * qty);
@@ -79,10 +68,7 @@ export class RecipeService {
     return lineMap;
   }
 
-  /**
-   * Tính và gộp nhu cầu nguyên liệu cho toàn bộ đơn hàng.
-   * Gộp tất cả các dòng theo ingredientId.
-   */
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (calculateOrder). Cách hoạt động: Biến đổi tham số đầu vào (items) thành kết quả chuẩn để hiển thị hoặc tính toán.
   calculateOrder(items: OrderLineInput[]): Map<number, number> {
     const totalOrderMap = new Map<number, number>();
 
@@ -103,11 +89,7 @@ export class RecipeService {
     return totalOrderMap;
   }
 
-  /**
-   * Tính số ly tối đa của 1 sản phẩm ở 1 size dựa trên tồn kho hiện tại.
-   * soLyToiDa(sp, size) = min over ing ( floor( Ingredient.stock / nhuCauMotLy(ing) ) )
-   * Nếu sản phẩm không có công thức: trả về 0.
-   */
+  // Chức năng: Hàm maxCups(product, size, stockMap). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   maxCups(
     product: ProductWithRecipes,
     size: SizeKey,
@@ -134,9 +116,7 @@ export class RecipeService {
     return minCups === Number.MAX_SAFE_INTEGER ? 0 : Math.max(0, minCups);
   }
 
-  /**
-   * Tìm số ly tối đa và tên nguyên liệu thắt nút cổ chai (limitedBy).
-   */
+  // Chức năng: Lấy dữ liệu Bottleneck. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   getBottleneck(
     product: ProductWithRecipes,
     size: SizeKey,
@@ -168,15 +148,12 @@ export class RecipeService {
     }
 
     const maxCups = Math.max(0, minCups);
-    // Nếu tồn kho còn rất nhiều (ví dụ > 100) thì limitedBy có thể để null hoặc trả về nguyên liệu ít nhất
     const limitedBy = bottleneckIngId && ingredientNameMap ? (ingredientNameMap.get(bottleneckIngId) ?? null) : null;
 
     return { maxCups, limitedBy };
   }
 
-  /**
-   * Kiểm tra topping có sẵn sàng phục vụ cho ít nhất 1 phần không.
-   */
+  // Chức năng: Hàm isToppingAvailable(topping, stockMap). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   isToppingAvailable(topping: ToppingWithRecipes, stockMap: Map<number, number>): boolean {
     const toppingRecipes = topping.recipes ?? topping.toppingRecipes ?? [];
     if (toppingRecipes.length === 0) return true;

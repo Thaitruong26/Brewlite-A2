@@ -5,7 +5,6 @@ import { SiteHeader } from "@/components/layout/site-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { CartBar } from "@/components/layout/cart-bar";
 
-/* ── Font variables ── */
 const inter = { variable: "--font-inter" };
 const playfair = { variable: "--font-playfair" };
 
@@ -31,6 +30,7 @@ export const viewport: Viewport = {
   themeColor: "#f5f7f2",
 };
 
+// Chức năng: Component giao diện RootLayout. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html

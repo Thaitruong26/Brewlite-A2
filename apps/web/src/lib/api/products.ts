@@ -8,6 +8,7 @@ export interface ProductQuery {
   limit?: number;
 }
 
+// Chức năng: Lấy dữ liệu Products. Cách hoạt động: Truy vấn dữ liệu từ Backend API và trả về kết quả đã định dạng.
 export function getProducts(query: ProductQuery = {}) {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);

@@ -21,7 +21,7 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {}
 
-  /** Register a new CUSTOMER account */
+  // Chức năng: Xử lý nghiệp vụ đăng ký tài khoản. Cách hoạt động: Kiểm tra email đã tồn tại chưa (ném 409 nếu trùng), hash mật khẩu bằng bcrypt, tạo User với role CUSTOMER và trả về thông tin user (ẩn passwordHash).
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -44,7 +44,7 @@ export class AuthService {
     };
   }
 
-  /** Login with email + password */
+  // Chức năng: Xử lý nghiệp vụ đăng nhập. Cách hoạt động: Tìm user theo email, so sánh mật khẩu với passwordHash bằng bcrypt.compare(), nếu khớp thì ký JWT payload (sub, email, role) và trả về access_token cùng thông tin user.
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -65,6 +65,7 @@ export class AuthService {
     };
   }
 
+  // Chức năng: Hàm signToken(sub, email, role). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   private signToken(sub: number, email: string, role: string): string {
     const payload: JwtPayload = { sub, email, role };
     return this.jwtService.sign(payload, {

@@ -12,6 +12,7 @@ type Props = {
   onCancelled?: () => void;
 };
 
+// Chức năng: Component giao diện CancelOrder. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function CancelOrder({ order, disabled, compact = false, onRefresh, onCancelled }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -26,6 +27,7 @@ export function CancelOrder({ order, disabled, compact = false, onRefresh, onCan
   const processing = order.payments?.some((p) => p.status === "PROCESSING");
   const canCancel = allowed && !processing && !disabled && !cancelled;
 
+  // Chức năng: Hàm confirm. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async function confirm() {
     if (busy.current || !canCancel) return;
     if (order.status === "PAID" && !account.trim()) {

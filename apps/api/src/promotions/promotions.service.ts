@@ -14,10 +14,10 @@ export class PromotionsService {
     @Optional() private readonly pricingService?: PricingService,
   ) {}
 
+  // Chức năng: Tính toán ưu đãi của mã khuyến mãi. Cách hoạt động: Kiểm tra mã tồn tại, đang bật, còn hạn sử dụng, chưa hết lượt dùng, đạt giá trị đơn tối thiểu rồi tính mức giảm theo % (có maxDiscount) hoặc số tiền cố định.
   async validate(dto: ValidatePromotionDto) {
     const code = dto.code ? dto.code.trim().toUpperCase() : '';
 
-    // 1. Tìm mã khuyến mãi trong bảng PromoCode
     const promo = await this.prisma.promoCode.findUnique({
       where: { code },
     });
@@ -29,7 +29,6 @@ export class PromotionsService {
       });
     }
 
-    // 2. Kiểm tra trạng thái kích hoạt (isActive)
     if (!promo.isActive) {
       throw new UnprocessableEntityException({
         code: 'PROMO_INACTIVE',
@@ -37,7 +36,6 @@ export class PromotionsService {
       });
     }
 
-    // 3. Kiểm tra thời gian sử dụng (startsAt & expiresAt)
     const now = new Date();
     if (now < promo.startsAt) {
       throw new UnprocessableEntityException({
@@ -54,7 +52,6 @@ export class PromotionsService {
       });
     }
 
-    // Tính toán orderValue nếu client truyền items thay vì orderValue
     let orderValue = dto.orderValue;
     if (orderValue === undefined && dto.items && dto.items.length > 0) {
       if (this.pricingService) {
@@ -90,7 +87,6 @@ export class PromotionsService {
       orderValue = 0;
     }
 
-    // 4. Kiểm tra giá trị đơn tối thiểu (minOrderValue)
     if (orderValue < promo.minOrderValue) {
       throw new UnprocessableEntityException({
         code: 'PROMO_MIN_ORDER_NOT_MET',
@@ -102,7 +98,6 @@ export class PromotionsService {
       });
     }
 
-    // 5. Kiểm tra lượt dùng (usageLimit & usedCount)
     if (promo.usageLimit !== null && promo.usedCount >= promo.usageLimit) {
       throw new UnprocessableEntityException({
         code: 'PROMO_USAGE_EXCEEDED',
@@ -110,7 +105,6 @@ export class PromotionsService {
       });
     }
 
-    // 6. Tính toán số tiền được giảm dựa vào type (PERCENT hoặc FIXED)
     let discountAmount = 0;
 
     if (promo.type === 'PERCENT') {

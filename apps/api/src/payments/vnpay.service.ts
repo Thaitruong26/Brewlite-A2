@@ -14,7 +14,6 @@ export interface VnpayConfig {
 export class VnpayService {
   private readonly logger = new Logger(VnpayService.name);
 
-  // Cấu hình VNPay Sandbox chính thức - nạp hoàn toàn từ Environment Variables (P0.1)
   private readonly config: VnpayConfig = {
     tmnCode: process.env.VNPAY_TMN_CODE || '',
     hashSecret: process.env.VNPAY_HASH_SECRET || '',
@@ -27,6 +26,7 @@ export class VnpayService {
     private readonly loyaltyService: LoyaltyService,
   ) {}
 
+  // Chức năng: Lấy dữ liệu HashSecret. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   private getHashSecret(): string {
     const secret = this.config.hashSecret || process.env.VNPAY_HASH_SECRET;
     if (!secret) {
@@ -35,6 +35,7 @@ export class VnpayService {
     return secret;
   }
 
+  // Chức năng: Lấy dữ liệu TmnCode. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   private getTmnCode(): string {
     const code = this.config.tmnCode || process.env.VNPAY_TMN_CODE;
     if (!code) {
@@ -43,6 +44,7 @@ export class VnpayService {
     return code;
   }
 
+  // Chức năng: Lấy dữ liệu VnpayDateFormat. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   private getVnpayDateFormat(d: Date = new Date()): string {
     const vnTime = new Date(d.getTime() + 7 * 3600 * 1000);
     const year = vnTime.getUTCFullYear();
@@ -54,6 +56,7 @@ export class VnpayService {
     return `${year}${month}${day}${hours}${minutes}${seconds}`;
   }
 
+  // Chức năng: Hàm sortObject(obj). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   private sortObject(obj: Record<string, any>): Record<string, string> {
     const sorted: Record<string, string> = {};
     const keys = Object.keys(obj).sort();
@@ -65,9 +68,7 @@ export class VnpayService {
     return sorted;
   }
 
-  /**
-   * Sinh URL chuyển hướng sang cổng thanh toán VNPay Sandbox
-   */
+  // Chức năng: Sinh URL chuyển hướng sang cổng VNPay Sandbox. Cách hoạt động: Kiểm tra đơn hợp lệ, sắp xếp tham số vnp_* theo thứ tự ABC, ký HMAC-SHA512 bằng VNPAY_HASH_SECRET và ghép thành URL.
   async createPaymentUrl(orderId: number, ipAddr: string = '127.0.0.1', baseUrl?: string): Promise<string> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -86,7 +87,7 @@ export class VnpayService {
 
     const createDate = this.getVnpayDateFormat();
     const txnRef = `${order.id}_${Date.now()}`;
-    const amount = order.total * 100; // VNPay tính theo đơn vị hào (nhân 100)
+    const amount = order.total * 100; 
     const returnUrl = baseUrl ? `${baseUrl.replace(/\/+$/, '')}/payment/vnpay-return` : this.config.returnUrl;
 
     const vnpParams: Record<string, string> = {
@@ -118,10 +119,7 @@ export class VnpayService {
     return paymentUrl;
   }
 
-  /**
-   * Sinh URL cho cổng giả lập VNPay Sandbox Mock Simulator
-   * Dùng cho demo hoặc kiểm thử khi chưa kết nối cổng ngân hàng ngoài
-   */
+  // Chức năng: Tạo mới hoặc thêm dữ liệu (createSimulatorUrl). Cách hoạt động: Kiểm tra đầu vào (orderId), thực hiện lưu trữ và trả về bản ghi vừa tạo.
   async createSimulatorUrl(orderId: number): Promise<string> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -163,9 +161,7 @@ export class VnpayService {
     return `/payment/vnpay-sandbox-mock?${signData}&vnp_SecureHash=${secureHash}`;
   }
 
-  /**
-   * Tạo query callback thành công có ký HMAC-SHA512 hợp lệ từ Simulator
-   */
+  // Chức năng: Hàm generateSignedCallback(orderId, txnRef, amount, responseCode). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   generateSignedCallback(
     orderId: number,
     txnRef: string,
@@ -202,11 +198,7 @@ export class VnpayService {
     return `${signData}&vnp_SecureHashType=SHA512&vnp_SecureHash=${secureHash}`;
   }
 
-  /**
-   * Xác thực kết quả trả về từ VNPay (Return URL / IPN)
-   * Tuân thủ P0.1 & P0.2: kiểm tra chữ ký HMAC, so sánh số tiền callback với đơn,
-   * kiểm tra mã đối tác tmnCode, và chỉ cho phép chuyển từ PENDING/PAYMENT_FAILED sang PAID.
-   */
+  // Chức năng: Xác minh tính toàn vẹn dữ liệu Return URL từ VNPay. Cách hoạt động: Kiểm tra chữ ký vnp_SecureHash, đối chiếu mã đối tác, số tiền và trả về trạng thái giao dịch để Frontend hiển thị.
   async verifyReturnUrl(query: Record<string, string>): Promise<{
     isSuccess: boolean;
     orderId: number;
@@ -229,7 +221,6 @@ export class VnpayService {
     const tmnCode = this.getTmnCode();
     const hashSecret = this.getHashSecret();
 
-    // 1. Kiểm tra đối tác (Merchant TMN Code)
     if (query['vnp_TmnCode'] && query['vnp_TmnCode'] !== tmnCode) {
       this.logger.error(`Sai mã merchant VNPay: nhận được ${query['vnp_TmnCode']}, cấu hình là ${tmnCode}`);
       return {
@@ -241,7 +232,6 @@ export class VnpayService {
       };
     }
 
-    // 2. Kiểm tra chữ ký HMAC-SHA512
     const cleanQuery: Record<string, string> = { ...query };
     delete cleanQuery['vnp_SecureHash'];
     delete cleanQuery['vnp_SecureHashType'];
@@ -281,7 +271,6 @@ export class VnpayService {
       };
     }
 
-    // 3. Tìm đơn hàng trên hệ thống
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { payments: true },
@@ -297,7 +286,6 @@ export class VnpayService {
       };
     }
 
-    // 4. Kiểm tra số tiền callback so với giá trị đơn (Chống Tampering số tiền)
     if (Math.round(amount) !== Math.round(order.total)) {
       this.logger.error(`Số tiền thanh toán ${amount} không khớp với đơn hàng #${order.id} (${order.total})`);
       return {
@@ -309,7 +297,6 @@ export class VnpayService {
       };
     }
 
-    // 5. Kiểm tra trạng thái đơn: Nếu đã bị hủy thì từ chối nhận tiền
     if (order.status === 'CANCELLED') {
       this.logger.warn(`Đơn hàng #${order.id} đã bị hủy trước đó, từ chối cập nhật thanh toán`);
       return {
@@ -321,7 +308,6 @@ export class VnpayService {
       };
     }
 
-    // Nếu đơn hàng đã hoàn tất thanh toán trước đó (Xử lý Idempotency)
     if (order.status === 'PAID' || order.status === 'PREPARING' || order.status === 'READY' || order.status === 'COMPLETED') {
       return {
         isSuccess: true,
@@ -333,7 +319,6 @@ export class VnpayService {
       };
     }
 
-    // Chỉ cho phép chuyển trạng thái sang PAID nếu đang ở PENDING hoặc PAYMENT_FAILED
     if (order.status !== 'PENDING' && order.status !== 'PAYMENT_FAILED') {
       return {
         isSuccess: false,
@@ -372,17 +357,7 @@ export class VnpayService {
     };
   }
 
-  /**
-   * Xử lý IPN từ Server VNPay theo chuẩn tài liệu chính thức của VNPay
-   * Trả về JSON: { RspCode: '00', Message: 'Confirm Success' }
-   * Mã RspCode chuẩn:
-   *  - 00: Giao dịch thành công
-   *  - 01: Đơn hàng không tìm thấy (Order not found)
-   *  - 02: Đơn hàng đã được xác nhận trước đó (Order already confirmed)
-   *  - 04: Số tiền không hợp lệ (Invalid amount)
-   *  - 97: Chữ ký không hợp lệ (Invalid Checksum)
-   *  - 99: Lỗi không xác định
-   */
+  // Chức năng: Xử lý IPN chính thức cập nhật đơn hàng. Cách hoạt động: Xác thực chữ ký HMAC-SHA512, kiểm tra tồn tại đơn, kiểm tra số tiền và tính idempotent, sau đó mở transaction tạo Payment SUCCESS, chuyển Order sang PAID và cộng điểm thưởng.
   async verifyIpn(query: Record<string, string>): Promise<{ RspCode: string; Message: string }> {
     const secureHash = query['vnp_SecureHash'];
     if (!secureHash) {
@@ -392,13 +367,11 @@ export class VnpayService {
     const tmnCode = this.getTmnCode();
     const hashSecret = this.getHashSecret();
 
-    // 1. Kiểm tra đối tác
     if (query['vnp_TmnCode'] && query['vnp_TmnCode'] !== tmnCode) {
       this.logger.error(`Sai mã merchant VNPay trong IPN: ${query['vnp_TmnCode']}`);
       return { RspCode: '97', Message: 'Invalid Merchant' };
     }
 
-    // 2. Kiểm tra chữ ký HMAC
     const cleanQuery: Record<string, string> = { ...query };
     delete cleanQuery['vnp_SecureHash'];
     delete cleanQuery['vnp_SecureHashType'];
@@ -426,7 +399,6 @@ export class VnpayService {
       return { RspCode: '01', Message: 'Order not found' };
     }
 
-    // 3. Tìm đơn hàng
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: { payments: true },
@@ -436,13 +408,11 @@ export class VnpayService {
       return { RspCode: '01', Message: 'Order not found' };
     }
 
-    // 4. Kiểm tra số tiền
     if (Math.round(amount) !== Math.round(order.total)) {
       this.logger.error(`Số tiền IPN ${amount} không khớp đơn #${order.id} (${order.total})`);
       return { RspCode: '04', Message: 'Invalid amount' };
     }
 
-    // 5. Kiểm tra trạng thái đơn (Idempotency)
     if (
       order.status === 'PAID' ||
       order.status === 'PREPARING' ||
@@ -503,7 +473,6 @@ export class VnpayService {
       return { RspCode: '00', Message: 'Confirm Success' };
     }
 
-    // Nếu thanh toán thất bại
     if (order.status === 'PENDING') {
       await this.prisma.order.update({
         where: { id: orderId },

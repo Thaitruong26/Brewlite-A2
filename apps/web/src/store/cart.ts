@@ -9,7 +9,6 @@ export type Size = "S" | "M" | "L";
 export type CartTopping = { id: number; name: string; price: number };
 
 export type CartItem = {
-  /** Khóa duy nhất của một dòng: cùng sản phẩm + size + bộ topping */
   key: string;
   id?: string;
   productId: number;
@@ -48,6 +47,7 @@ export const MAX_QTY_PER_ITEM = 20;
 export const MAX_TOPPINGS = 3;
 export const MAX_CART_LINES = 30;
 
+// Chức năng: Hàm cartItemKey(productId, size, toppingIds). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export const cartItemKey = (
   productId: number,
   size: Size,
@@ -58,9 +58,11 @@ export const cartItemKey = (
     .sort((a, b) => a - b)
     .join(",")}`;
 
+// Chức năng: Hàm clampQty(qty). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export const clampQty = (qty: number) =>
   Math.max(1, Math.min(MAX_QTY_PER_ITEM, Math.floor(qty) || 1));
 
+// Chức năng: Hàm itemUnitPrice(item). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export const itemUnitPrice = (item: {
   basePrice: number;
   sizeSurcharge?: number;
@@ -72,6 +74,7 @@ export const itemUnitPrice = (item: {
 
 export const calculateItemUnitPrice = itemUnitPrice;
 
+// Chức năng: Hàm itemLineTotal(item). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export const itemLineTotal = (item: CartItem) =>
   itemUnitPrice(item) * (item.quantity ?? item.qty ?? 1);
 
@@ -79,7 +82,6 @@ export type CartState = {
   items: CartItem[];
   promoCode: string | null;
   discountAmount: number;
-  /** Thêm món; trả về false nếu chưa đăng nhập hoặc giỏ đã đủ số dòng tối đa. */
   addItem: (item: NewCartItem, quantity?: number) => boolean;
   setQuantity: (key: string, quantity: number) => void;
   updateQty: (key: string, quantity: number) => void;
@@ -91,10 +93,11 @@ export type CartState = {
   getTotal: () => number;
 };
 
-// Selector dùng chung: tổng số ly (hiện trên biểu tượng giỏ) và tạm tính.
+// Chức năng: Hàm selectCartCount(state). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export const selectCartCount = (state: CartState) =>
   state.items.reduce((sum, item) => sum + (item.quantity ?? item.qty ?? 0), 0);
 
+// Chức năng: Hàm selectSubtotal(state). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export const selectSubtotal = (state: CartState) =>
   state.items.reduce((sum, item) => sum + itemLineTotal(item), 0);
 
@@ -109,7 +112,6 @@ export const useCartStore = create<CartState>()(
       discountAmount: 0,
 
       addItem: (item, quantity = 1) => {
-        // Yêu cầu: Đăng nhập mới được thêm món vào giỏ hàng
         if (typeof window !== "undefined") {
           const auth = readAuth();
           if (!auth.accessToken && !auth.user) {
@@ -235,9 +237,7 @@ export const useCartStore = create<CartState>()(
   ),
 );
 
-/**
- * true khi giỏ hàng đã được nạp lại từ localStorage.
- */
+// Chức năng: Custom React Hook (useCartHydrated). Cách hoạt động: Quản lý state, effect hoặc truy xuất dữ liệu dùng chung cho các component.
 export function useCartHydrated() {
   return useSyncExternalStore(
     (onChange) => useCartStore.persist.onFinishHydration(onChange),

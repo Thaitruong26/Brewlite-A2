@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
-// Mã lỗi mặc định theo HTTP status, dùng khi exception không tự gắn `code`.
 const DEFAULT_CODES: Record<number, string> = {
   400: 'VALIDATION_ERROR',
   401: 'UNAUTHORIZED',
@@ -29,17 +28,11 @@ interface ErrorBody {
   timestamp: string;
 }
 
-/**
- * Mọi lỗi đều ra cùng một dạng (xem mục 2.1 của tài liệu API):
- * { statusCode, code, message, details?, path, timestamp }
- *
- * Ném lỗi nghiệp vụ như sau:
- *   throw new ConflictException({ code: 'OUT_OF_STOCK', message: '...', details: [...] });
- */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  // Chức năng: Hàm catch(exception, host). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
@@ -63,7 +56,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         if (b.details !== undefined) details = b.details;
 
         if (Array.isArray(b.message)) {
-          // lỗi từ ValidationPipe (class-validator): danh sách từng lỗi
           message = 'Dữ liệu không hợp lệ';
           details = details ?? b.message;
         } else if (typeof b.message === 'string') {
@@ -73,7 +65,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         }
       }
     } else {
-      // lỗi không lường trước: ghi log đầy đủ, KHÔNG trả chi tiết cho client
       this.logger.error(
         exception instanceof Error ? exception.stack : String(exception),
       );

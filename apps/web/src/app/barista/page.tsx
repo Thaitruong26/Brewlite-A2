@@ -15,6 +15,17 @@ import {
   getIngredientsStock,
   addIngredientStock,
   getProductRecipe,
+  createIngredient,
+  updateIngredient,
+  adjustIngredientStock,
+  getIngredientMovements,
+  updateProductRecipe,
+  getToppings,
+  getToppingRecipe,
+  updateToppingRecipe,
+  type BackendTopping,
+  type IngredientUnit,
+  type StockMovementItem,
   BaristaOrder as BackendOrder,
 } from "@/lib/api/barista";
 
@@ -61,7 +72,6 @@ const BANK_NAMES: Record<string, string> = {
   BIDV: "BIDV",
 };
 
-// Từ điển công thức chuẩn đồng bộ 100% với database (backend/prisma/seed.ts)
 const PRODUCT_RECIPES: Record<string, RecipeIngredient[]> = {
   "Trà Sữa Truyền Thống": [
     { ingredient: "Cốt trà đen đã pha", quantity: 150, unit: "ml" },
@@ -241,8 +251,10 @@ const defaultIngredients: IngredientItem[] = [
   { id: 34, sku: "NL-034", name: "Nước lọc", detail: "Nước tinh khiết đã lọc", unit: "ml", stock: 50000, minimum: 5000 },
 ];
 
+// Chức năng: Hàm money(value). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 const money = (value: number) => `${new Intl.NumberFormat("vi-VN").format(value)}đ`;
 
+// Chức năng: Hàm mapBackendOrderToBarista(bo). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 function mapBackendOrderToBarista(bo: BackendOrder): BaristaOrder {
   const stageMap: Record<string, OrderStage> = {
     PENDING: "pending",
@@ -288,17 +300,50 @@ function mapBackendOrderToBarista(bo: BackendOrder): BaristaOrder {
   };
 }
 
+// Chức năng: Component giao diện BaristaPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function BaristaPage() {
-  const [inventoryTab, setInventoryTab] = useState<"stock" | "ingredients">("stock");
+  const [inventoryTab, setInventoryTab] = useState<"stock" | "ingredients" | "toppings">("stock");
   const [queueTab, setQueueTab] = useState<QueueTab>("preparing");
   const [orders, setOrders] = useState<BaristaOrder[]>([]);
   const [stock, setStock] = useState<StockItem[]>(defaultMenuStock);
   const [ingredientStock, setIngredientStock] = useState<IngredientItem[]>(defaultIngredients);
+  const [toppings, setToppings] = useState<BackendTopping[]>([]);
   const [receivingSku, setReceivingSku] = useState<string | null>(null);
   const [receivingAmount, setReceivingAmount] = useState("1000");
   const [selectedRecipeProduct, setSelectedRecipeProduct] = useState<StockItem | null>(null);
   const [dynamicRecipe, setDynamicRecipe] = useState<RecipeIngredient[] | null>(null);
   const [loadingRecipe, setLoadingRecipe] = useState(false);
+  const [editingProductRecipe, setEditingProductRecipe] = useState(false);
+  const [productRecipeDraft, setProductRecipeDraft] = useState<{ ingredientId: number; name: string; unit: string; quantity: number }[]>([]);
+  const [newRecipeIngId, setNewRecipeIngId] = useState<number>(0);
+  const [savingProductRecipe, setSavingProductRecipe] = useState(false);
+
+  const [createIngOpen, setCreateIngOpen] = useState(false);
+  const [newIngName, setNewIngName] = useState("");
+  const [newIngUnit, setNewIngUnit] = useState<IngredientUnit>("G");
+  const [newIngStock, setNewIngStock] = useState("0");
+  const [newIngThreshold, setNewIngThreshold] = useState("500");
+  const [submittingCreateIng, setSubmittingCreateIng] = useState(false);
+
+  const [editIngTarget, setEditIngTarget] = useState<IngredientItem | null>(null);
+  const [editIngName, setEditIngName] = useState("");
+  const [editIngThreshold, setEditIngThreshold] = useState("500");
+  const [submittingEditIng, setSubmittingEditIng] = useState(false);
+
+  const [adjustTarget, setAdjustTarget] = useState<IngredientItem | null>(null);
+  const [adjustActualStock, setAdjustActualStock] = useState("0");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [submittingAdjust, setSubmittingAdjust] = useState(false);
+
+  const [movementsTarget, setMovementsTarget] = useState<IngredientItem | null>(null);
+  const [movementsList, setMovementsList] = useState<StockMovementItem[]>([]);
+  const [loadingMovements, setLoadingMovements] = useState(false);
+
+  const [selectedTopping, setSelectedTopping] = useState<BackendTopping | null>(null);
+  const [toppingRecipeDraft, setToppingRecipeDraft] = useState<{ ingredientId: number; name: string; unit: string; quantity: number }[]>([]);
+  const [loadingToppingRecipe, setLoadingToppingRecipe] = useState(false);
+  const [savingToppingRecipe, setSavingToppingRecipe] = useState(false);
+  const [newToppingIngId, setNewToppingIngId] = useState<number>(0);
   const [refundOrder, setRefundOrder] = useState<BaristaOrder | null>(null);
   const [refundBank, setRefundBank] = useState("VCB");
   const [refundAccount, setRefundAccount] = useState("");
@@ -321,6 +366,7 @@ export default function BaristaPage() {
     }
   }, []);
 
+  // Chức năng: Hàm openRefundModal(order). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const openRefundModal = (order: BaristaOrder) => {
     setRefundOrder(order);
     setRefundProof("");
@@ -342,6 +388,7 @@ export default function BaristaPage() {
     setRefundBank(bank);
   };
 
+  // Chức năng: Xử lý sự kiện ConfirmRefund. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleConfirmRefund = async (orderId: number) => {
     if (!refundProof.trim()) {
       alert("Vui lòng nhập mã giao dịch ngân hàng trước khi xác nhận!");
@@ -367,7 +414,6 @@ export default function BaristaPage() {
       setRefundProof("");
       setIsVerifiedWithBank(false);
       setNotice(`Đã xác nhận hoàn tiền thành công cho đơn #${orderId}!`);
-      // Reload orders to reflect update
       getAllBaristaOrders().then((res) => setOrders(res.data.map(mapBackendOrderToBarista))).catch(() => {});
     } catch (e: any) {
       console.error("Xác nhận hoàn tiền thất bại:", e);
@@ -377,6 +423,7 @@ export default function BaristaPage() {
     }
   };
 
+  // Chức năng: Xử lý sự kiện FailRefund. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleFailRefund = async (orderId: number) => {
     const reason = prompt("Nhập lý do chuyển khoản thất bại (vd: Sai số tài khoản, tài khoản đóng):", "Sai số tài khoản hoặc tài khoản thụ hưởng không hợp lệ");
     if (!reason || !reason.trim()) return;
@@ -394,6 +441,7 @@ export default function BaristaPage() {
     }
   };
 
+  // Chức năng: Xử lý sự kiện HoldRefund. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleHoldRefund = async (orderId: number) => {
     const note = prompt("Nhập lý do chuyển sang đối soát ngân hàng:", "Lệnh chuyển tiền đang treo, chờ ngân hàng đối soát");
     if (!note || !note.trim()) return;
@@ -411,6 +459,7 @@ export default function BaristaPage() {
     }
   };
 
+  // Chức năng: Xử lý sự kiện RetryRefund. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleRetryRefund = async (orderId: number) => {
     if (refundOrder?.refundStatus === "UNKNOWN") {
       alert("Đơn hàng đang ở trạng thái Đối soát (UNKNOWN). Tuyệt đối không được chuyển tiền lại ngay để tránh hoàn tiền trùng lặp cho khách hàng!");
@@ -430,6 +479,19 @@ export default function BaristaPage() {
   };
 
   useEffect(() => {
+    let ignore = false;
+    getToppings()
+      .then((list) => {
+        if (!ignore && Array.isArray(list)) setToppings(list);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setEditingProductRecipe(false);
     if (selectedRecipeProduct?.id) {
       let ignore = false;
       setLoadingRecipe(true);
@@ -473,6 +535,7 @@ export default function BaristaPage() {
     hydrateAuth();
     hydrateAvailability();
     setAuthChecked(true);
+    // Chức năng: Hàm sync. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
     const sync = () => hydrateAvailability();
     window.addEventListener("brewlite:stock-availability-change", sync);
     window.addEventListener("storage", sync);
@@ -484,10 +547,10 @@ export default function BaristaPage() {
 
   const previousOrders = useRef<Map<number, string>>(new Map());
 
-  // Tải danh sách đơn hàng thực tế từ backend
   useEffect(() => {
     let ignore = false;
     let timer: any = null;
+    // Chức năng: Hàm loadBackendOrders. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
     async function loadBackendOrders() {
       try {
         const res = await getAllBaristaOrders();
@@ -515,6 +578,7 @@ export default function BaristaPage() {
     };
   }, [user]);
 
+  // Chức năng: Hàm loadRealIngredients. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const loadRealIngredients = async () => {
     try {
       const res: any = await getIngredientsStock(1, 50);
@@ -538,6 +602,7 @@ export default function BaristaPage() {
     }
   };
 
+  // Chức năng: Hàm loadRealStock. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const loadRealStock = async () => {
     try {
       const res: any = await getProductsStock();
@@ -562,7 +627,6 @@ export default function BaristaPage() {
     }
   };
 
-  // Tải danh sách sản phẩm và nguyên liệu thực tế từ database
   useEffect(() => {
     loadRealStock();
     loadRealIngredients();
@@ -587,6 +651,7 @@ export default function BaristaPage() {
     ).length;
   }, [orders, refundedOrders]);
 
+  // Chức năng: Hàm moveOrder(id, nextStatus). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async function moveOrder(id: number, nextStatus: "PAID" | "PREPARING" | "READY" | "COMPLETED") {
     const stage: OrderStage =
       nextStatus === "COMPLETED"
@@ -597,9 +662,6 @@ export default function BaristaPage() {
         ? "preparing"
         : "pending";
     try {
-      // Khi Barista bấm "Bắt đầu pha chế" (PREPARING):
-      // Trừ trực tiếp nguyên liệu của đơn hàng vào tồn kho quầy ngay lập tức,
-      // tự động kéo theo việc giảm số ly pha được của các món liên quan trên giao diện!
       if (nextStatus === "PREPARING") {
         const orderToPrepare = orders.find((o) => o.id === id);
         if (orderToPrepare) {
@@ -609,6 +671,7 @@ export default function BaristaPage() {
               const recipe = getRecipeForProduct(line.name);
               const qty = line.quantity || 1;
               for (const rec of recipe) {
+                // Chức năng: Hàm normalize(s). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
                 const normalize = (s: string) => s.toLowerCase().trim();
                 const recName = normalize(rec.ingredient);
                 const targetIng = nextList.find((i) => {
@@ -648,7 +711,6 @@ export default function BaristaPage() {
           ? `Đơn #${id} đã làm xong và chuyển sang mục Làm xong (READY).`
           : `Đơn #${id} đã ghi nhận giao thành công (COMPLETED).`,
       );
-      // Tải lại dữ liệu mới nhất từ CSDL máy chủ để đồng bộ
       await loadRealIngredients();
       await loadRealStock();
     } catch (err: unknown) {
@@ -658,6 +720,7 @@ export default function BaristaPage() {
     }
   }
 
+  // Chức năng: Hàm refresh. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async function refresh() {
     setUpdatedAt(new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
     try {
@@ -674,13 +737,13 @@ export default function BaristaPage() {
     setNotice("Đã đồng bộ đơn hàng và tồn kho mới nhất.");
   }
 
+  // Chức năng: Hàm toggleAvailability(sku). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   function toggleAvailability(sku: string) {
     const item = stock.find((entry) => entry.sku === sku);
     if (!item) return;
     const currentlyAvailable = availability[item.name] ?? availability[item.sku] ?? item.stock > 0;
     const nextAvailable = !currentlyAvailable;
     
-    // Đồng bộ theo cả SKU và Tên món để trang /menu ẩn ngay lập tức
     setProductAvailability([item.sku, item.name, item.name.toLowerCase().trim()], nextAvailable);
     
     setNotice(
@@ -692,6 +755,7 @@ export default function BaristaPage() {
     );
   }
 
+  // Chức năng: Hàm receiveIngredient(event). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async function receiveIngredient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const amount = Number(receivingAmount);
@@ -701,7 +765,6 @@ export default function BaristaPage() {
 
     setReceivingSku(null);
 
-    // Tìm ID nguyên liệu trong database (trực tiếp hoặc theo id trong sku/tên)
     let targetId = item.id;
     if (!targetId && item.sku) {
       const parsed = parseInt(item.sku.replace("NL-", ""), 10);
@@ -718,7 +781,6 @@ export default function BaristaPage() {
         setNotice(`Lỗi khi lưu CSDL: ${err.message || "Không thể kết nối"}`);
       }
     } else {
-      // Cập nhật local nếu chưa tải xong database
       setIngredientStock((current) => current.map((entry) => entry.sku === receivingSku
         ? { ...entry, stock: Number((entry.stock + amount).toFixed(2)) }
         : entry));
@@ -726,11 +788,180 @@ export default function BaristaPage() {
     }
   }
 
+  async function handleCreateIngredient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newIngName.trim()) return;
+    setSubmittingCreateIng(true);
+    try {
+      await createIngredient({
+        name: newIngName.trim(),
+        unit: newIngUnit,
+        stock: Math.max(0, Math.round(Number(newIngStock) || 0)),
+        lowThreshold: Math.max(0, Math.round(Number(newIngThreshold) || 0)),
+      });
+      await loadRealIngredients();
+      setNotice(`✓ Đã thêm nguyên liệu mới: ${newIngName.trim()}.`);
+      setCreateIngOpen(false);
+      setNewIngName("");
+      setNewIngStock("0");
+      setNewIngThreshold("500");
+    } catch (err: any) {
+      setNotice(`Lỗi thêm nguyên liệu: ${err?.message || "Không thể lưu"}`);
+    } finally {
+      setSubmittingCreateIng(false);
+    }
+  }
+
+  async function handleUpdateIngredient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editIngTarget?.id) return;
+    setSubmittingEditIng(true);
+    try {
+      await updateIngredient(editIngTarget.id, {
+        name: editIngName.trim() || undefined,
+        lowThreshold: Math.max(0, Math.round(Number(editIngThreshold) || 0)),
+      });
+      await loadRealIngredients();
+      setNotice(`✓ Đã cập nhật thông tin nguyên liệu #${editIngTarget.id}.`);
+      setEditIngTarget(null);
+    } catch (err: any) {
+      setNotice(`Lỗi cập nhật nguyên liệu: ${err?.message || "Không thể lưu"}`);
+    } finally {
+      setSubmittingEditIng(false);
+    }
+  }
+
+  async function handleAdjustStock(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!adjustTarget?.id) return;
+    if (adjustReason.trim().length < 3) {
+      setNotice("Vui lòng nhập lý do kiểm kê/hao hụt từ 3 ký tự trở lên.");
+      return;
+    }
+    setSubmittingAdjust(true);
+    try {
+      await adjustIngredientStock(
+        adjustTarget.id,
+        Math.max(0, Math.round(Number(adjustActualStock) || 0)),
+        adjustReason.trim(),
+      );
+      await loadRealIngredients();
+      setNotice(`✓ Đã kiểm kê tồn thực tế cho ${adjustTarget.name}.`);
+      setAdjustTarget(null);
+      setAdjustReason("");
+    } catch (err: any) {
+      setNotice(`Lỗi kiểm kê kho: ${err?.message || "Không thể lưu"}`);
+    } finally {
+      setSubmittingAdjust(false);
+    }
+  }
+
+  async function openMovementsModal(item: IngredientItem) {
+    if (!item.id) return;
+    setMovementsTarget(item);
+    setMovementsList([]);
+    setLoadingMovements(true);
+    try {
+      const res = await getIngredientMovements(item.id, 1, 30);
+      setMovementsList(Array.isArray(res?.data) ? res.data : []);
+    } catch (err: any) {
+      setNotice(`Không tải được lịch sử thẻ kho: ${err?.message || "Lỗi kết nối"}`);
+    } finally {
+      setLoadingMovements(false);
+    }
+  }
+
+  function startEditProductRecipe() {
+    const base = dynamicRecipe || (selectedRecipeProduct ? getRecipeForProduct(selectedRecipeProduct.name) : []);
+    const draft = base
+      .map((rec) => {
+        const matched =
+          (rec.ingredientId ? ingredientStock.find((i) => i.id === rec.ingredientId) : undefined) ||
+          ingredientStock.find((i) => i.name.toLowerCase().trim() === rec.ingredient.toLowerCase().trim());
+        if (!matched?.id) return null;
+        return {
+          ingredientId: matched.id,
+          name: matched.name,
+          unit: matched.unit,
+          quantity: Math.max(1, Math.round(rec.quantity)),
+        };
+      })
+      .filter(Boolean) as { ingredientId: number; name: string; unit: string; quantity: number }[];
+    setProductRecipeDraft(draft);
+    const firstAvail = ingredientStock.find((i) => i.id && !draft.some((d) => d.ingredientId === i.id));
+    setNewRecipeIngId(firstAvail?.id ?? 0);
+    setEditingProductRecipe(true);
+  }
+
+  async function saveProductRecipe() {
+    if (!selectedRecipeProduct?.id) return;
+    setSavingProductRecipe(true);
+    try {
+      const res = await updateProductRecipe(
+        selectedRecipeProduct.id,
+        productRecipeDraft.map((d) => ({ ingredientId: d.ingredientId, quantity: Math.max(1, Math.round(d.quantity)) })),
+      );
+      setDynamicRecipe(
+        res.items.map((item) => ({
+          ingredientId: item.ingredientId,
+          ingredient: item.name,
+          quantity: item.quantity,
+          unit: item.unit ? item.unit.toLowerCase() : "ml",
+        })),
+      );
+      setEditingProductRecipe(false);
+      setNotice(`✓ Đã lưu công thức mới cho món ${selectedRecipeProduct.name}.`);
+    } catch (err: any) {
+      setNotice(`Lỗi lưu công thức món: ${err?.message || "Không thể lưu"}`);
+    } finally {
+      setSavingProductRecipe(false);
+    }
+  }
+
+  async function openToppingRecipeModal(topping: BackendTopping) {
+    setSelectedTopping(topping);
+    setToppingRecipeDraft([]);
+    setLoadingToppingRecipe(true);
+    try {
+      const res = await getToppingRecipe(topping.id);
+      const draft = (res.items || []).map((i) => ({
+        ingredientId: i.ingredientId,
+        name: i.name,
+        unit: i.unit ? i.unit.toLowerCase() : "g",
+        quantity: i.quantity,
+      }));
+      setToppingRecipeDraft(draft);
+      const firstAvail = ingredientStock.find((i) => i.id && !draft.some((d) => d.ingredientId === i.id));
+      setNewToppingIngId(firstAvail?.id ?? 0);
+    } catch (err: any) {
+      setNotice(`Không tải được công thức topping: ${err?.message || "Lỗi kết nối"}`);
+    } finally {
+      setLoadingToppingRecipe(false);
+    }
+  }
+
+  async function saveToppingRecipe() {
+    if (!selectedTopping) return;
+    setSavingToppingRecipe(true);
+    try {
+      await updateToppingRecipe(
+        selectedTopping.id,
+        toppingRecipeDraft.map((d) => ({ ingredientId: d.ingredientId, quantity: Math.max(1, Math.round(d.quantity)) })),
+      );
+      setNotice(`✓ Đã lưu công thức cho topping ${selectedTopping.name}.`);
+      setSelectedTopping(null);
+    } catch (err: any) {
+      setNotice(`Lỗi lưu công thức topping: ${err?.message || "Không thể lưu"}`);
+    } finally {
+      setSavingToppingRecipe(false);
+    }
+  }
+
+  // Chức năng: Lấy dữ liệu RecipeForProduct. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   function getRecipeForProduct(productName: string): RecipeIngredient[] {
     if (PRODUCT_RECIPES[productName]) {
       return PRODUCT_RECIPES[productName];
     }
-    // Fallback tìm gần đúng
     const foundKey = Object.keys(PRODUCT_RECIPES).find((k) => productName.includes(k) || k.includes(productName));
     if (foundKey) return PRODUCT_RECIPES[foundKey];
     return [
@@ -740,9 +971,11 @@ export default function BaristaPage() {
     ];
   }
 
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (calculateProductMaxCups). Cách hoạt động: Biến đổi tham số đầu vào (productName, currentIngredients) thành kết quả chuẩn để hiển thị hoặc tính toán.
   function calculateProductMaxCups(productName: string, currentIngredients: IngredientItem[]): number {
     const recipe = getRecipeForProduct(productName);
     if (!recipe || recipe.length === 0) return 0;
+    // Chức năng: Hàm normalize(s). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
     const normalize = (s: string) => s.toLowerCase().trim();
     let minCups = 999999;
     for (const rec of recipe) {
@@ -764,6 +997,7 @@ export default function BaristaPage() {
 
   const visibleOrders = orders.filter((order) => order.stage === (queueTab === "history" ? "completed" : queueTab));
 
+  // Chức năng: Hàm scrollTo(id). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const scrollTo = (id: string) => {
     if (typeof document !== "undefined") {
       const el = document.getElementById(id);
@@ -773,8 +1007,7 @@ export default function BaristaPage() {
     }
   };
 
-  // 1. Chặn khách hàng thông thường (CUSTOMER) truy cập quầy Barista
-  if (authChecked && user && user.role !== "BARISTA") {
+  if (authChecked && user && user.role !== "BARISTA" && user.role !== "MANAGER") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
         <div className="size-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-3xl mb-4 shadow-sm">
@@ -782,7 +1015,7 @@ export default function BaristaPage() {
         </div>
         <h1 className="text-xl font-bold text-[#1e3429]">Không có quyền truy cập</h1>
         <p className="mt-2 text-sm text-[#556358] max-w-xs leading-relaxed">
-          Khu vực quầy pha chế chỉ dành riêng cho tài khoản nhân viên <b>Barista</b>. Tài khoản hiện tại của bạn là <b>{user.fullName}</b> ({user.role}).
+          Khu vực quầy pha chế & quản lý kho chỉ dành riêng cho tài khoản <b>Barista</b> hoặc <b>Manager</b>. Tài khoản hiện tại của bạn là <b>{user.fullName}</b> ({user.role}).
         </p>
         <Link
           href="/"
@@ -794,7 +1027,6 @@ export default function BaristaPage() {
     );
   }
 
-  // 2. Chặn khách chưa đăng nhập truy cập quầy Barista
   if (authChecked && !user) {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
@@ -1149,16 +1381,24 @@ export default function BaristaPage() {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#55715e]">Quản lý tồn kho tại quầy</p>
               <h2 className="text-xl font-extrabold text-[#17432e]">
-                {inventoryTab === "stock" ? "Tồn kho theo món" : "Tồn kho nguyên liệu"}
+                {inventoryTab === "stock"
+                  ? "Tồn kho theo món"
+                  : inventoryTab === "ingredients"
+                  ? "Tồn kho nguyên liệu"
+                  : "Công thức Topping"}
               </h2>
             </div>
             <span className="rounded-full bg-[#eef0e9] px-2.5 py-1 text-xs font-bold text-[#35513e]">
-              {inventoryTab === "stock" ? `${stock.length} món` : `${ingredientStock.length} loại`}
+              {inventoryTab === "stock"
+                ? `${stock.length} món`
+                : inventoryTab === "ingredients"
+                ? `${ingredientStock.length} loại`
+                : `${toppings.length} loại`}
             </span>
           </div>
 
-          {/* Sub Switcher: Món vs Nguyên liệu */}
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#edece5] p-1 text-xs font-bold text-center">
+          {/* Sub Switcher: Món vs Nguyên liệu vs Topping */}
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-[#edece5] p-1 text-xs font-bold text-center">
             <button
               type="button"
               onClick={() => setInventoryTab("stock")}
@@ -1166,7 +1406,7 @@ export default function BaristaPage() {
                 inventoryTab === "stock" ? "bg-white text-[#174c32] shadow-xs" : "text-[#657067] hover:text-[#174c32]"
               }`}
             >
-              ☕ Tồn kho theo món ({stock.length})
+              ☕ Món ({stock.length})
             </button>
             <button
               type="button"
@@ -1176,6 +1416,15 @@ export default function BaristaPage() {
               }`}
             >
               🥛 Nguyên liệu ({ingredientStock.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setInventoryTab("toppings")}
+              className={`rounded-lg py-2 transition cursor-pointer ${
+                inventoryTab === "toppings" ? "bg-white text-[#174c32] shadow-xs" : "text-[#657067] hover:text-[#174c32]"
+              }`}
+            >
+              🧋 Topping ({toppings.length})
             </button>
           </div>
 
@@ -1254,11 +1503,20 @@ export default function BaristaPage() {
                 })}
               </div>
             </div>
-          ) : (
+          ) : inventoryTab === "ingredients" ? (
             <div className="space-y-3">
-              <p className="text-xs text-[#737970] px-1">
-                Theo dõi mức tồn nguyên liệu thực tế tại quầy và bấm <b>+ Nhập hàng</b> để bổ sung.
-              </p>
+              <div className="flex items-center justify-between gap-2 px-1">
+                <p className="text-xs text-[#737970]">
+                  Nhập kho, kiểm kê hao hụt, sửa ngưỡng cảnh báo hoặc xem thẻ kho.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setCreateIngOpen(true)}
+                  className="shrink-0 rounded-xl bg-[#174c32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#124029] active:scale-95 transition cursor-pointer shadow-xs"
+                >
+                  + Thêm NL mới
+                </button>
+              </div>
               <div className="flex flex-col gap-3 w-full">
                 {ingredientStock.map((item) => {
                   const status = item.stock === 0 ? "Tạm hết" : item.stock <= item.minimum ? "Sắp hết" : "Còn hàng";
@@ -1306,14 +1564,47 @@ export default function BaristaPage() {
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#f0eee6]">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5 pt-1 border-t border-[#f0eee6]">
+                        {item.id && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openMovementsModal(item)}
+                              className="rounded-xl border border-[#dcdad0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#445247] hover:bg-[#f7f6f1] transition cursor-pointer"
+                            >
+                              Thẻ kho
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditIngTarget(item);
+                                setEditIngName(item.name);
+                                setEditIngThreshold(String(item.minimum));
+                              }}
+                              className="rounded-xl border border-[#dcdad0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#445247] hover:bg-[#f7f6f1] transition cursor-pointer"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAdjustTarget(item);
+                                setAdjustActualStock(String(item.stock));
+                                setAdjustReason("");
+                              }}
+                              className="rounded-xl border border-[#ead4a6] bg-[#fff8e7] px-2.5 py-1.5 text-[11px] font-bold text-[#805817] hover:bg-[#ffefc8] transition cursor-pointer"
+                            >
+                              Kiểm kê
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
                             setReceivingSku(item.sku);
                             setReceivingAmount("1000");
                           }}
-                          className="flex items-center gap-1 rounded-xl bg-[#174c32] px-4 py-2 text-xs font-bold text-white hover:bg-[#124029] active:scale-95 transition cursor-pointer shadow-xs"
+                          className="flex items-center gap-1 rounded-xl bg-[#174c32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#124029] active:scale-95 transition cursor-pointer shadow-xs"
                         >
                           <span>+ Nhập hàng</span>
                         </button>
@@ -1322,6 +1613,37 @@ export default function BaristaPage() {
                   );
                 })}
               </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-[#737970] px-1">
+                Xem và chỉnh sửa định lượng nguyên liệu trừ kho cho từng phần topping.
+              </p>
+              {toppings.length === 0 ? (
+                <div className="rounded-2xl border border-[#e6e5dd] bg-white p-6 text-center text-xs text-[#737970]">
+                  Chưa có dữ liệu topping từ máy chủ.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2.5 w-full">
+                  {toppings.map((tp) => (
+                    <div key={tp.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[#e6e5dd] bg-white p-3.5 shadow-2xs">
+                      <div>
+                        <p className="text-sm font-bold text-[#17432e]">{tp.name}</p>
+                        <p className="text-xs text-[#647066]">
+                          Giá bán: {new Intl.NumberFormat("vi-VN").format(tp.price)}đ · Mã #{tp.id}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openToppingRecipeModal(tp)}
+                        className="rounded-xl border border-[#cfe0d4] bg-[#f4f8f5] px-3 py-1.5 text-xs font-bold text-[#174c32] hover:bg-[#e4efe7] transition cursor-pointer"
+                      >
+                        Xem / Sửa công thức
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -1357,10 +1679,93 @@ export default function BaristaPage() {
             </div>
 
             <div className="mt-5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[#495e4f] mb-2.5">
-                Công thức pha chế & Tồn nguyên liệu
-                {loadingRecipe && <span className="ml-2 font-normal text-stone-400 lowercase">(đang tải...)</span>}
-              </h3>
+              <div className="flex items-center justify-between mb-2.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#495e4f]">
+                  Công thức pha chế & Tồn nguyên liệu
+                  {loadingRecipe && <span className="ml-2 font-normal text-stone-400 lowercase">(đang tải...)</span>}
+                </h3>
+                {selectedRecipeProduct.id && !editingProductRecipe && (
+                  <button
+                    type="button"
+                    onClick={startEditProductRecipe}
+                    className="rounded-lg border border-[#cfe0d4] bg-[#f4f8f5] px-2.5 py-1 text-[11px] font-bold text-[#174c32] hover:bg-[#e4efe7] cursor-pointer"
+                  >
+                    Chỉnh sửa công thức
+                  </button>
+                )}
+              </div>
+              {editingProductRecipe ? (
+                <div className="space-y-3 rounded-xl border border-[#e6e5dd] bg-[#faf9f5] p-3">
+                  {productRecipeDraft.map((row, idx) => (
+                    <div key={row.ingredientId} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-[#1e3429] flex-1 truncate">{row.name}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={row.quantity}
+                        onChange={(e) => {
+                          const val = Math.max(1, Number(e.target.value) || 1);
+                          setProductRecipeDraft((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity: val } : r)));
+                        }}
+                        className="w-20 rounded-lg border border-[#d6d4cb] bg-white px-2 py-1 text-right font-mono font-bold"
+                      />
+                      <span className="w-8 text-[#556358]">{row.unit}</span>
+                      <button
+                        type="button"
+                        onClick={() => setProductRecipeDraft((prev) => prev.filter((_, i) => i !== idx))}
+                        className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50 font-bold cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 pt-2 border-t border-[#e6e5dd]">
+                    <select
+                      value={newRecipeIngId}
+                      onChange={(e) => setNewRecipeIngId(Number(e.target.value))}
+                      className="flex-1 rounded-lg border border-[#d6d4cb] bg-white px-2 py-1.5 text-xs"
+                    >
+                      <option value={0}>-- Chọn nguyên liệu thêm --</option>
+                      {ingredientStock
+                        .filter((i) => i.id && !productRecipeDraft.some((d) => d.ingredientId === i.id))
+                        .map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} ({i.unit})
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ing = ingredientStock.find((i) => i.id === newRecipeIngId);
+                        if (!ing?.id) return;
+                        setProductRecipeDraft((prev) => [...prev, { ingredientId: ing.id!, name: ing.name, unit: ing.unit, quantity: 10 }]);
+                        setNewRecipeIngId(0);
+                      }}
+                      className="rounded-lg bg-[#e6efe9] px-2.5 py-1.5 text-xs font-bold text-[#174c32] hover:bg-[#d5e6db] cursor-pointer"
+                    >
+                      + Thêm
+                    </button>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingProductRecipe(false)}
+                      className="rounded-lg border border-[#d6d4cb] bg-white px-3 py-1.5 text-xs font-bold text-[#556358] cursor-pointer"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingProductRecipe}
+                      onClick={saveProductRecipe}
+                      className="rounded-lg bg-[#174c32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#124029] disabled:opacity-50 cursor-pointer"
+                    >
+                      {savingProductRecipe ? "Đang lưu..." : "Lưu công thức"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className="overflow-hidden rounded-xl border border-[#e6e5dd]">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[#f7f6f1] text-[#556358] uppercase font-bold text-[10px]">
@@ -1374,6 +1779,7 @@ export default function BaristaPage() {
                   </thead>
                   <tbody className="divide-y divide-[#eceae3]">
                     {(dynamicRecipe || getRecipeForProduct(selectedRecipeProduct.name)).map((rec, idx) => {
+                      // Chức năng: Hàm normalize(s). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
                       const normalize = (s: string) => s.toLowerCase().trim();
                       const ingInfo =
                         ingredientStock.find((i) => normalize(i.name) === normalize(rec.ingredient)) ||
@@ -1419,6 +1825,7 @@ export default function BaristaPage() {
                   </tbody>
                 </table>
               </div>
+              )}
             </div>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#eeede7] pt-4">
@@ -1450,6 +1857,219 @@ export default function BaristaPage() {
                 Đóng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP THÊM NGUYÊN LIỆU MỚI */}
+      {createIngOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10251b]/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setCreateIngOpen(false); }}>
+          <form onSubmit={handleCreateIngredient} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-3">
+            <h2 className="text-lg font-bold text-[#17432e]">Thêm nguyên liệu mới</h2>
+            <div>
+              <label className="block text-xs font-bold text-[#556358] mb-1">Tên nguyên liệu</label>
+              <input
+                required
+                value={newIngName}
+                onChange={(e) => setNewIngName(e.target.value)}
+                placeholder="VD: Matcha Nhật Bản"
+                className="w-full rounded-xl border border-[#d6d4cb] px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-xs font-bold text-[#556358] mb-1">Đơn vị</label>
+                <select value={newIngUnit} onChange={(e) => setNewIngUnit(e.target.value as IngredientUnit)} className="w-full rounded-xl border border-[#d6d4cb] px-2 py-2 text-sm">
+                  <option value="G">G (gram)</option>
+                  <option value="ML">ML (ml)</option>
+                  <option value="PCS">PCS (cái)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#556358] mb-1">Tồn ban đầu</label>
+                <input type="number" min={0} value={newIngStock} onChange={(e) => setNewIngStock(e.target.value)} className="w-full rounded-xl border border-[#d6d4cb] px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#556358] mb-1">Ngưỡng thấp</label>
+                <input type="number" min={0} value={newIngThreshold} onChange={(e) => setNewIngThreshold(e.target.value)} className="w-full rounded-xl border border-[#d6d4cb] px-2 py-2 text-sm" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setCreateIngOpen(false)} className="rounded-xl border border-[#d6d4cb] px-4 py-2 text-xs font-bold text-[#556358] cursor-pointer">Hủy</button>
+              <button type="submit" disabled={submittingCreateIng} className="rounded-xl bg-[#174c32] px-4 py-2 text-xs font-bold text-white hover:bg-[#124029] disabled:opacity-50 cursor-pointer">
+                {submittingCreateIng ? "Đang tạo..." : "Tạo nguyên liệu"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* POPUP SỬA NGUYÊN LIỆU */}
+      {editIngTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10251b]/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setEditIngTarget(null); }}>
+          <form onSubmit={handleUpdateIngredient} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-3">
+            <h2 className="text-lg font-bold text-[#17432e]">Sửa nguyên liệu #{editIngTarget.id}</h2>
+            <div>
+              <label className="block text-xs font-bold text-[#556358] mb-1">Tên nguyên liệu</label>
+              <input required value={editIngName} onChange={(e) => setEditIngName(e.target.value)} className="w-full rounded-xl border border-[#d6d4cb] px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#556358] mb-1">Ngưỡng cảnh báo hết hàng ({editIngTarget.unit})</label>
+              <input type="number" min={0} required value={editIngThreshold} onChange={(e) => setEditIngThreshold(e.target.value)} className="w-full rounded-xl border border-[#d6d4cb] px-3 py-2 text-sm" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setEditIngTarget(null)} className="rounded-xl border border-[#d6d4cb] px-4 py-2 text-xs font-bold text-[#556358] cursor-pointer">Hủy</button>
+              <button type="submit" disabled={submittingEditIng} className="rounded-xl bg-[#174c32] px-4 py-2 text-xs font-bold text-white hover:bg-[#124029] disabled:opacity-50 cursor-pointer">
+                {submittingEditIng ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* POPUP KIỂM KÊ / BÁO HAO HỤT */}
+      {adjustTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10251b]/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setAdjustTarget(null); }}>
+          <form onSubmit={handleAdjustStock} className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-3">
+            <h2 className="text-lg font-bold text-[#17432e]">Kiểm kê / Điều chỉnh tồn kho</h2>
+            <p className="text-xs text-[#647066]">{adjustTarget.name} · Hệ thống đang ghi: <b>{adjustTarget.stock} {adjustTarget.unit}</b></p>
+            <div>
+              <label className="block text-xs font-bold text-[#556358] mb-1">Số tồn thực tế đếm được ({adjustTarget.unit})</label>
+              <input type="number" min={0} required value={adjustActualStock} onChange={(e) => setAdjustActualStock(e.target.value)} className="w-full rounded-xl border border-[#d6d4cb] px-3 py-2 text-sm font-mono font-bold" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#556358] mb-1">Lý do kiểm kê / hao hụt (tối thiểu 3 ký tự)</label>
+              <input required minLength={3} value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} placeholder="VD: Đổ vỡ khi pha chế / Kiểm kê cuối ca" className="w-full rounded-xl border border-[#d6d4cb] px-3 py-2 text-sm" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setAdjustTarget(null)} className="rounded-xl border border-[#d6d4cb] px-4 py-2 text-xs font-bold text-[#556358] cursor-pointer">Hủy</button>
+              <button type="submit" disabled={submittingAdjust} className="rounded-xl bg-[#805817] px-4 py-2 text-xs font-bold text-white hover:bg-[#664510] disabled:opacity-50 cursor-pointer">
+                {submittingAdjust ? "Đang cập nhật..." : "Xác nhận kiểm kê"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* POPUP LỊCH SỬ THẺ KHO */}
+      {movementsTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10251b]/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setMovementsTarget(null); }}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#e9e7df] pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#17432e]">Thẻ kho: {movementsTarget.name}</h2>
+                <p className="text-xs text-[#647066]">Tồn hiện tại: {movementsTarget.stock} {movementsTarget.unit}</p>
+              </div>
+              <button type="button" onClick={() => setMovementsTarget(null)} className="text-xl font-bold text-stone-400 hover:text-stone-700 cursor-pointer">×</button>
+            </div>
+            <div className="mt-3 overflow-y-auto flex-1 space-y-2">
+              {loadingMovements ? (
+                <p className="text-xs text-center text-[#737970] py-6">Đang tải nhật ký biến động...</p>
+              ) : movementsList.length === 0 ? (
+                <p className="text-xs text-center text-[#737970] py-6">Chưa có biến động kho nào được ghi nhận.</p>
+              ) : (
+                movementsList.map((m) => (
+                  <div key={m.id} className="flex items-start justify-between gap-2 rounded-xl border border-[#eceae3] bg-[#faf9f5] p-2.5 text-xs">
+                    <div>
+                      <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                        m.type === "IN" ? "bg-emerald-100 text-emerald-800" : m.type === "OUT" ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-800"
+                      }`}>{m.type}</span>
+                      <span className="ml-2 font-medium text-[#1e3429]">{m.reason || (m.orderId ? `Đơn #${m.orderId}` : "Biến động kho")}</span>
+                      <p className="mt-0.5 text-[10px] text-[#737970]">{new Date(m.createdAt).toLocaleString("vi-VN")}</p>
+                    </div>
+                    <span className={`font-mono font-bold ${m.quantity >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                      {m.quantity >= 0 ? `+${m.quantity}` : m.quantity} {movementsTarget.unit}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP XEM / SỬA CÔNG THỨC TOPPING */}
+      {selectedTopping && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10251b]/45 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedTopping(null); }}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl max-h-[85vh] overflow-y-auto space-y-4">
+            <div className="flex items-start justify-between border-b border-[#e9e7df] pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-[#17432e]">Công thức Topping: {selectedTopping.name}</h2>
+                <p className="text-xs text-[#647066]">Định lượng nguyên liệu tiêu hao cho 1 phần topping.</p>
+              </div>
+              <button type="button" onClick={() => setSelectedTopping(null)} className="text-xl font-bold text-stone-400 hover:text-stone-700 cursor-pointer">×</button>
+            </div>
+            {loadingToppingRecipe ? (
+              <p className="text-xs text-center text-[#737970] py-4">Đang tải công thức...</p>
+            ) : (
+              <div className="space-y-3">
+                {toppingRecipeDraft.length === 0 && (
+                  <p className="text-xs text-[#737970]">Chưa có nguyên liệu nào trong công thức.</p>
+                )}
+                {toppingRecipeDraft.map((row, idx) => (
+                  <div key={row.ingredientId} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="font-semibold text-[#1e3429] flex-1 truncate">{row.name}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={row.quantity}
+                      onChange={(e) => {
+                        const val = Math.max(1, Number(e.target.value) || 1);
+                        setToppingRecipeDraft((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity: val } : r)));
+                      }}
+                      className="w-20 rounded-lg border border-[#d6d4cb] px-2 py-1 text-right font-mono font-bold"
+                    />
+                    <span className="w-8 text-[#556358]">{row.unit}</span>
+                    <button
+                      type="button"
+                      onClick={() => setToppingRecipeDraft((prev) => prev.filter((_, i) => i !== idx))}
+                      className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50 font-bold cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 pt-2 border-t border-[#e6e5dd]">
+                  <select
+                    value={newToppingIngId}
+                    onChange={(e) => setNewToppingIngId(Number(e.target.value))}
+                    className="flex-1 rounded-lg border border-[#d6d4cb] bg-white px-2 py-1.5 text-xs"
+                  >
+                    <option value={0}>-- Chọn nguyên liệu thêm --</option>
+                    {ingredientStock
+                      .filter((i) => i.id && !toppingRecipeDraft.some((d) => d.ingredientId === i.id))
+                      .map((i) => (
+                        <option key={i.id} value={i.id}>
+                          {i.name} ({i.unit})
+                        </option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ing = ingredientStock.find((i) => i.id === newToppingIngId);
+                      if (!ing?.id) return;
+                      setToppingRecipeDraft((prev) => [...prev, { ingredientId: ing.id!, name: ing.name, unit: ing.unit, quantity: 10 }]);
+                      setNewToppingIngId(0);
+                    }}
+                    className="rounded-lg bg-[#e6efe9] px-2.5 py-1.5 text-xs font-bold text-[#174c32] hover:bg-[#d5e6db] cursor-pointer"
+                  >
+                    + Thêm
+                  </button>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button type="button" onClick={() => setSelectedTopping(null)} className="rounded-xl border border-[#d6d4cb] px-4 py-2 text-xs font-bold text-[#556358] cursor-pointer">Đóng</button>
+                  <button
+                    type="button"
+                    disabled={savingToppingRecipe}
+                    onClick={saveToppingRecipe}
+                    className="rounded-xl bg-[#174c32] px-4 py-2 text-xs font-bold text-white hover:bg-[#124029] disabled:opacity-50 cursor-pointer"
+                  >
+                    {savingToppingRecipe ? "Đang lưu..." : "Lưu công thức"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

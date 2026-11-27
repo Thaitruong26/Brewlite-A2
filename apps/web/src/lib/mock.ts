@@ -1,13 +1,3 @@
-/**
- * Dữ liệu giả cho frontend, bám đúng hình dạng response trong api.md.
- *
- * Dùng khi:
- *  - Đặt NEXT_PUBLIC_USE_MOCK=true trong .env.local: chạy toàn bộ trang mà không cần backend.
- *  - Backend chưa khai báo route (404 "Cannot GET ..."): các trang gọi trực tiếp mockApi()
- *    để vẫn dựng được giao diện và hiện nhãn "Dữ liệu mẫu".
- *
- * Khi backend đã có API thật thì không cần sửa gì: frontend tự dùng dữ liệu thật.
- */
 import { ApiError } from "./api-error";
 import type { Paginated, User } from "./api";
 
@@ -66,17 +56,19 @@ const MOCK_ORDERS = Array.from({ length: 13 }, (_, i) => {
   };
 });
 
+// Chức năng: Hàm delay(ms). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Bật chế độ dữ liệu giả cho toàn bộ app (chỉ dùng khi chạy thử không có backend). */
 export const MOCK_ENABLED = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 const MOCK_ROUTES = [/^\/products(\?|$)/, /^\/products\/[^/?]+$/, /^\/auth\/login$/, /^\/auth\/me$/, /^\/orders\/me(\?|$)/, /^\/promotions\/validate$/];
 
+// Chức năng: Hàm shouldUseMock(path). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export function shouldUseMock(path: string) {
   return MOCK_ENABLED && MOCK_ROUTES.some((route) => route.test(path));
 }
 
+// Chức năng: Hàm requireAuth. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 function requireAuth() {
   if (typeof window === "undefined") throw new ApiError("Thiếu hoặc sai JWT", 401, "UNAUTHORIZED");
   const token = localStorage.getItem("brewlite_access_token") ?? (() => {
@@ -88,7 +80,7 @@ function requireAuth() {
 
 type ValidateBody = { code: string; items: { productId: number; size: Size; toppingIds: number[]; quantity: number }[] };
 
-/** Mô phỏng PricingService.calculate() + quy tắc khuyến mãi (api.md mục 4.1 và 4.3). */
+// Chức năng: Hàm validatePromo(body). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 function validatePromo(body: ValidateBody) {
   const subtotal = body.items.reduce((sum, item) => {
     const product = MOCK_PRODUCTS.find((p) => p.id === item.productId);
@@ -113,6 +105,7 @@ function validatePromo(body: ValidateBody) {
   return { code, type: promo.type, value: promo.value, subtotal, discountAmount, totalAfterDiscount: subtotal - discountAmount };
 }
 
+// Chức năng: Hàm mockApi(path, init). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function mockApi<T>(path: string, init: RequestInit = {}): Promise<T> {
   await delay(300);
   const [pathname, query = ""] = path.split("?");

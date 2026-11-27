@@ -6,6 +6,7 @@ import { formatVND, getOrderByIdApi, simulateVnpayCompleteApi } from "@/lib/api"
 
 type Step = "SELECT_METHOD" | "NCB_CARD" | "NCB_OTP" | "QR_CODE";
 
+// Chức năng: Component giao diện VnpayMockContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function VnpayMockContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,9 +26,6 @@ function VnpayMockContent() {
   const [isConfirmedPaid, setIsConfirmedPaid] = useState(false);
   const [confirmedMessage, setConfirmedMessage] = useState("");
 
-  // Tự động Polling kiểm tra trạng thái đơn:
-  // CHỈ KHI Barista bấm "Xác nhận đã nhận tiền (PAID)" trên màn hình Barista (/barista)
-  // thì mới cho phép chuyển trang hoàn tất!
   useEffect(() => {
     if (!orderId || isConfirmedPaid) return;
 
@@ -77,6 +75,7 @@ function VnpayMockContent() {
     };
   }, [orderId, isConfirmedPaid, txnRef, rawAmount, amount, router]);
 
+  // Chức năng: Xử lý sự kiện Pay. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handlePay = async (responseCode: string = "00") => {
     if (responseCode !== "00") {
       setIsProcessing(true);
@@ -98,7 +97,6 @@ function VnpayMockContent() {
       return;
     }
 
-    // Chuyển sang màn hình chờ Barista đối soát và bấm xác nhận
     setIsWaitingBarista(true);
   };
 
@@ -450,6 +448,7 @@ function VnpayMockContent() {
   );
 }
 
+// Chức năng: Component giao diện VnpayMockPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function VnpayMockPage() {
   return (
     <Suspense

@@ -8,7 +8,6 @@ import {
   type SizeKey,
 } from './pricing.constants.js';
 
-/** Một dòng trong giỏ hàng do client gửi lên. Client KHÔNG gửi giá. */
 export interface PricingItemInput {
   productId: number;
   size: SizeKey;
@@ -17,7 +16,6 @@ export interface PricingItemInput {
   note?: string;
 }
 
-/** Một dòng đã được server tính giá, sẵn sàng lưu thành OrderItem. */
 export interface PricedLine {
   productId: number;
   productName: string;
@@ -34,20 +32,13 @@ export interface PricingResult {
   subtotal: number;
 }
 
-/** Cho phép truyền cả PrismaService lẫn `tx` trong prisma.$transaction. */
 type Db = Pick<PrismaClient, 'product' | 'topping'>;
 
-/**
- * Nguồn duy nhất để tính giá (mục 4.1 tài liệu API).
- *   unitPrice = product.price + phụ thu size + tổng giá topping
- *   lineTotal = unitPrice * quantity
- *   subtotal  = tổng lineTotal
- * Dùng chung cho POST /orders và POST /promotions/validate.
- */
 @Injectable()
 export class PricingService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (calculate). Cách hoạt động: Biến đổi tham số đầu vào (items, db) thành kết quả chuẩn để hiển thị hoặc tính toán.
   async calculate(items: PricingItemInput[], db: Db = this.prisma): Promise<PricingResult> {
     const productIds = [...new Set(items.map((i) => i.productId))];
     const toppingIds = [...new Set(items.flatMap((i) => i.toppingIds ?? []))];
@@ -111,7 +102,7 @@ export class PricingService {
     return { lines, subtotal };
   }
 
-  /** Điểm thưởng cho một đơn: 1 điểm / 1.000đ của total, làm tròn xuống. */
+  // Chức năng: Hàm pointsFor(total). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   pointsFor(total: number): number {
     return Math.floor(total / VND_PER_LOYALTY_POINT);
   }

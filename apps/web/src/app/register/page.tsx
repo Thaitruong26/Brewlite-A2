@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import { LoadingState } from "@/components/ui/loading-state";
 import type { User } from "@/lib/api/types";
 
+// Chức năng: Component giao diện RegisterPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -16,6 +17,7 @@ export default function RegisterPage() {
   const [createdUser, setCreatedUser] = useState<User | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Chức năng: Xử lý sự kiện Submit. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors: typeof errors = {};

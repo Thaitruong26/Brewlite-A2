@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
 import { api, getAccessToken, saveSession } from "@/lib/api";
 
+// Chức năng: Component giao diện AccountPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function AccountPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -37,6 +38,7 @@ export default function AccountPage() {
     );
   }
 
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (formatCurrency). Cách hoạt động: Biến đổi tham số đầu vào (amount) thành kết quả chuẩn để hiển thị hoặc tính toán.
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
   };
@@ -67,9 +69,9 @@ export default function AccountPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="truncate text-base font-bold text-[#183d2c]">{user.fullName}</p>
-                  {user.role === "BARISTA" && (
+                  {(user.role === "BARISTA" || user.role === "MANAGER") && (
                     <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
-                      Barista
+                      {user.role === "MANAGER" ? "Manager" : "Barista"}
                     </span>
                   )}
                 </div>
@@ -104,7 +106,7 @@ export default function AccountPage() {
           {/* Cột phải: Danh mục liên kết nhanh & Đăng xuất */}
           <div className="space-y-6">
             <div className="rounded-2xl bg-white border border-[#e5e7dc] overflow-hidden shadow-sm divide-y divide-[#f0f2eb]">
-              {user.role === "BARISTA" && (
+              {(user.role === "BARISTA" || user.role === "MANAGER") && (
                 <Link
                   href="/barista"
                   className="flex items-center justify-between p-4 hover:bg-[#fbfbf9] transition-colors"
@@ -188,7 +190,6 @@ export default function AccountPage() {
           </div>
         </div>
       ) : (
-        /* ── Trạng thái chưa đăng nhập ── */
         <div className="flex flex-col gap-4">
           <div className="rounded-2xl bg-white p-6 border border-[#e5e7dc] text-center shadow-sm">
             <span className="inline-block text-4xl mb-3">☕</span>

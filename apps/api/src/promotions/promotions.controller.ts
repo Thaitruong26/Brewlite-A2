@@ -8,6 +8,7 @@ import { ValidatePromotionDto } from './dto/validate-promotion.dto.js';
 export class PromotionsController {
   constructor(private readonly promotionsService: PromotionsService) {}
 
+  // Chức năng: Kiểm tra mã giảm giá. Cách hoạt động: Gọi PromotionsService.validate(dto) trả về số tiền được giảm.
   @Post('validate')
   @ApiOperation({ summary: 'Kiểm tra mã khuyến mãi và tính tiền giảm' })
   validate(@Body() dto: ValidatePromotionDto) {

@@ -11,6 +11,7 @@ import {
 } from "@/lib/api";
 import { OrderResponse } from "@/types/order";
 
+// Chức năng: Component giao diện PaymentContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,7 +27,6 @@ function PaymentContent() {
   const [isSuccessRedirecting, setIsSuccessRedirecting] = useState<boolean>(false);
   const [clientNotified, setClientNotified] = useState<boolean>(false);
 
-  // 1. Tải thông tin đơn hàng lần đầu
   const fetchOrder = useCallback(async () => {
     if (!orderId) {
       setError("Thiếu mã đơn hàng hợp lệ.");
@@ -39,7 +39,6 @@ function PaymentContent() {
       setOrder(data);
       setError(null);
 
-      // Nếu đơn đã PAID sẵn rồi, hiển thị xác nhận và chuyển luôn sang trang chờ lấy nước
       if (data.status === "PAID") {
         setIsSuccessRedirecting(true);
         setTimeout(() => {
@@ -59,7 +58,6 @@ function PaymentContent() {
     fetchOrder();
   }, [fetchOrder]);
 
-  // 2. Đồng hồ đếm ngược 15 phút (tính từ thời điểm order.createdAt)
   useEffect(() => {
     if (!order || order.status !== "PENDING") return;
 
@@ -71,7 +69,6 @@ function PaymentContent() {
       const remainingSec = Math.max(0, Math.floor((expireTimeMs - now) / 1000));
       setTimeLeft(remainingSec);
 
-      // Quá 15 phút mà khách chưa chuyển tiền -> Tự động hủy đơn hàng
       if (remainingSec <= 0) {
         clearInterval(timer);
         void handleAutoCancel();
@@ -81,8 +78,6 @@ function PaymentContent() {
     return () => clearInterval(timer);
   }, [order]);
 
-  // 3. Tự động thăm dò (Polling mỗi 2 giây) để phát hiện khi Barista bấm "Đã nhận tiền"
-  // QUY TẮC BẮT BUỘC: Mọi thanh toán phải có xác nhận đã nhận được tiền mới chuyển trang cho khách
   useEffect(() => {
     if (!orderId || isSuccessRedirecting) return;
 
@@ -94,7 +89,6 @@ function PaymentContent() {
 
         setOrder(data);
 
-        // Khi đơn hàng được chuyển sang PAID (Barista bấm xác nhận trên màn hình /barista)
         if (data.status === "PAID") {
           clearInterval(pollInterval);
           setIsSuccessRedirecting(true);
@@ -113,7 +107,7 @@ function PaymentContent() {
     };
   }, [orderId, isSuccessRedirecting, router]);
 
-  // Xử lý tự động hủy đơn khi hết 15 phút
+  // Chức năng: Xử lý sự kiện AutoCancel. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleAutoCancel = async () => {
     if (!orderId) return;
     try {
@@ -125,7 +119,7 @@ function PaymentContent() {
     }
   };
 
-  // Khách chủ động hủy đơn
+  // Chức năng: Xử lý sự kiện ManualCancel. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleManualCancel = async () => {
     if (!orderId || isCancelling) return;
     if (!confirm("Bạn có chắc chắn muốn hủy đơn hàng này không?")) return;
@@ -142,6 +136,7 @@ function PaymentContent() {
     }
   };
 
+  // Chức năng: Hàm copyToClipboard(text, field). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const copyToClipboard = (text: string, field: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
@@ -150,6 +145,7 @@ function PaymentContent() {
     }
   };
 
+  // Chức năng: Xử lý tính toán / định dạng dữ liệu (formatCountdown). Cách hoạt động: Biến đổi tham số đầu vào (totalSec) thành kết quả chuẩn để hiển thị hoặc tính toán.
   const formatCountdown = (totalSec: number) => {
     const mins = Math.floor(totalSec / 60);
     const secs = totalSec % 60;
@@ -190,7 +186,6 @@ function PaymentContent() {
   const bankNumber = "1040263376";
   const bankName = "Vietcombank";
   const accountHolder = "BREWLITE COFFEE";
-  // Link VietQR động chuẩn Napas247 cho Vietcombank 1040263376
   const vietQrUrl = `https://img.vietqr.io/image/VCB-${bankNumber}-compact2.png?amount=${order.total}&addInfo=${encodeURIComponent(
     transferContent,
   )}&accountName=${encodeURIComponent(accountHolder)}`;
@@ -412,6 +407,7 @@ function PaymentContent() {
   );
 }
 
+// Chức năng: Component giao diện PaymentPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function PaymentPage() {
   return (
     <Suspense

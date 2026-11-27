@@ -24,6 +24,7 @@ import {
   PaymentMethod,
 } from "@/types/order";
 
+// Chức năng: Hàm generateUUID. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 function generateUUID(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -35,6 +36,7 @@ function generateUUID(): string {
   });
 }
 
+// Chức năng: Component giao diện CheckoutPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function CheckoutPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -52,14 +54,11 @@ export default function CheckoutPage() {
   const [mockResult, setMockResult] = useState<MockPaymentResult>("SUCCESS");
   const [useRewardPoints, setUseRewardPoints] = useState<boolean>(false);
 
-  // Đơn hàng đã tạo từ POST /orders (giữ lại khi lỗi 402 để thử thanh toán lại không tạo trùng đơn)
   const [currentOrder, setCurrentOrder] = useState<OrderResponse | null>(null);
 
-  // Idempotency-Key: sinh 1 lần bằng crypto.randomUUID() cho mỗi lượt xác nhận, giữ nguyên nếu bấm lại
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
   const [lastUsedKey, setLastUsedKey] = useState<string>("");
 
-  // Trạng thái xử lý & lỗi
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [stepStatus, setStepStatus] = useState<
     "IDLE" | "CREATING_ORDER" | "PROCESSING_PAYMENT"
@@ -83,7 +82,7 @@ export default function CheckoutPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Khi đổi phương thức thanh toán hoặc đổi mockResult sang body khác, cần key mới để tránh lỗi 422 IDEMPOTENCY_KEY_REUSED
+  // Chức năng: Xử lý sự kiện SelectMethod. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleSelectMethod = (method: PaymentMethod) => {
     if (method !== paymentMethod) {
       setPaymentMethod(method);
@@ -93,9 +92,6 @@ export default function CheckoutPage() {
     }
   };
 
-
-
-  // Số tiền hiển thị: ưu tiên tuyệt đối số chính thức từ server trả về (SOP: Giá do server tính)
   const clientSubtotal = mounted ? getSubtotal() : 0;
   const clientTotal = mounted ? getTotal() : 0;
   const clientDiscount = Math.max(0, clientSubtotal - clientTotal);
@@ -109,11 +105,7 @@ export default function CheckoutPage() {
     ? currentOrder.promoCode
     : promoCode || null;
 
-  /**
-   * Xử lý đặt đơn (POST /orders) và thanh toán (POST /payments)
-   * @param forceNewKey Nếu true, sinh Idempotency-Key mới trước khi gửi (dùng khi bấm "Thử lại với Key mới" sau lỗi 402)
-   * @param customKey Nếu truyền vào, dùng chính xác key đó (để demo gửi lại cùng Idempotency-Key)
-   */
+  // Chức năng: Xử lý sự kiện ConfirmPayment. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   const handleConfirmPayment = async (options?: {
     forceNewKey?: boolean;
     customKey?: string;
@@ -124,9 +116,6 @@ export default function CheckoutPage() {
     setErrorState(null);
     setReplayNotice(null);
 
-    // Xác định Idempotency-Key cho lần gọi này:
-    // - Sinh một lần bằng crypto.randomUUID(), giữ nguyên nếu bấm lại
-    // - Nếu người dùng chủ động chọn thử lại với key mới sau lỗi 402 thì sinh key mới
     const activeKey =
       options?.customKey ||
       (options?.forceNewKey ? generateUUID() : idempotencyKey || generateUUID());
@@ -138,7 +127,6 @@ export default function CheckoutPage() {
     try {
       let orderToPay = currentOrder;
 
-      // Bước 1: Gọi POST /orders nếu chưa có đơn PENDING / PAYMENT_FAILED
       if (!orderToPay) {
         setStepStatus("CREATING_ORDER");
         const orderDto: CreateOrderDto = {
@@ -156,7 +144,6 @@ export default function CheckoutPage() {
         orderToPay = await createOrderApi(orderDto);
         setCurrentOrder(orderToPay);
 
-        // Sau khi đã áp dụng điểm thưởng thành công, xóa cờ và đồng bộ lại số điểm mới của user
         if (typeof window !== "undefined") {
           localStorage.removeItem("useRewardPoints");
         }
@@ -173,7 +160,6 @@ export default function CheckoutPage() {
         queryClient.invalidateQueries({ queryKey: ["me"] });
       }
 
-      // Nếu chọn Cổng VNPay Sandbox (Bắt buộc theo ADR-004):
       if (paymentMethod === "VNPAY") {
         setStepStatus("PROCESSING_PAYMENT");
         const { paymentUrl } = await createVnpayUrlApi(orderToPay.id);
@@ -187,9 +173,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Nếu chọn Ví điện tử / Quét mã QR Vietcombank hoặc Thẻ ngân hàng tại quầy:
-      // Chuyển hướng sang trang chờ thanh toán /payment để khách quét mã hoặc quẹt thẻ,
-      // Barista tại quầy đối soát và bấm "Xác nhận đã nhận tiền (PAID)" thì màn hình khách mới chuyển tiếp!
       clearCart();
       router.push(`/payment?orderId=${orderToPay.id}&method=${paymentMethod}`);
       return;
@@ -202,13 +185,10 @@ export default function CheckoutPage() {
           replayed: err.replayed,
         });
 
-        // Nếu lỗi 402 PAYMENT_FAILED: cập nhật trạng thái đơn tại chỗ sang PAYMENT_FAILED,
-        // GIỮ NGUYÊN GIỎ HÀNG, và sinh sẵn key mới để người dùng có thể bấm thử lại ngay
         if (err.statusCode === 402) {
           setCurrentOrder((prev) =>
             prev ? { ...prev, status: "PAYMENT_FAILED" } : prev
           );
-          // Chuẩn bị sẵn key mới cho nút "Thử lại với Key mới", vẫn lưu lastUsedKey để có thể test replay
           setIdempotencyKey(generateUUID());
         }
       } else {
@@ -693,7 +673,6 @@ export default function CheckoutPage() {
                             type="button"
                             disabled={isSubmitting}
                             onClick={() => {
-                              // Đổi mockResult về SUCCESS nếu người dùng muốn thử lại thành công ngay
                               setMockResult("SUCCESS");
                               handleConfirmPayment({ forceNewKey: true });
                             }}

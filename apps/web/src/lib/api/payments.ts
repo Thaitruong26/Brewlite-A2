@@ -17,6 +17,7 @@ export interface PaymentResponse {
   message?: string;
 }
 
+// Chức năng: Tạo mới hoặc thêm dữ liệu (createPayment). Cách hoạt động: Kiểm tra đầu vào (payload, idempotencyKey), thực hiện lưu trữ và trả về bản ghi vừa tạo.
 export function createPayment(
   payload: CreatePaymentRequest,
   idempotencyKey: string

@@ -11,7 +11,6 @@ import { useAuthStore } from "@/store/auth-store";
 
 type SizeOption = { size: Size; surcharge: number };
 type Topping = { id: number; name: string; price: number };
-/** Response của GET /products/:id (api.md mục 6.2). Phụ thu size và topping lấy từ đây, không viết cứng. */
 type ProductDetail = {
   id: number;
   name: string;
@@ -27,6 +26,7 @@ type ProductDetail = {
 
 const FALLBACK_IMG = "/img/ca-phe-sua.jpg";
 
+// Chức năng: Component giao diện ProductDetailContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function ProductDetailContent() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -57,10 +57,10 @@ function ProductDetailContent() {
       </div>
     );
   }
-  // key = id: đổi sang sản phẩm khác thì lựa chọn size/topping được đặt lại.
   return <ProductOptions key={product.id} product={product} />;
 }
 
+// Chức năng: Component giao diện ProductOptions. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function ProductOptions({ product }: { product: ProductDetail }) {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -85,7 +85,6 @@ function ProductOptions({ product }: { product: ProductDetail }) {
 
   const sizeOption = product.sizes.find((s) => s.size === size);
   const chosenToppings = product.toppings.filter((t) => selected.includes(t.id));
-  // Công thức api.md mục 4.1, tính lại ngay mỗi lần đổi lựa chọn.
   const unitPrice = itemUnitPrice({
     basePrice: product.price,
     sizeSurcharge: sizeOption?.surcharge ?? 0,
@@ -94,6 +93,7 @@ function ProductOptions({ product }: { product: ProductDetail }) {
   const maxQty = Math.max(1, Math.min(MAX_QTY_PER_ITEM, product.stock));
   const limitReached = selected.length >= MAX_TOPPINGS;
 
+  // Chức năng: Hàm toggleTopping(toppingId). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   function toggleTopping(toppingId: number) {
     setAdded(null);
     setSelected((current) =>
@@ -105,6 +105,7 @@ function ProductOptions({ product }: { product: ProductDetail }) {
     );
   }
 
+  // Chức năng: Xử lý sự kiện Add. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   function handleAdd() {
     if (!isLoggedIn) {
       router.push(`/login?next=/products/${product.id}`);
@@ -324,6 +325,7 @@ function ProductOptions({ product }: { product: ProductDetail }) {
   );
 }
 
+// Chức năng: Component giao diện DetailSkeleton. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function DetailSkeleton() {
   return (
     <div className="w-full px-4 py-8" aria-busy="true" aria-label="Đang tải chi tiết sản phẩm">
@@ -345,6 +347,7 @@ function DetailSkeleton() {
   );
 }
 
+// Chức năng: Component giao diện ProductDetailPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function ProductDetailPage() {
   return (
     <Suspense fallback={<DetailSkeleton />}>

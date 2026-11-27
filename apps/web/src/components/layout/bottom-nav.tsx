@@ -44,11 +44,11 @@ const NAV_ITEMS = [
   },
 ];
 
+// Chức năng: Component giao diện BottomNavContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function BottomNavContent() {
   const pathname = usePathname();
   const totalItems = useCartStore(selectTotalItems);
 
-  // Không hiển thị thanh điều hướng khách hàng trên màn hình Barista
   if (pathname?.startsWith("/barista")) {
     return null;
   }
@@ -93,6 +93,7 @@ function BottomNavContent() {
   );
 }
 
+// Chức năng: Component giao diện BottomNav. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function BottomNav() {
   return (
     <Suspense fallback={null}>

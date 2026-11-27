@@ -56,11 +56,12 @@ const SIMPLIFIED_STEPS = [
   { key: "completed", label: "Hoàn tất", icon: "✓", sub: "Đã giao cho bạn" },
 ];
 
+// Chức năng: Lấy dữ liệu SimplifiedStepIndex. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
 function getSimplifiedStepIndex(status: string): number {
   if (status === "READY") return 1;
   if (status === "COMPLETED") return 2;
   if (status === "CANCELLED" || status === "PAYMENT_FAILED" || status === "PENDING") return -1;
-  return 0; // PAID, PREPARING
+  return 0; 
 }
 
 const ORDER_STEPS: OrderStatus[] = [
@@ -71,6 +72,7 @@ const ORDER_STEPS: OrderStatus[] = [
   "COMPLETED",
 ];
 
+// Chức năng: Component giao diện OrderConfirmationView. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function OrderConfirmationView({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -110,6 +112,7 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
     let ignore = false;
     let timer: any = null;
 
+    // Chức năng: Hàm loadData(isPolling). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
     async function loadData(isPolling = false) {
       try {
         const data = await getOrderByIdApi(orderId);
@@ -118,7 +121,6 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
           setError(null);
           if (!isPolling) setIsLoading(false);
 
-          // Thăm dò tự động mỗi 3 giây để cập nhật tiến trình pha chế từ Barista
           if (data.status !== "COMPLETED" && data.status !== "CANCELLED") {
             timer = setTimeout(() => {
               void loadData(true);
@@ -237,7 +239,6 @@ export function OrderConfirmationView({ orderId }: { orderId: string }) {
       </header>
 
       <main className="flex-1 max-w-3xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
-
 
         {/* Thẻ xác nhận chính: Mã đơn, trạng thái đơn hàng */}
         <section className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 shadow-sm text-center relative overflow-hidden">

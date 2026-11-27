@@ -2,10 +2,10 @@ import type { AuthStoreState, User } from "./types";
 
 const STORAGE_KEY = "brewlite.auth";
 
+// Chức năng: Hàm readAuth. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export function readAuth(): AuthStoreState {
   if (typeof window === "undefined") return { accessToken: null, user: null };
 
-  // 1. Ưu tiên tuyệt đối sessionStorage (độc lập từng tab/cửa sổ)
   try {
     const sessionSaved = window.sessionStorage.getItem(STORAGE_KEY);
     if (sessionSaved) {
@@ -30,13 +30,11 @@ export function readAuth(): AuthStoreState {
     // ignore
   }
 
-  // 2. Dự phòng localStorage nếu tab mới mở chưa có session riêng
   try {
     const localSaved = window.localStorage.getItem(STORAGE_KEY);
     if (localSaved) {
       const value = JSON.parse(localSaved) as Partial<AuthStoreState>;
       if (value.accessToken) {
-        // Sao chép sang sessionStorage của tab hiện tại để từ đây tab này hoạt động độc lập
         try {
           window.sessionStorage.setItem(STORAGE_KEY, localSaved);
           if (value.accessToken) window.sessionStorage.setItem("brewlite_access_token", value.accessToken);
@@ -78,11 +76,11 @@ export function readAuth(): AuthStoreState {
   return { accessToken: null, user: null };
 }
 
+// Chức năng: Cập nhật dữ liệu (saveAuth). Cách hoạt động: Xác thực dữ liệu thay đổi và cập nhật trạng thái vào hệ thống/state.
 export function saveAuth(accessToken: string, user: User) {
   if (typeof window === "undefined") return;
   const payload = JSON.stringify({ accessToken, user });
 
-  // 1. Lưu vào sessionStorage riêng của tab này để tab này độc lập hoàn toàn với các tab khác
   try {
     window.sessionStorage.setItem(STORAGE_KEY, payload);
     window.sessionStorage.setItem("brewlite_access_token", accessToken);
@@ -90,7 +88,6 @@ export function saveAuth(accessToken: string, user: User) {
     window.sessionStorage.setItem("brewlite_user", JSON.stringify(user));
   } catch {}
 
-  // 2. Lưu vào localStorage để làm giá trị mặc định cho tab mới
   try {
     window.localStorage.setItem(STORAGE_KEY, payload);
     window.localStorage.setItem("brewlite_access_token", accessToken);
@@ -105,10 +102,10 @@ export function saveAuth(accessToken: string, user: User) {
   window.dispatchEvent(new Event("brewlite:auth-change"));
 }
 
+// Chức năng: Xóa hoặc dọn dẹp dữ liệu (clearAuth). Cách hoạt động: Loại bỏ dữ liệu khỏi bộ nhớ trình duyệt.
 export function clearAuth() {
   if (typeof window === "undefined") return;
 
-  // Xóa session riêng của tab này
   try {
     window.sessionStorage.removeItem(STORAGE_KEY);
     window.sessionStorage.removeItem("brewlite_access_token");
@@ -117,7 +114,6 @@ export function clearAuth() {
     window.sessionStorage.removeItem("brewlite_user");
   } catch {}
 
-  // Xóa cả localStorage
   try {
     window.localStorage.removeItem(STORAGE_KEY);
     window.localStorage.removeItem("brewlite_access_token");
@@ -130,6 +126,7 @@ export function clearAuth() {
   window.dispatchEvent(new Event("brewlite:auth-change"));
 }
 
+// Chức năng: Lấy dữ liệu AccessToken. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
 export function getAccessToken() {
   return readAuth().accessToken;
 }

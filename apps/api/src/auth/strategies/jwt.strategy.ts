@@ -23,6 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  // Chức năng: Xác thực payload từ JWT token. Cách hoạt động: Passport-JWT tự động giải mã token, hàm này truy vấn User mới nhất từ DB theo payload.sub để gắn vào request.user.
   async validate(payload: JwtPayload) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },

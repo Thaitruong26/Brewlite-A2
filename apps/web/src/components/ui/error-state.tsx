@@ -1,3 +1,4 @@
+// Chức năng: Component giao diện ErrorState. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function ErrorState({ message, onRetry, actionLabel = "Thử lại" }: { message: string; onRetry?: () => void; actionLabel?: string }) {
   return <div role="alert" className="rounded-2xl border border-[#e8c5b5] bg-[#fff8f3] p-6 text-center">
     <p className="font-semibold text-[#713d2a]">Chưa thể tải nội dung</p>

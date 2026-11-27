@@ -5,6 +5,7 @@ import { useState } from "react";
 
 export const FALLBACK_PRODUCT_IMAGE = "/img/ca-phe-sua.jpg";
 
+// Chức năng: Component giao diện ProductImage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function ProductImage({
   src,
   alt,

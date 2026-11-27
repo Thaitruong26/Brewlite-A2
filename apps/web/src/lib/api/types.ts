@@ -32,7 +32,7 @@ export interface User {
   id: number;
   email: string;
   fullName: string;
-  role: "CUSTOMER" | "BARISTA";
+  role: "CUSTOMER" | "BARISTA" | "MANAGER";
   loyaltyPoints: number;
 }
 

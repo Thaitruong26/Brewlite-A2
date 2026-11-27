@@ -12,10 +12,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     super({ adapter });
   }
 
+  // Chức năng: Xử lý sự kiện ModuleInit. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   async onModuleInit() {
     await this.$connect();
   }
 
+  // Chức năng: Xử lý sự kiện ModuleDestroy. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
   async onModuleDestroy() {
     await this.$disconnect();
   }

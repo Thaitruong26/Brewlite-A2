@@ -14,6 +14,7 @@ export class ProductsService {
     private readonly recipeService: RecipeService,
   ) {}
 
+  // Chức năng: Truy vấn danh sách sản phẩm từ DB. Cách hoạt động: Lọc sản phẩm đang mở bán (isActive: true), áp dụng filter search/category và phân trang skip/take bằng Prisma.
   async findAll(dto: GetProductsDto) {
     const page = dto.page ?? 1;
     const limit = dto.limit ?? 20;
@@ -85,6 +86,7 @@ export class ProductsService {
     };
   }
 
+  // Chức năng: Truy vấn chi tiết sản phẩm và topping. Cách hoạt động: Tìm sản phẩm theo id (ném 404 nếu không thấy), trả kèm phụ thu các size S/M/L và danh sách topping khả dụng.
   async findOne(id: number) {
     const [product, toppings, ingredients] = await Promise.all([
       this.prisma.product.findFirst({

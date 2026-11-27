@@ -12,9 +12,9 @@ import { ErrorState } from "@/components/ui/error-state";
 import { ProductCardSkeleton } from "@/components/ui/loading-state";
 import { useStockStore, checkIsAvailable } from "@/store/stock-store";
 
+// Chức năng: Xử lý tính toán / định dạng dữ liệu (formatVnd). Cách hoạt động: Biến đổi tham số đầu vào (price) thành kết quả chuẩn để hiển thị hoặc tính toán.
 const formatVnd = (price: number) => new Intl.NumberFormat("vi-VN").format(price);
 
-// ─── Badges theo tên sản phẩm ─────────────────────────────────────────────────
 const BADGES: Record<string, { label: string; bg: string; color: string }> = {
   "Cà phê sữa": { label: "BEST SELLER", bg: "#fff3cd", color: "#8a6200" },
   "Americano": { label: "Đậm vừa", bg: "#e6f4ea", color: "#2d6a4f" },
@@ -23,7 +23,6 @@ const BADGES: Record<string, { label: string; bg: string; color: string }> = {
   "Matcha đá xay": { label: "Mới", bg: "#e8f5e2", color: "#2d6a4f" },
 };
 
-// ─── Category icons ─────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, string> = {
   "Tất cả": "☕",
   "Cà phê": "☕",
@@ -31,14 +30,16 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Đá xay": "🧊",
 };
 
-// ─── Hero Banner ──────────────────────────────────────────────────────────────
+// Chức năng: Lấy dữ liệu Greeting. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
 function getGreeting(): string {
   const hour = new Date().getHours();
   return hour < 12 ? "Chào buổi sáng! ☀️" : hour < 18 ? "Chào buổi chiều! ☁️" : "Chào buổi tối! 🌙";
 }
 
+// Chức năng: Hàm emptySubscribe. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 const emptySubscribe = () => () => {};
 
+// Chức năng: Component giao diện HeroBanner. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function HeroBanner() {
   const greeting = useSyncExternalStore(
     emptySubscribe,
@@ -76,7 +77,7 @@ function HeroBanner() {
   );
 }
 
-// ─── Search Bar ───────────────────────────────────────────────────────────────
+// Chức năng: Component giao diện SearchBar. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function SearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="relative flex items-center gap-2">
@@ -116,7 +117,7 @@ function SearchBar({ value, onChange }: { value: string; onChange: (v: string) =
   );
 }
 
-// ─── Mobile Product Card ───────────────────────────────────────────────────────
+// Chức năng: Component giao diện ProductCard. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function ProductCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const badge = Object.entries(BADGES).find(([k]) => product.name.includes(k))?.[1];
 
@@ -191,7 +192,7 @@ function ProductCard({ product, priority = false }: { product: Product; priority
   );
 }
 
-// ─── Desktop Product Card ──────────────────────────────────────────────────────
+// Chức năng: Component giao diện DesktopProductCard. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function DesktopProductCard({ product }: { product: Product }) {
   const badge = Object.entries(BADGES).find(([k]) => product.name.includes(k))?.[1];
 
@@ -260,7 +261,7 @@ function DesktopProductCard({ product }: { product: Product }) {
   );
 }
 
-// ─── Trang Menu ───────────────────────────────────────────────────────────────
+// Chức năng: Component giao diện MenuContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function MenuContent() {
   const [category, setCategory] = useState("");
   const [search, setSearch] = useState("");
@@ -270,6 +271,7 @@ function MenuContent() {
 
   useEffect(() => {
     hydrateStock();
+    // Chức năng: Hàm sync. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
     const sync = () => hydrateStock();
     window.addEventListener("brewlite:stock-availability-change", sync);
     window.addEventListener("storage", sync);
@@ -294,7 +296,6 @@ function MenuContent() {
 
   const result = fixtureResult ?? query.data;
 
-  // Lọc theo search ở client (API không cần search cho Sprint 1)
   const products = useMemo(() => {
     const allProducts = (result?.data ?? []).filter((p) =>
       checkIsAvailable(p, availability),
@@ -457,6 +458,7 @@ function MenuContent() {
   );
 }
 
+// Chức năng: Component giao diện MenuPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function MenuPage() {
   return (
     <Suspense

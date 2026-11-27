@@ -29,6 +29,7 @@ export class PaymentsService {
     @Optional() private readonly ordersService?: OrdersService,
   ) {}
 
+  // Chức năng: Xử lý thanh toán có Idempotency-Key. Cách hoạt động: Hash request để phát hiện xung đột key (409), replay kết quả cũ nếu trùng key, mở transaction cập nhật Payment SUCCESS/FAILED và Order PAID/PAYMENT_FAILED.
   async createPayment(
     dto: CreatePaymentDto,
     idempotencyKey: string,
@@ -179,8 +180,6 @@ export class PaymentsService {
         },
       });
 
-      // Theo Sơ đồ 9.1: PAYMENT_FAILED chỉ cho phép thử lại quay về PENDING
-      // Nếu đơn đang ở PAYMENT_FAILED, chuyển về PENDING trước khi sang PAID / PAYMENT_FAILED
       if (order.status === 'PAYMENT_FAILED') {
         assertTransition('PAYMENT_FAILED' as any, 'PENDING' as any);
         await tx.order.update({

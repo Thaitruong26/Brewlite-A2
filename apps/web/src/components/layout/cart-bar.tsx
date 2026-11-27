@@ -5,8 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCartStore, selectTotalItems, selectTotalAmount } from "@/store/cart-store";
 
+// Chức năng: Xử lý tính toán / định dạng dữ liệu (formatVnd). Cách hoạt động: Biến đổi tham số đầu vào (amount) thành kết quả chuẩn để hiển thị hoặc tính toán.
 const formatVnd = (amount: number) => new Intl.NumberFormat("vi-VN").format(amount);
 
+// Chức năng: Component giao diện CartBarContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function CartBarContent() {
   const pathname = usePathname();
   const totalItems = useCartStore(selectTotalItems);
@@ -48,9 +50,7 @@ function CartBarContent() {
   );
 }
 
-/**
- * Thanh tóm tắt giỏ hàng nổi — hiển thị phía trên BottomNav khi giỏ có ít nhất 1 món.
- */
+// Chức năng: Component giao diện CartBar. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export function CartBar() {
   return (
     <Suspense fallback={null}>

@@ -23,14 +23,14 @@ import { CurrentUser } from './decorators/current-user.decorator.js';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  /** POST /api/auth/register */
+  // Chức năng: Đăng ký tài khoản khách hàng mới. Cách hoạt động: Nhận RegisterDto từ body và gọi AuthService.register() để kiểm tra trùng email, băm mật khẩu bcrypt rồi lưu vào DB.
   @Post('register')
   @ApiOperation({ summary: 'Đăng ký tài khoản mới (role: CUSTOMER)' })
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
-  /** POST /api/auth/login */
+  // Chức năng: Đăng nhập hệ thống. Cách hoạt động: Nhận LoginDto (email, password) và gọi AuthService.login() để xác thực và cấp phát JWT access_token.
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Đăng nhập, trả về JWT access_token' })
@@ -38,7 +38,7 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
-  /** GET /api/auth/me — yêu cầu JWT */
+  // Chức năng: Lấy thông tin người dùng đang đăng nhập. Cách hoạt động: Dùng JwtAuthGuard giải mã token từ header Authorization và trả về thông tin user hiện tại.
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

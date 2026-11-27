@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export class ToppingsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Lấy danh sách topping đang kích hoạt (isActive: true), sắp xếp theo id */
+  // Chức năng: Lấy dữ liệu All. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async findAll() {
     return this.prisma.topping.findMany({
       where: { isActive: true },

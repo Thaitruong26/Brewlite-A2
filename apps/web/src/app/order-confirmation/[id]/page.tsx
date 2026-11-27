@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/auth/require-auth";
 import { getOrder, type OrderResponse } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/client";
 
+// Chức năng: Xử lý tính toán / định dạng dữ liệu (formatVnd). Cách hoạt động: Biến đổi tham số đầu vào (amount) thành kết quả chuẩn để hiển thị hoặc tính toán.
 const formatVnd = (amount: number) =>
   `${new Intl.NumberFormat("vi-VN").format(amount)} đ`;
 
@@ -21,6 +22,7 @@ const statusTitle: Record<string, string> = {
   CANCELLED: "Đơn hàng đã hủy",
 };
 
+// Chức năng: Component giao diện OrderConfirmationContent. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 function OrderConfirmationContent() {
   const params = useParams<{ id: string }>();
   const orderId = Number(params.id);
@@ -32,6 +34,7 @@ function OrderConfirmationContent() {
   useEffect(() => {
     let active = true;
 
+    // Chức năng: Hàm loadOrder. Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
     async function loadOrder() {
       if (!Number.isInteger(orderId) || orderId <= 0) {
         setError("Mã đơn hàng không hợp lệ.");
@@ -169,6 +172,7 @@ function OrderConfirmationContent() {
   );
 }
 
+// Chức năng: Component giao diện OrderConfirmationPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function OrderConfirmationPage() {
   return (
     <Suspense

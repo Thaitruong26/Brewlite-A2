@@ -1,6 +1,5 @@
 import type { PaginatedResponse, Product } from "./types";
 
-/** Explicit preview-only fixtures matching the documented menu examples and project seed data. */
 export const developmentProducts: Product[] = [
   { id: 1, name: "Cà phê sữa", price: 35000, imageUrl: "/img/ca-phe-sua.jpg", category: "Cà phê", stock: 50, inStock: true },
   { id: 2, name: "Americano", price: 40000, imageUrl: "/img/americano.jpg", category: "Cà phê", stock: 50, inStock: true },
@@ -14,6 +13,7 @@ export const developmentProducts: Product[] = [
   { id: 10, name: "Cà phê muối", price: 42000, imageUrl: "/img/ca-phe-muoi.jpg", category: "Cà phê", stock: 5, inStock: true },
 ];
 
+// Chức năng: Lấy dữ liệu DevelopmentProducts. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
 export function getDevelopmentProducts(category?: string): PaginatedResponse<Product> {
   const data = category ? developmentProducts.filter((product) => product.category === category) : developmentProducts;
   return { data, meta: { page: 1, limit: 20, total: data.length, totalPages: data.length ? 1 : 0 } };

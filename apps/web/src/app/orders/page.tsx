@@ -32,7 +32,6 @@ type PaymentDetail = {
   createdAt?: string;
 };
 
-/** Một dòng trong GET /orders/me (api.md mục 6.9). */
 type OrderSummary = {
   id: number | string;
   code?: string;
@@ -60,6 +59,7 @@ const STATUS_META: Record<string, { label: string; badge: string }> = {
 
 const STATUS_FILTERS = ["", "PENDING", "PAID", "PREPARING", "READY", "COMPLETED", "PAYMENT_FAILED", "CANCELLED"] as const;
 
+// Chức năng: Component giao diện OrdersPage. Cách hoạt động: Quản lý trạng thái hiển thị bằng React hooks và render cấu trúc JSX tương ứng.
 export default function OrdersPage() {
   const ready = useCartHydrated();
   const signedIn = ready && Boolean(getToken());
@@ -69,6 +69,7 @@ export default function OrdersPage() {
   const [status, setStatus] = useState<string>("");
   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
 
+  // Chức năng: Hàm toggleExpand(orderId). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const toggleExpand = (orderId: string | number) => {
     setExpandedOrders((prev) => ({
       ...prev,
@@ -76,11 +77,9 @@ export default function OrdersPage() {
     }));
   };
 
-  // Mỗi tài khoản chỉ xem đúng lịch sử đơn do tài khoản đó đặt
   const queryPath = `/orders/me?page=${page}&limit=10${status ? `&status=${status}` : ""}`;
 
   const { data, isPending, isFetching, error, refetch } = useQuery({
-    // Cache riêng biệt theo userId để không bao giờ bị ghi đè cache giữa các tài khoản
     queryKey: ["orders-me", user?.id ?? "anon", page, status],
     enabled: ready && signedIn,
     staleTime: 0,

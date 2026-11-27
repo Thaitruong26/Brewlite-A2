@@ -14,13 +14,10 @@ export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "/api";
 export const API_BASE = API_BASE_URL;
 
-/**
- * Lấy JWT accessToken từ localStorage (tương thích với tất cả các key từ FE1, FE2, FE3)
- */
+// Chức năng: Lấy dữ liệu AccessToken. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
 
-  // 1. Ưu tiên sessionStorage của tab hiện tại (mỗi tab độc lập)
   try {
     const sessionToken =
       window.sessionStorage.getItem("brewlite_access_token") ||
@@ -38,7 +35,6 @@ export function getAccessToken(): string | null {
     // ignore
   }
 
-  // 2. Dự phòng localStorage
   const directToken =
     window.localStorage.getItem("accessToken") ||
     window.localStorage.getItem("access_token") ||
@@ -81,11 +77,11 @@ export type User = {
   loyaltyPoints?: number;
 };
 
+// Chức năng: Cập nhật dữ liệu (saveSession). Cách hoạt động: Xác thực dữ liệu thay đổi và cập nhật trạng thái vào hệ thống/state.
 export function saveSession(token: string, user: User) {
   if (typeof window === "undefined") return;
   const payload = JSON.stringify({ accessToken: token, user });
 
-  // Lưu sessionStorage riêng từng tab
   try {
     window.sessionStorage.setItem("brewlite_access_token", token);
     window.sessionStorage.setItem("accessToken", token);
@@ -93,7 +89,6 @@ export function saveSession(token: string, user: User) {
     window.sessionStorage.setItem("brewlite.auth", payload);
   } catch {}
 
-  // Lưu localStorage
   try {
     localStorage.setItem("brewlite_access_token", token);
     localStorage.setItem("accessToken", token);
@@ -102,6 +97,7 @@ export function saveSession(token: string, user: User) {
   } catch {}
 }
 
+// Chức năng: Xóa hoặc dọn dẹp dữ liệu (clearSession). Cách hoạt động: Loại bỏ dữ liệu khỏi bộ nhớ trình duyệt.
 export function clearSession() {
   if (typeof window === "undefined") return;
   try {
@@ -121,10 +117,10 @@ export function clearSession() {
   } catch {}
 }
 
+// Chức năng: Lấy dữ liệu CachedUser. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
 export function getCachedUser(): User | null {
   if (typeof window === "undefined") return null;
 
-  // 1. Ưu tiên sessionStorage
   try {
     const sessionUserStr = window.sessionStorage.getItem("brewlite_user");
     if (sessionUserStr) return JSON.parse(sessionUserStr) as User;
@@ -136,7 +132,6 @@ export function getCachedUser(): User | null {
     }
   } catch {}
 
-  // 2. Dự phòng localStorage
   const raw = localStorage.getItem("brewlite_user");
   if (raw) {
     try {
@@ -154,7 +149,6 @@ export function getCachedUser(): User | null {
   return null;
 }
 
-/** Dạng phân trang chung (api.md mục 2.3). */
 export type Paginated<T> = {
   data: T[];
   meta: {
@@ -165,17 +159,13 @@ export type Paginated<T> = {
   };
 };
 
-/**
- * Định dạng tiền nguyên VND theo chuẩn của dự án (ví dụ: 123000 -> "123.000đ")
- */
+// Chức năng: Xử lý tính toán / định dạng dữ liệu (formatVND). Cách hoạt động: Biến đổi tham số đầu vào (value) thành kết quả chuẩn để hiển thị hoặc tính toán.
 export function formatVND(value: number): string {
   const safeAmount = Number.isFinite(value) ? Math.round(value) : 0;
   return `${safeAmount.toLocaleString("vi-VN")}đ`;
 }
 
-/**
- * Hàm gọi API (dùng cho FE2)
- */
+// Chức năng: Hàm api(path, init). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (shouldUseMock(path)) return mockApi<T>(path, init);
 
@@ -218,9 +208,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return payload as T;
 }
 
-/**
- * Hàm gọi API dùng chung theo chuẩn docs/api.md (dùng cho FE3)
- */
+// Chức năng: Hàm apiRequest(endpoint, options). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -293,9 +281,7 @@ export async function apiRequest<T>(
   };
 }
 
-/**
- * POST /orders - Tạo đơn hàng ở trạng thái PENDING và giữ tồn kho
- */
+// Chức năng: Tạo mới hoặc thêm dữ liệu (createOrderApi). Cách hoạt động: Kiểm tra đầu vào (payload), thực hiện lưu trữ và trả về bản ghi vừa tạo.
 export async function createOrderApi(
   payload: CreateOrderDto,
 ): Promise<OrderResponse> {
@@ -306,9 +292,7 @@ export async function createOrderApi(
   return data;
 }
 
-/**
- * POST /payments - Thanh toán không tiền mặt kèm Idempotency-Key
- */
+// Chức năng: Tạo mới hoặc thêm dữ liệu (createPaymentApi). Cách hoạt động: Kiểm tra đầu vào (payload, idempotencyKey), thực hiện lưu trữ và trả về bản ghi vừa tạo.
 export async function createPaymentApi(
   payload: CreatePaymentDto,
   idempotencyKey: string,
@@ -327,9 +311,7 @@ export async function createPaymentApi(
   };
 }
 
-/**
- * GET /orders/:id - Lấy chi tiết đơn hàng cho Trang xác nhận đơn
- */
+// Chức năng: Lấy dữ liệu OrderByIdApi. Cách hoạt động: Truy vấn dữ liệu từ Backend API và trả về kết quả đã định dạng.
 export async function getOrderByIdApi(
   orderId: number | string,
 ): Promise<OrderResponse> {
@@ -339,10 +321,7 @@ export async function getOrderByIdApi(
   return data;
 }
 
-/**
- * Task 10: POST /orders/:id/cancel
- * Hủy đơn hàng và hoàn nguyên liệu vào kho
- */
+// Chức năng: Hàm cancelOrderApi(orderId). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function cancelOrderApi(
   orderId: number | string,
 ): Promise<OrderResponse> {
@@ -352,9 +331,7 @@ export async function cancelOrderApi(
   return data;
 }
 
-/**
- * POST /payments/vnpay/create-url - Tạo liên kết thanh toán VNPay Sandbox (ADR-004)
- */
+// Chức năng: Tạo mới hoặc thêm dữ liệu (createVnpayUrlApi). Cách hoạt động: Kiểm tra đầu vào (orderId), thực hiện lưu trữ và trả về bản ghi vừa tạo.
 export async function createVnpayUrlApi(orderId: number): Promise<{
   paymentUrl: string;
   simulatorUrl?: string;
@@ -369,9 +346,7 @@ export async function createVnpayUrlApi(orderId: number): Promise<{
   return data;
 }
 
-/**
- * POST /payments/vnpay/simulate-complete - Ký query trả về từ VNPay Simulator
- */
+// Chức năng: Hàm simulateVnpayCompleteApi(orderId, txnRef, amount, responseCode). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function simulateVnpayCompleteApi(
   orderId: number,
   txnRef: string,
@@ -388,9 +363,7 @@ export async function simulateVnpayCompleteApi(
   return data;
 }
 
-/**
- * GET /payments/vnpay/verify - Xác thực kết quả trả về từ cổng VNPay
- */
+// Chức năng: Hàm verifyVnpayCallbackApi(queryParams). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export async function verifyVnpayCallbackApi(
   queryParams: Record<string, string>,
 ): Promise<{

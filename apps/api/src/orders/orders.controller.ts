@@ -34,6 +34,7 @@ import { CancelOrderDto, ConfirmRefundDto, FailRefundDto, HoldRefundDto, RetryRe
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
+  // Chức năng: Tạo đơn hàng mới. Cách hoạt động: Lấy user.id từ JWT, nhận CreateOrderDto và gọi OrdersService.createOrder().
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -50,6 +51,7 @@ export class OrdersController {
     return this.ordersService.createOrder(user.id, dto);
   }
 
+  // Chức năng: Lấy dữ liệu BaristaOrders. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   @Get()
   @ApiOperation({
     summary: 'Hàng đợi đơn của quán (Mở rộng Barista - Mục 6.15)',
@@ -66,9 +68,7 @@ export class OrdersController {
     return this.ordersService.getBaristaOrders({ status, page, limit }, user);
   }
 
-  /**
-   * Lưu ý: Khai báo GET /orders/me TRƯỚC GET /orders/:id để "me" không bị hiểu lầm là :id
-   */
+  // Chức năng: Lấy dữ liệu OrdersMe. Cách hoạt động: Truy vấn dữ liệu và trả về kết quả đã định dạng.
   @Get('me')
   @ApiOperation({
     summary: 'Lịch sử đơn hàng của tôi (Task 9)',
@@ -82,6 +82,7 @@ export class OrdersController {
     return this.ordersService.getOrdersMe(user.id, query);
   }
 
+  // Chức năng: Xem chi tiết 1 đơn hàng. Cách hoạt động: Kiểm tra quyền sở hữu (chủ đơn hoặc Barista) và trả về chi tiết món, thanh toán, hoàn tiền.
   @Get(':id')
   @ApiOperation({
     summary: 'Xem chi tiết đơn hàng (Task 9)',
@@ -98,6 +99,7 @@ export class OrdersController {
     return this.ordersService.getOrderById(id, user);
   }
 
+  // Chức năng: Hủy đơn hàng (và yêu cầu hoàn tiền VietQR nếu đã PAID). Cách hoạt động: Gọi OrdersService.cancelOrder() kèm thông tin ngân hàng nhận hoàn tiền.
   @Post(':id/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -115,6 +117,7 @@ export class OrdersController {
     return this.ordersService.cancelOrder(id, user, dto);
   }
 
+  // Chức năng: Barista xác nhận đã chuyển khoản hoàn tiền VietQR thành công. Cách hoạt động: Lưu mã tham chiếu refundRef, đánh dấu refundStatus = COMPLETED.
   @Patch(':id/confirm-refund')
   @ApiOperation({
     summary: 'Barista xác nhận đã chuyển khoản hoàn tiền VietQR cho khách',
@@ -131,6 +134,7 @@ export class OrdersController {
     return this.ordersService.confirmRefund(id, user, dto);
   }
 
+  // Chức năng: Barista báo chuyển khoản hoàn tiền thất bại. Cách hoạt động: Lưu lý do lỗi và chuyển refundStatus = FAILED.
   @Patch(':id/fail-refund')
   @ApiOperation({
     summary: 'Barista báo chuyển khoản hoàn tiền thất bại (lỗi STK, tài khoản khóa)',
@@ -147,6 +151,7 @@ export class OrdersController {
     return this.ordersService.failRefund(id, user, dto);
   }
 
+  // Chức năng: Đưa giao dịch hoàn tiền vào trạng thái đối soát nghi ngờ. Cách hoạt động: Chuyển refundStatus = UNKNOWN, tạm khóa chuyển lại để tránh mất tiền 2 lần.
   @Patch(':id/hold-refund')
   @ApiOperation({
     summary: 'Chuyển hoàn tiền sang trạng thái đối soát nghi ngờ (UNKNOWN)',
@@ -163,6 +168,7 @@ export class OrdersController {
     return this.ordersService.holdRefund(id, user, dto);
   }
 
+  // Chức năng: Cho phép thử chuyển khoản hoàn tiền lại. Cách hoạt động: Cập nhật lại STK mới (nếu có) và đưa refundStatus về PENDING (chặn retry nếu đang UNKNOWN).
   @Patch(':id/retry-refund')
   @ApiOperation({
     summary: 'Thử lại hoàn tiền VietQR (chuyển về PENDING)',
@@ -179,6 +185,7 @@ export class OrdersController {
     return this.ordersService.retryRefund(id, user, dto);
   }
 
+  // Chức năng: Cập nhật dữ liệu (updateStatus). Cách hoạt động: Xác thực dữ liệu thay đổi và cập nhật trạng thái vào hệ thống/state.
   @Patch(':id/status')
   @ApiOperation({
     summary: 'Barista cập nhật trạng thái đơn (Task 10 & Mở rộng Barista)',
