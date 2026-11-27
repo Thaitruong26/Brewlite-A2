@@ -1,9 +1,8 @@
 @startdot
 digraph G {
   rankdir=TB;
-  bgcolor="transparent";
-  node [fontname="Arial", fontsize=11, color="#183d2c", fontcolor="#183d2c", style="filled", fillcolor="#f7f8f5"];
-  edge [color="#3b4d42", fontname="Arial", fontsize=10];
+  node [fontsize=11, color="#183d2c", fontcolor="#183d2c", style="filled", fillcolor="#f7f8f5"];
+  edge [color="#3b4d42", fontsize=10];
 
   start_node [label="", shape=circle, width=0.3, fillcolor="#183d2c"];
   step1 [label="Customer: xem menu, chọn size/topping", shape=box, style="rounded,filled"];

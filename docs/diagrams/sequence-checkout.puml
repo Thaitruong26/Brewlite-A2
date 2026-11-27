@@ -1,8 +1,7 @@
 @startdot
 digraph G {
   rankdir=TB;
-  bgcolor="transparent";
-  node [fontname="Arial", fontsize=11, shape=box, style="rounded,filled", fillcolor="#f7f8f5", color="#183d2c", fontcolor="#183d2c"];
+  node [fontsize=11, shape=box, style="rounded,filled", fillcolor="#f7f8f5", color="#183d2c", fontcolor="#183d2c"];
   edge [color="#3b4d42"];
 
   s1 [label="1. Customer / Next.js\nGiỏ hợp lệ, JWT, POST /api/orders"];

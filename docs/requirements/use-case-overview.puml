@@ -1,15 +1,13 @@
 @startdot
 digraph G {
   rankdir=LR;
-  bgcolor="transparent";
-  node [fontname="Arial", fontsize=11, color="#183d2c", fontcolor="#183d2c"];
+  node [fontsize=11, color="#183d2c", fontcolor="#183d2c"];
   edge [color="#3b4d42", fontsize=10];
 
   subgraph cluster_customer {
     label="Khách hàng · Customer";
     color="#b8c7bc";
     style=rounded;
-    fontname="Arial";
     fontsize=12;
     c_menu [label="Xem menu / tùy chọn", shape=ellipse];
     c_cart [label="Giỏ hàng & tính giá", shape=ellipse];
@@ -28,7 +26,6 @@ digraph G {
     label="Barista";
     color="#b8c7bc";
     style=rounded;
-    fontname="Arial";
     fontsize=12;
     b_refund [label="Hoàn tiền VietQR", shape=ellipse];
     b_prep [label="Tiếp nhận & pha chế", shape=ellipse];
@@ -38,7 +35,6 @@ digraph G {
     label="Bên ngoài";
     color="#b8c7bc";
     style=rounded;
-    fontname="Arial";
     fontsize=12;
     ext_bank [label="Ứng dụng ngân hàng", shape=box];
     ext_vnpay [label="VNPay Sandbox", shape=box];
