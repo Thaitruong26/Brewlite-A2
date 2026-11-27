@@ -995,7 +995,9 @@ export default function BaristaPage() {
     return minCups === 999999 ? 0 : Math.max(0, minCups);
   }
 
-  const visibleOrders = orders.filter((order) => order.stage === (queueTab === "history" ? "completed" : queueTab));
+  const visibleOrders = orders
+    .filter((order) => order.stage === (queueTab === "history" ? "completed" : queueTab))
+    .sort((a, b) => b.id - a.id);
 
   // Chức năng: Hàm scrollTo(id). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   const scrollTo = (id: string) => {

@@ -1044,7 +1044,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'asc' }, // Cũ nhất lên đầu theo thứ tự đến quầy
+        orderBy: { createdAt: 'desc' }, // Mới nhất lên đầu
         include: {
           user: {
             select: { fullName: true },
