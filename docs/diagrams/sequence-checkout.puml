@@ -5,59 +5,49 @@ actor Customer as C
 participant "Next.js UI" as Web
 participant "NestJS API" as API
 database "PostgreSQL" as DB
-participant "Payment Service\n(PaymentProvider)" as Pay
 participant "VNPay Sandbox" as VN
-C -> Web : Menu → cart → checkout
-Web -> API : POST /api/orders (JWT, items, promotion)
-API -> API : Verify JWT / validate DTO / server pricing
-API -> DB : BEGIN; lock/reserve stock + promo
-alt Out of stock / invalid
+
+C -> Web : 1. Chọn món, size/topping, xác nhận giỏ
+Web -> API : POST /api/orders (JWT, items, promoCode, usePoints)
+API -> API : Verify JWT / validate DTO / tính giá trên server
+API -> DB : BEGIN; kiểm tra & giữ nguyên liệu (StockMovement ORDER_RESERVE)
+alt Hết nguyên liệu / không hợp lệ
   DB --> API : Error
   API -> DB : ROLLBACK
-  API --> Web : 409/422
-  Web --> C : Sửa giỏ
-else Valid
-  API -> DB : INSERT Order PENDING + OrderItem snapshot
-  API -> DB : COMMIT
-  API --> Web : 201 orderId, totalVnd
-  C -> Web : Chọn VNPay
-  Web -> API : POST /api/payments / vnpay/create-url (Idempotency-Key)
-  API -> API : Verify JWT/ownership/order status
-  API -> DB : Lookup unique key + request hash
-  alt Same key and body replay
-    DB --> API : Original result
-    API --> Web : Original payment URL/status
-  else New attempt
-    API -> Pay : createPaymentIntent(order, amount)
-    Pay --> API : URL + providerTxnRef
-    API -> DB : Store Payment PROCESSING
-    API --> Web : Signed URL
-    Web --> C : HTTP redirect URL
-    C -> VN : Browser opens signed payment page
-    VN -> API : IPN(vnp_TxnRef, vnp_Amount, status, signature)
-    API -> Pay : verifyNotification(payload)
-    Pay --> API : Verified data / invalid
-    API -> DB : Check txnRef, amount, status, idempotent lock
-    alt Verified SUCCESS
-      API -> DB : Payment SUCCESS; Order PAID (transaction)
-      API --> VN : IPN success response
-    else Verified FAILED
-      API -> DB : Payment FAILED; Order PAYMENT_FAILED
-      API --> VN : IPN acknowledged
-    else Invalid or UNKNOWN
-      API -> DB : Do not mark PAID; store audit/UNKNOWN
-      API -> Pay : queryPayment() when needed
-      Pay -> VN : QueryDr request
-      VN --> Pay : QueryDr result
-      Pay --> API : Verified result
+  API --> Web : 409 OUT_OF_STOCK
+  Web --> C : Hiển thị lỗi, điều chỉnh giỏ
+else Hợp lệ
+  API -> DB : INSERT Order PENDING + OrderItem snapshot; COMMIT
+  API --> Web : 201 orderId, total
+  C -> Web : 4. Chọn VNPay Sandbox / Mock
+  Web -> API : POST /api/payments/vnpay/create-url (Idempotency-Key)
+  API -> DB : Kiểm tra idempotencyKey + requestHash
+  alt Trùng key & payload
+    DB --> API : Trả Payment cũ
+    API --> Web : URL thanh toán cũ
+  else Giao dịch mới
+    API -> DB : Lưu Payment PROCESSING
+    API --> Web : Signed VNPay URL
+    Web --> C : Redirect sang cổng thanh toán
+    C -> VN : 5. Thực hiện thanh toán Sandbox
+    VN -> API : 6. Gửi IPN (vnp_TxnRef, vnp_Amount, status, vnp_SecureHash)
+    API -> API : Kiểm checksum HMAC, merchant, amount, trạng thái
+    alt IPN hợp lệ & SUCCESS
+      API -> DB : 7. Payment SUCCESS -> Order PAID + Loyalty EARN once
+      API --> VN : RspCode 00 (Confirm Success)
+    else IPN FAILED
+      API -> DB : Payment FAILED -> Order PAYMENT_FAILED
+      API --> VN : RspCode 00
+    else UNKNOWN / sai checksum
+      API -> DB : Không tự PAID; giữ trạng thái để đối soát
+      API --> VN : Mã lỗi theo contract
     end
   end
-  VN --> C : Browser redirect to ReturnUrl (display only)
-  C -> Web : View status
+  VN --> C : Redirect về /payment/vnpay-return (chỉ hiển thị)
+  C -> Web : 8. Theo dõi trạng thái đơn
   Web -> API : GET /api/orders/{id}
-  API -> DB : Read authoritative Order state
-  DB --> API : Order/Payment state
-  API --> Web : PENDING / FAILED / PAID / UNKNOWN
-  Web --> C : Display authoritative status
+  API -> DB : Đọc trạng thái Order & Payment mới nhất
+  API --> Web : PENDING / PAYMENT_FAILED / PAID / PREPARING -> COMPLETED
+  Web --> C : Hiển thị trạng thái thực tế
 end
 @enduml

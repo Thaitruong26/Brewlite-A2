@@ -4,158 +4,127 @@ hide empty methods
 left to right direction
 
 class User {
-  +id: UUID
+  +id: Int
   +email: String
+  +passwordHash: String
+  +fullName: String
   +role: Role
+  +loyaltyPoints: Int
 }
+
 class Product {
-  +id: UUID
+  +id: Int
   +name: String
-  +active: Boolean
+  +price: Int
+  +category: String
+  +isActive: Boolean
 }
-class ProductVariant {
-  +id: UUID
-  +size: String
-  +priceVnd: Long
+
+class Topping {
+  +id: Int
+  +name: String
+  +price: Int
+  +isActive: Boolean
 }
+
 class Order {
-  +id: UUID
+  +id: Int
+  +userId: Int
   +status: OrderStatus
-  +totalVnd: Long
-  +version: Int
+  +subtotal: Int
+  +discountAmount: Int
+  +total: Int
+  +promoCode: String?
+  +pointsEarned: Int
+  +pointsUsed: Int
 }
+
 class OrderItem {
-  +id: UUID
+  +id: Int
+  +orderId: Int
+  +productId: Int
+  +productName: String
+  +size: Size
   +qty: Int
-  +unitPriceSnapshotVnd: Long
-  +optionsSnapshot: JSON
+  +unitPrice: Int
+  +lineTotal: Int
+  +toppings: Json
+  +consumption: Json
 }
+
 class Payment {
-  +id: UUID
-  +status: PaymentStatus
-  +provider: PaymentProviderType
-}
-class PaymentAttempt {
-  +id: UUID
+  +id: Int
+  +orderId: Int
   +idempotencyKey: String
-  +requestHash: String
-  +providerTxnRef: String
+  +amount: Int
+  +method: PaymentMethod
+  +status: PaymentStatus
+  +refundRef: String?
+  +refundedAmount: Int
+  +refundedAt: DateTime?
 }
-class Refund {
-  +id: UUID
-  +orderId: UUID
-  +status: RefundStatus
-  +amountVnd: Long
-  +bankCode: String
-  +accountNumber: String
-  +accountName: String
-  +confirmedBy: UUID?
-  +evidenceRef: String?
-}
-class RefundAttempt {
-  +id: UUID
-  +refundId: UUID
-  +baristaId: UUID
-  +attemptNo: Int
-  +status: RefundStatus
-  +failureReason: String?
-  +startedAt: DateTime
-  +finishedAt: DateTime?
-}
-class Promotion {
-  +id: UUID
+
+class PromoCode {
+  +id: Int
   +code: String
-  +quota: Int
+  +type: DiscountType
+  +value: Int
+  +usageLimit: Int?
+  +usedCount: Int
+  +expiresAt: DateTime
 }
-class PromotionRedemption {
-  +id: UUID
-  +status: ReservationStatus
-}
+
 class LoyaltyTransaction {
-  +id: UUID
-  +type: LoyaltyType
-  +points: Decimal
-  +amountVndEquivalent: Long
-}
-class InventoryReservation {
-  +id: UUID
-  +status: ReservationStatus
-  +releasedAt: DateTime?
-}
-interface PaymentProvider {
-  +createPaymentIntent(...)
-  +verifyNotification(...)
-  +queryPayment(...)
-}
-class VNPaySandboxAdapter
-class MockPaymentAdapter
-
-PaymentProvider <|.. VNPaySandboxAdapter
-PaymentProvider <|.. MockPaymentAdapter
-
-User "1" -- "0..*" Order : places
-User "1" -- "0..*" LoyaltyTransaction : has
-Product "1" -- "0..*" ProductVariant
-Order "1" *-- "1..*" OrderItem
-ProductVariant "1" -- "0..*" OrderItem : snapshot source
-Order "1" -- "0..*" Payment
-Payment "1" *-- "1..*" PaymentAttempt
-Order "1" -- "0..1" Refund : triggers on cancel
-Refund "1" *-- "0..*" RefundAttempt : logs
-Order "1" -- "0..*" InventoryReservation
-Promotion "1" -- "0..*" PromotionRedemption
-Order "1" -- "0..*" PromotionRedemption
-Order "1" -- "0..*" LoyaltyTransaction
-Payment ..> PaymentProvider : calls for collection
-
-enum OrderStatus {
-  PENDING
-  PAYMENT_FAILED
-  PAID
-  PREPARING
-  READY
-  COMPLETED
-  CANCELLED
-}
-enum PaymentStatus {
-  PENDING
-  SUCCESS
-  FAILED
-  UNKNOWN
-}
-enum RefundStatus {
-  PENDING
-  IN_PROGRESS
-  FAILED
-  UNKNOWN
-  COMPLETED
-}
-enum LoyaltyType {
-  EARNED
-  REDEEMED
-  REVERSED
-}
-enum ReservationStatus {
-  HELD
-  CONFIRMED
-  RELEASED
-}
-enum Role {
-  CUSTOMER
-  BARISTA
-  MANAGER
-}
-enum PaymentProviderType {
-  VNPAY
-  MOCK
+  +id: Int
+  +userId: Int
+  +orderId: Int
+  +points: Int
+  +reversedAt: DateTime?
 }
 
-Order ..> OrderStatus
-Payment ..> PaymentStatus
-Refund ..> RefundStatus
-RefundAttempt ..> RefundStatus
-LoyaltyTransaction ..> LoyaltyType
-InventoryReservation ..> ReservationStatus
-User ..> Role
-Payment ..> PaymentProviderType
+class Ingredient {
+  +id: Int
+  +name: String
+  +unit: IngredientUnit
+  +stock: Int
+  +version: Int
+  +lowThreshold: Int
+}
+
+class ProductRecipe {
+  +productId: Int
+  +ingredientId: Int
+  +quantity: Int
+}
+
+class ToppingRecipe {
+  +toppingId: Int
+  +ingredientId: Int
+  +quantity: Int
+}
+
+class StockMovement {
+  +id: Int
+  +ingredientId: Int
+  +type: StockMovementType
+  +quantity: Int
+  +orderId: Int?
+  +userId: Int?
+  +reason: String?
+}
+
+User "1" --> "0..*" Order
+User "1" --> "0..*" LoyaltyTransaction
+User "1" --> "0..*" StockMovement
+Order "1" --> "1..*" OrderItem
+Order "1" --> "0..*" Payment
+Order "0..*" --> "0..1" PromoCode
+Order "1" --> "0..1" LoyaltyTransaction
+Order "1" --> "0..*" StockMovement
+Product "1" --> "0..*" OrderItem
+Product "1" --> "0..*" ProductRecipe
+Topping "1" --> "0..*" ToppingRecipe
+Ingredient "1" --> "0..*" ProductRecipe
+Ingredient "1" --> "0..*" ToppingRecipe
+Ingredient "1" --> "0..*" StockMovement
 @enduml
