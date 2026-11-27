@@ -134,6 +134,21 @@ export class OrdersController {
     return this.ordersService.confirmRefund(id, user, dto);
   }
 
+  // Chức năng: Barista/Manager hoàn tiền cho đơn hủy bằng cách cộng điểm thưởng (1 điểm = 10đ). Cách hoạt động: Gọi OrdersService.refundPoints(id, user).
+  @Patch(':id/refund-points')
+  @ApiOperation({
+    summary: 'Hoàn tiền đơn hủy bằng điểm thưởng cho khách hàng (Barista/Manager)',
+    description: 'Quy đổi tổng tiền đơn đã thanh toán thành điểm thưởng (1 điểm = 10đ) và cộng trực tiếp vào tài khoản khách.',
+  })
+  @ApiParam({ name: 'id', description: 'ID đơn hàng', example: 1042 })
+  @ApiResponse({ status: 200, description: 'Hoàn điểm thành công' })
+  @ApiResponse({ status: 403, description: 'Chỉ Barista hoặc Manager có quyền' })
+  async refundPoints(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: UserContext,
+  ) {
+    return this.ordersService.refundPoints(id, user);
+  }
 
   // Chức năng: Barista báo chuyển khoản hoàn tiền thất bại. Cách hoạt động: Lưu lý do lỗi và chuyển refundStatus = FAILED.
   @Patch(':id/fail-refund')

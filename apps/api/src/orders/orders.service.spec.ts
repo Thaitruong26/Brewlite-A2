@@ -1121,4 +1121,38 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('refundPoints', () => {
+    it('hoàn tiền đơn hủy bằng điểm thưởng (1 điểm = 10đ) và đánh dấu payment đã hoàn', async () => {
+      prismaMock.order.findUnique.mockResolvedValue({
+        id: 112,
+        userId: 5,
+        status: OrderStatus.CANCELLED,
+        total: 45000,
+        payments: [
+          {
+            id: 22,
+            status: 'SUCCESS',
+            refundedAt: null,
+            refundRef: 'VIETQR:MB:0901234567:PENDING',
+          },
+        ],
+      });
+      prismaMock.user.update.mockResolvedValue({ id: 5, loyaltyPoints: 4500 });
+      prismaMock.payment.update.mockResolvedValue({
+        id: 22,
+        refundedAt: new Date('2026-11-27T01:00:00Z'),
+        refundedAmount: 45000,
+        refundRef: 'POINTS:4500',
+      });
+
+      const res = await service.refundPoints(112, { id: 2, email: 'barista@brewlite.com', role: Role.BARISTA });
+
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 5 },
+        data: { loyaltyPoints: { increment: 4500 } },
+      });
+      expect(res.pointsRefunded).toBe(4500);
+      expect(res.refundRef).toBe('POINTS:4500');
+    });
+  });
 });
