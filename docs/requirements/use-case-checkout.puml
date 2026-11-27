@@ -1,29 +1,18 @@
 @startdot
 digraph G {
   rankdir=TB;
-  node [fontsize=11, color="#183d2c", fontcolor="#183d2c", style="filled", fillcolor="#f7f8f5"];
-  edge [color="#3b4d42", fontsize=10];
+  node [fontsize=11, shape=box, style="rounded,filled", fillcolor="#f7f8f5", color="#183d2c", fontcolor="#183d2c"];
+  edge [color="#3b4d42"];
 
-  req [label="Khách yêu cầu hủy đơn", shape=box, style="rounded,filled"];
-  st [label="Trạng thái\nOrder?", shape=diamond];
+  s1 [label="1. Customer / Next.js\nGiỏ hợp lệ, JWT, POST /api/orders"];
+  s2 [label="2. NestJS OrdersService\nValidation / tính giá / transaction / reserve stock"];
+  s3 [label="3. PostgreSQL\nOrder PENDING + OrderItem + reserve ledger"];
+  s4 [label="4. Next.js / NestJS Payments\nYêu cầu URL VNPay và khóa idempotency"];
+  s5 [label="5. VNPay Sandbox\nRedirect, xác thực giao dịch, IPN server-to-server"];
+  s6 [label="6. NestJS Verify / Payment\nKiểm checksum, merchant, amount, trạng thái, chống callback lặp"];
+  s7 [label="7. PostgreSQL\nSUCCESS -> Order PAID + Loyalty EARN once\nFAILED -> PAYMENT_FAILED; UNKNOWN -> reconcile"];
+  s8 [label="8. Next.js Customer / Barista\nTheo dõi Order; Barista xử lý PAID -> COMPLETED"];
 
-  unpaid [label="PENDING / PAYMENT_FAILED\nCANCELLED; trả kho / ưu đãi / điểm đã dùng\nKhông yêu cầu ngân hàng hoặc STK", shape=box, style="rounded,filled"];
-  inprog [label="PREPARING / READY / COMPLETED\nHTTP 409 - không hủy", shape=box, style="rounded,filled"];
-  paid [label="PAID: khách nhập ngân hàng & STK\nCANCELLED, hoàn kho, thu hồi điểm EARN", shape=box, style="rounded,filled"];
-
-  kds [label="KDS: cảnh báo Cần hoàn tiền\nVietQR Napas247 theo STK khách", shape=box, style="rounded,filled"];
-  bank [label="Barista chuyển tiền bằng ứng dụng ngân hàng", shape=box, style="rounded,filled"];
-  verify [label="Đã xác minh\nchuyển tiền?", shape=diamond];
-
-  unk [label="UNKNOWN / FAILED\nĐối soát trước khi thử lại\nKhông tự cộng điểm bù", shape=box, style="rounded,filled"];
-  ok [label="Barista xác nhận bằng chứng\nTránh đánh dấu hoàn trùng", shape=box, style="rounded,filled"];
-
-  req -> st;
-  st -> unpaid [label="Chưa trả"];
-  st -> inprog [label="Đang/làm xong"];
-  st -> paid [label="PAID"];
-  paid -> kds -> bank -> verify;
-  verify -> unk [label="Chưa rõ / thất bại"];
-  verify -> ok [label="Có"];
+  s1 -> s2 -> s3 -> s4 -> s5 -> s6 -> s7 -> s8;
 }
 @enddot
