@@ -56,7 +56,7 @@ export class ToppingsController {
   // Chức năng: Cập nhật công thức nguyên liệu cho topping. Cách hoạt động: Chỉ cho phép Barista/Manager, gọi IngredientsService.updateToppingRecipe(id, dto).
   @Put(':id/recipe')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.BARISTA, Role.MANAGER)
+  @Roles(Role.MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cập nhật công thức topping cho 1 phần (Barista)' })
   @ApiParam({ name: 'id', description: 'ID topping', example: 1 })

@@ -70,7 +70,7 @@ export class ProductsController {
   /** 4.7. PUT /api/products/:id/recipe (Barista) */
   @Put(':id/recipe')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.BARISTA, Role.MANAGER)
+  @Roles(Role.MANAGER)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cập nhật toàn bộ công thức sản phẩm ở size M (Barista)' })
   @ApiParam({ name: 'id', description: 'ID sản phẩm', example: 1 })

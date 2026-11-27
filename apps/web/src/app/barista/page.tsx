@@ -1007,6 +1007,8 @@ export default function BaristaPage() {
     }
   };
 
+  const isManager = user?.role === "MANAGER";
+
   if (authChecked && user && user.role !== "BARISTA" && user.role !== "MANAGER") {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center p-6 text-center">
@@ -1509,13 +1511,15 @@ export default function BaristaPage() {
                 <p className="text-xs text-[#737970]">
                   Nhập kho, kiểm kê hao hụt, sửa ngưỡng cảnh báo hoặc xem thẻ kho.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setCreateIngOpen(true)}
-                  className="shrink-0 rounded-xl bg-[#174c32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#124029] active:scale-95 transition cursor-pointer shadow-xs"
-                >
-                  + Thêm NL mới
-                </button>
+                {isManager && (
+                  <button
+                    type="button"
+                    onClick={() => setCreateIngOpen(true)}
+                    className="shrink-0 rounded-xl bg-[#174c32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#124029] active:scale-95 transition cursor-pointer shadow-xs"
+                  >
+                    + Thêm NL mới
+                  </button>
+                )}
               </div>
               <div className="flex flex-col gap-3 w-full">
                 {ingredientStock.map((item) => {
@@ -1574,17 +1578,19 @@ export default function BaristaPage() {
                             >
                               Thẻ kho
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditIngTarget(item);
-                                setEditIngName(item.name);
-                                setEditIngThreshold(String(item.minimum));
-                              }}
-                              className="rounded-xl border border-[#dcdad0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#445247] hover:bg-[#f7f6f1] transition cursor-pointer"
-                            >
-                              Sửa
-                            </button>
+                            {isManager && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditIngTarget(item);
+                                  setEditIngName(item.name);
+                                  setEditIngThreshold(String(item.minimum));
+                                }}
+                                className="rounded-xl border border-[#dcdad0] bg-white px-2.5 py-1.5 text-[11px] font-bold text-[#445247] hover:bg-[#f7f6f1] transition cursor-pointer"
+                              >
+                                Sửa
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => {
@@ -1638,7 +1644,7 @@ export default function BaristaPage() {
                         onClick={() => openToppingRecipeModal(tp)}
                         className="rounded-xl border border-[#cfe0d4] bg-[#f4f8f5] px-3 py-1.5 text-xs font-bold text-[#174c32] hover:bg-[#e4efe7] transition cursor-pointer"
                       >
-                        Xem / Sửa công thức
+                        {isManager ? "Xem / Sửa công thức" : "Xem công thức"}
                       </button>
                     </div>
                   ))}
@@ -1684,7 +1690,7 @@ export default function BaristaPage() {
                   Công thức pha chế & Tồn nguyên liệu
                   {loadingRecipe && <span className="ml-2 font-normal text-stone-400 lowercase">(đang tải...)</span>}
                 </h3>
-                {selectedRecipeProduct.id && !editingProductRecipe && (
+                {isManager && selectedRecipeProduct.id && !editingProductRecipe && (
                   <button
                     type="button"
                     onClick={startEditProductRecipe}
@@ -2009,64 +2015,74 @@ export default function BaristaPage() {
                 {toppingRecipeDraft.map((row, idx) => (
                   <div key={row.ingredientId} className="flex items-center justify-between gap-2 text-xs">
                     <span className="font-semibold text-[#1e3429] flex-1 truncate">{row.name}</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.quantity}
-                      onChange={(e) => {
-                        const val = Math.max(1, Number(e.target.value) || 1);
-                        setToppingRecipeDraft((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity: val } : r)));
-                      }}
-                      className="w-20 rounded-lg border border-[#d6d4cb] px-2 py-1 text-right font-mono font-bold"
-                    />
-                    <span className="w-8 text-[#556358]">{row.unit}</span>
-                    <button
-                      type="button"
-                      onClick={() => setToppingRecipeDraft((prev) => prev.filter((_, i) => i !== idx))}
-                      className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50 font-bold cursor-pointer"
-                    >
-                      ✕
-                    </button>
+                    {isManager ? (
+                      <>
+                        <input
+                          type="number"
+                          min={1}
+                          value={row.quantity}
+                          onChange={(e) => {
+                            const val = Math.max(1, Number(e.target.value) || 1);
+                            setToppingRecipeDraft((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity: val } : r)));
+                          }}
+                          className="w-20 rounded-lg border border-[#d6d4cb] px-2 py-1 text-right font-mono font-bold"
+                        />
+                        <span className="w-8 text-[#556358]">{row.unit}</span>
+                        <button
+                          type="button"
+                          onClick={() => setToppingRecipeDraft((prev) => prev.filter((_, i) => i !== idx))}
+                          className="rounded-lg px-2 py-1 text-red-600 hover:bg-red-50 font-bold cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <span className="font-mono font-bold text-[#18462d]">{row.quantity} {row.unit}</span>
+                    )}
                   </div>
                 ))}
-                <div className="flex items-center gap-2 pt-2 border-t border-[#e6e5dd]">
-                  <select
-                    value={newToppingIngId}
-                    onChange={(e) => setNewToppingIngId(Number(e.target.value))}
-                    className="flex-1 rounded-lg border border-[#d6d4cb] bg-white px-2 py-1.5 text-xs"
-                  >
-                    <option value={0}>-- Chọn nguyên liệu thêm --</option>
-                    {ingredientStock
-                      .filter((i) => i.id && !toppingRecipeDraft.some((d) => d.ingredientId === i.id))
-                      .map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.name} ({i.unit})
-                        </option>
-                      ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ing = ingredientStock.find((i) => i.id === newToppingIngId);
-                      if (!ing?.id) return;
-                      setToppingRecipeDraft((prev) => [...prev, { ingredientId: ing.id!, name: ing.name, unit: ing.unit, quantity: 10 }]);
-                      setNewToppingIngId(0);
-                    }}
-                    className="rounded-lg bg-[#e6efe9] px-2.5 py-1.5 text-xs font-bold text-[#174c32] hover:bg-[#d5e6db] cursor-pointer"
-                  >
-                    + Thêm
-                  </button>
-                </div>
+                {isManager && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-[#e6e5dd]">
+                    <select
+                      value={newToppingIngId}
+                      onChange={(e) => setNewToppingIngId(Number(e.target.value))}
+                      className="flex-1 rounded-lg border border-[#d6d4cb] bg-white px-2 py-1.5 text-xs"
+                    >
+                      <option value={0}>-- Chọn nguyên liệu thêm --</option>
+                      {ingredientStock
+                        .filter((i) => i.id && !toppingRecipeDraft.some((d) => d.ingredientId === i.id))
+                        .map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} ({i.unit})
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ing = ingredientStock.find((i) => i.id === newToppingIngId);
+                        if (!ing?.id) return;
+                        setToppingRecipeDraft((prev) => [...prev, { ingredientId: ing.id!, name: ing.name, unit: ing.unit, quantity: 10 }]);
+                        setNewToppingIngId(0);
+                      }}
+                      className="rounded-lg bg-[#e6efe9] px-2.5 py-1.5 text-xs font-bold text-[#174c32] hover:bg-[#d5e6db] cursor-pointer"
+                    >
+                      + Thêm
+                    </button>
+                  </div>
+                )}
                 <div className="flex justify-end gap-2 pt-2">
                   <button type="button" onClick={() => setSelectedTopping(null)} className="rounded-xl border border-[#d6d4cb] px-4 py-2 text-xs font-bold text-[#556358] cursor-pointer">Đóng</button>
-                  <button
-                    type="button"
-                    disabled={savingToppingRecipe}
-                    onClick={saveToppingRecipe}
-                    className="rounded-xl bg-[#174c32] px-4 py-2 text-xs font-bold text-white hover:bg-[#124029] disabled:opacity-50 cursor-pointer"
-                  >
-                    {savingToppingRecipe ? "Đang lưu..." : "Lưu công thức"}
-                  </button>
+                  {isManager && (
+                    <button
+                      type="button"
+                      disabled={savingToppingRecipe}
+                      onClick={saveToppingRecipe}
+                      className="rounded-xl bg-[#174c32] px-4 py-2 text-xs font-bold text-white hover:bg-[#124029] disabled:opacity-50 cursor-pointer"
+                    >
+                      {savingToppingRecipe ? "Đang lưu..." : "Lưu công thức"}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
