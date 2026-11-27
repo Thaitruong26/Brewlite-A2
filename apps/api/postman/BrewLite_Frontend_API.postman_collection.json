@@ -21,6 +21,11 @@
       "type": "string"
     },
     {
+      "key": "managerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "accessToken",
       "value": "",
       "type": "string"
@@ -176,6 +181,61 @@
                   "    pm.collectionVariables.set(\"baristaToken\", token);",
                   "    pm.environment.set(\"baristaToken\", token);",
                   "    console.log(\"Đã lưu baristaToken thành công!\");",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "/api/auth/login (3. Đăng nhập Manager - Lưu managerToken)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@brewlite.com\",\n  \"password\": \"Manager@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Đăng nhập bằng tài khoản Manager và tự động lưu vào biến {{managerToken}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const response = pm.response.json();",
+                  "const token = response.access_token || response.accessToken;",
+                  "if (token) {",
+                  "    pm.collectionVariables.set(\"managerToken\", token);",
+                  "    pm.environment.set(\"managerToken\", token);",
+                  "    console.log(\"Đã lưu managerToken thành công!\");",
                   "}"
                 ]
               }
@@ -355,6 +415,186 @@
             "description": "Lấy công thức sản phẩm ở size M (Barista)"
           },
           "response": []
+        },
+        {
+          "name": "/api/products/{id}/recipe Cập nhật toàn bộ công thức sản phẩm ở size M (Barista)",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/products/:id/recipe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                ":id",
+                "recipe"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "ID sản phẩm"
+                }
+              ]
+            },
+            "description": "Cập nhật toàn bộ công thức sản phẩm ở size M (Barista)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"ingredientId\": 1,\n      \"quantity\": 18\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Toppings (Quản lý danh sách và định lượng nguyên liệu topping)",
+      "item": [
+        {
+          "name": "/api/toppings Lấy danh sách topping đang kích hoạt",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/toppings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "toppings"
+              ],
+              "variable": []
+            },
+            "description": "Lấy danh sách topping đang kích hoạt"
+          },
+          "response": []
+        },
+        {
+          "name": "/api/toppings/{id}/recipe Lấy công thức topping cho 1 phần (Barista)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{baristaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/toppings/:id/recipe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "toppings",
+                ":id",
+                "recipe"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "ID topping"
+                }
+              ]
+            },
+            "description": "Lấy công thức topping cho 1 phần (Barista)"
+          },
+          "response": []
+        },
+        {
+          "name": "/api/toppings/{id}/recipe Cập nhật công thức topping cho 1 phần (Barista)",
+          "request": {
+            "method": "PUT",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/toppings/:id/recipe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "toppings",
+                ":id",
+                "recipe"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "ID topping"
+                }
+              ]
+            },
+            "description": "Cập nhật công thức topping cho 1 phần (Barista)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"ingredientId\": 1,\n      \"quantity\": 18\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -416,6 +656,101 @@
           "response": []
         },
         {
+          "name": "/api/ingredients Tạo mới nguyên liệu (Barista)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingredients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingredients"
+              ],
+              "variable": []
+            },
+            "description": "Tạo mới nguyên liệu (Barista)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam\",\n  \"unit\": \"G\",\n  \"stock\": 1000,\n  \"lowThreshold\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/api/ingredients/{id} Cập nhật thông tin nguyên liệu (Barista)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingredients",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "ID nguyên liệu"
+                }
+              ]
+            },
+            "description": "Cập nhật thông tin nguyên liệu (Barista)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam Cao Cấp\",\n  \"lowThreshold\": 250\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
           "name": "/api/ingredients/{id}/stock Nhập thêm tồn kho nguyên liệu (Barista)",
           "request": {
             "method": "POST",
@@ -457,6 +792,115 @@
                 }
               }
             }
+          },
+          "response": []
+        },
+        {
+          "name": "/api/ingredients/{id}/adjust Kiểm kê hoặc ghi nhận hao hụt nguyên liệu (Barista)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{baristaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/:id/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingredients",
+                ":id",
+                "adjust"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "ID nguyên liệu"
+                }
+              ]
+            },
+            "description": "Kiểm kê hoặc ghi nhận hao hụt nguyên liệu (Barista)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sữa đặc Phương Nam\",\n  \"unit\": \"G\",\n  \"stock\": 1000,\n  \"lowThreshold\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/api/ingredients/{id}/movements Nhật ký biến động tồn kho của một nguyên liệu (Barista)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{baristaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingredients/:id/movements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingredients",
+                ":id",
+                "movements"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "ID nguyên liệu"
+                }
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Nhật ký biến động tồn kho của một nguyên liệu (Barista)"
           },
           "response": []
         }
@@ -815,6 +1259,65 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refundRef\": \"FT2401928374\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "/api/orders/{id}/refund-points Hoàn tiền đơn hủy bằng điểm thưởng cho khách hàng (Barista/Manager)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{baristaToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "idempotency-key",
+                "value": "{{$guid}}",
+                "type": "text",
+                "description": "Tự động tạo UUID ngẫu nhiên chống trừ tiền / tạo trùng đơn",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id/refund-points",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                ":id",
+                "refund-points"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{currentOrderId}}",
+                  "description": "ID đơn hàng"
+                }
+              ]
+            },
+            "description": "Quy đổi tổng tiền đơn đã thanh toán thành điểm thưởng (1 điểm = 10đ) và cộng trực tiếp vào tài khoản khách.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
               "options": {
                 "raw": {
                   "language": "json"

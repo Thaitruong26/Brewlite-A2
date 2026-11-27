@@ -82,6 +82,7 @@ describe('Swagger Documentation & Postman Export', () => {
         { key: 'baseUrl', value: 'http://localhost:4001/api', enabled: true },
         { key: 'customerToken', value: '', enabled: true },
         { key: 'baristaToken', value: '', enabled: true },
+        { key: 'managerToken', value: '', enabled: true },
         { key: 'accessToken', value: '', enabled: true },
         { key: 'currentOrderId', value: '1', enabled: true },
       ],
@@ -91,9 +92,10 @@ describe('Swagger Documentation & Postman Export', () => {
       id: 'brewlite-production-environment',
       name: 'BrewLite Production (Render)',
       values: [
-        { key: 'baseUrl', value: 'https://brewlite-a2-api.onrender.com/api', enabled: true },
+        { key: 'baseUrl', value: 'https://brewlite-a2-syoc.onrender.com/api', enabled: true },
         { key: 'customerToken', value: '', enabled: true },
         { key: 'baristaToken', value: '', enabled: true },
+        { key: 'managerToken', value: '', enabled: true },
         { key: 'accessToken', value: '', enabled: true },
         { key: 'currentOrderId', value: '1', enabled: true },
       ],
@@ -122,8 +124,16 @@ const FRONTEND_ROUTES = new Set([
   'GET /api/products',
   'GET /api/products/{id}',
   'GET /api/products/{id}/recipe',
+  'PUT /api/products/{id}/recipe',
+  'GET /api/toppings',
+  'GET /api/toppings/{id}/recipe',
+  'PUT /api/toppings/{id}/recipe',
   'GET /api/ingredients',
+  'POST /api/ingredients',
+  'PATCH /api/ingredients/{id}',
   'POST /api/ingredients/{id}/stock',
+  'POST /api/ingredients/{id}/adjust',
+  'GET /api/ingredients/{id}/movements',
   'POST /api/promotions/validate',
   'POST /api/orders',
   'GET /api/orders',
@@ -132,6 +142,7 @@ const FRONTEND_ROUTES = new Set([
   'POST /api/orders/{id}/cancel',
   'PATCH /api/orders/{id}/status',
   'PATCH /api/orders/{id}/confirm-refund',
+  'PATCH /api/orders/{id}/refund-points',
   'PATCH /api/orders/{id}/fail-refund',
   'PATCH /api/orders/{id}/hold-refund',
   'PATCH /api/orders/{id}/retry-refund',
@@ -165,6 +176,11 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
       },
       {
         key: 'baristaToken',
+        value: '',
+        type: 'string',
+      },
+      {
+        key: 'managerToken',
         value: '',
         type: 'string',
       },
@@ -302,13 +318,20 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
         },
       ];
 
-      // Native Postman Auth (Bearer lock) — Dual token support (baristaToken vs customerToken)
+      // Native Postman Auth (Bearer lock) — 3-role token support (managerToken vs baristaToken vs customerToken)
+      const methodLower = httpMethod.toLowerCase();
+      const isManagerOnlyRoute =
+        (routePath.includes('/recipe') && methodLower === 'put') ||
+        (routePath === '/api/ingredients' && methodLower === 'post') ||
+        (routePath === '/api/ingredients/{id}' && methodLower === 'patch');
+
       const isBaristaRoute =
         routePath.includes('/recipe') ||
         routePath.includes('/ingredients') ||
-        (routePath === '/api/orders' && httpMethod.toLowerCase() === 'get') ||
+        (routePath === '/api/orders' && methodLower === 'get') ||
         routePath.includes('/status') ||
-        routePath.includes('-refund');
+        routePath.includes('-refund') ||
+        routePath.includes('refund-points');
 
       const hasBearer = op.security && op.security.some((s: any) => 'bearer' in s);
       const authConfig: any = hasBearer
@@ -317,7 +340,11 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
             bearer: [
               {
                 key: 'token',
-                value: isBaristaRoute ? '{{baristaToken}}' : '{{customerToken}}',
+                value: isManagerOnlyRoute
+                  ? '{{managerToken}}'
+                  : isBaristaRoute
+                  ? '{{baristaToken}}'
+                  : '{{customerToken}}',
                 type: 'string',
               },
             ],
@@ -521,6 +548,41 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
                   '    pm.collectionVariables.set("baristaToken", token);',
                   '    pm.environment.set("baristaToken", token);',
                   '    console.log("Đã lưu baristaToken thành công!");',
+                  '}',
+                ],
+              },
+            },
+          ],
+          response: [],
+        });
+
+        // 3. Manager Login
+        tagGroups[tag].push({
+          name: `${fullDisplayRoute} (3. Đăng nhập Manager - Lưu managerToken)`,
+          request: {
+            method: 'POST',
+            auth: { type: 'noauth' },
+            header: headers,
+            url: urlObj,
+            body: {
+              mode: 'raw',
+              raw: JSON.stringify({ email: 'manager@brewlite.com', password: 'Manager@123' }, null, 2),
+              options: { raw: { language: 'json' } },
+            },
+            description: 'Đăng nhập bằng tài khoản Manager và tự động lưu vào biến {{managerToken}}',
+          },
+          event: [
+            {
+              listen: 'test',
+              script: {
+                type: 'text/javascript',
+                exec: [
+                  'const response = pm.response.json();',
+                  'const token = response.access_token || response.accessToken;',
+                  'if (token) {',
+                  '    pm.collectionVariables.set("managerToken", token);',
+                  '    pm.environment.set("managerToken", token);',
+                  '    console.log("Đã lưu managerToken thành công!");',
                   '}',
                 ],
               },
