@@ -1209,6 +1209,65 @@
           "response": []
         },
         {
+          "name": "/api/orders/{id}/refund-points Hoàn tiền đơn hủy bằng điểm thưởng cho khách hàng (Barista/Manager)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "idempotency-key",
+                "value": "{{$guid}}",
+                "type": "text",
+                "description": "Tự động tạo UUID ngẫu nhiên chống trừ tiền / tạo trùng đơn",
+                "disabled": false
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/:id/refund-points",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                ":id",
+                "refund-points"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{currentOrderId}}",
+                  "description": "ID đơn hàng"
+                }
+              ]
+            },
+            "description": "Quy đổi tổng tiền đơn đã thanh toán thành điểm thưởng (1 điểm = 10đ) và cộng trực tiếp vào tài khoản khách.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
           "name": "/api/orders/{id}/fail-refund Barista báo chuyển khoản hoàn tiền thất bại (lỗi STK, tài khoản khóa)",
           "request": {
             "method": "PATCH",

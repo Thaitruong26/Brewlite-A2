@@ -583,6 +583,89 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  // Chức năng: Hoàn tiền đơn hủy bằng cách cộng điểm thưởng vào tài khoản khách (1 điểm = 10đ). Cách hoạt động: Cộng loyaltyPoints và đánh dấu payment đã hoàn.
+  async refundPoints(id: number, user: UserContext) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
+      throw new ForbiddenException({
+        code: 'FORBIDDEN',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền hoàn điểm cho khách',
+      });
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findUnique({
+        where: { id },
+        include: { payments: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException({
+          code: 'ORDER_NOT_FOUND',
+          message: `Không tìm thấy đơn hàng #${id}`,
+        });
+      }
+
+      if (order.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException({
+          code: 'INVALID_STATUS',
+          message: 'Chỉ có thể hoàn điểm cho đơn hàng đã bị hủy',
+        });
+      }
+
+      if (!order.userId) {
+        throw new BadRequestException({
+          code: 'USER_REQUIRED',
+          message: 'Đơn hàng không gắn với tài khoản thành viên để cộng điểm',
+        });
+      }
+
+      const payment = order.payments.find(
+        (p) => p.status === 'SUCCESS' || (p.refundRef && p.refundRef.startsWith('VIETQR')),
+      );
+      if (!payment) {
+        throw new BadRequestException({
+          code: 'NO_PAYMENT_FOUND',
+          message: 'Đơn hàng không có thông tin thanh toán để hoàn điểm',
+        });
+      }
+
+      if (payment.refundedAt) {
+        throw new ConflictException({
+          code: 'ALREADY_REFUNDED',
+          message: 'Đơn hàng này đã được hoàn tiền/hoàn điểm trước đó',
+        });
+      }
+
+      const pointsToRefund = Math.ceil(order.total / 10);
+
+      await tx.user.update({
+        where: { id: order.userId },
+        data: {
+          loyaltyPoints: { increment: pointsToRefund },
+        },
+      });
+
+      const refundRef = `POINTS:${pointsToRefund}`;
+      const updatedPayment = await tx.payment.update({
+        where: { id: payment.id },
+        data: {
+          refundedAt: new Date(),
+          refundedAmount: order.total,
+          refundRef,
+        },
+      });
+
+      return {
+        orderId: order.id,
+        pointsRefunded: pointsToRefund,
+        refundedAt: updatedPayment.refundedAt,
+        refundedAmount: updatedPayment.refundedAmount,
+        refundRef: updatedPayment.refundRef,
+        message: `Đã hoàn ${pointsToRefund} điểm thưởng vào tài khoản khách hàng`,
+      };
+    });
+  }
+
   // Chức năng: Xử lý tính toán / định dạng dữ liệu (parseVietQrRef). Cách hoạt động: Biến đổi tham số đầu vào (refundRef) thành kết quả chuẩn để hiển thị hoặc tính toán.
   public parseVietQrRef(refundRef?: string | null): {
     bank: string;
