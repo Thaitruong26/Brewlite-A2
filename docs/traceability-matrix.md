@@ -63,7 +63,7 @@
 | ID | Mục đích | Source | View |
 |---|---|---|---|
 | UC-ALL | Use case toàn hệ | [use-case-overview.puml](requirements/use-case-overview.puml) | [SVG](requirements/use-case-overview.svg) |
-| UC-CHK-01 | Use case checkout | [use-case-checkout.puml](requirements/use-case-checkout.puml) | [SVG](requirements/use-case-checkout.svg) |
+| UC-CHK-01 | Use case hủy đơn & hoàn tiền VietQR | [use-case-cancel-refund.puml](requirements/use-case-cancel-refund.puml) | [SVG](requirements/use-case-cancel-refund.svg) |
 | ACT-01 | Activity checkout/hủy/refund | [activity-checkout.puml](diagrams/activity-checkout.puml) | [SVG](diagrams/activity-checkout.svg) |
 | SEQ-01 | Tạo đơn/thanh toán/IPN | [sequence-checkout.puml](diagrams/sequence-checkout.puml) | [SVG](diagrams/sequence-checkout.svg) |
 | CLASS-01 | Domain core | [class-domain.puml](diagrams/class-domain.puml) | [SVG](diagrams/class-domain.svg) |

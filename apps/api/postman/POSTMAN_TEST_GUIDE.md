@@ -107,3 +107,4 @@ Collection đã gắn script tự động lưu token vào biến môi trường 
 1. **Luồng đặt đơn → thanh toán VNPay → pha chế:** `#2 (Login Khách)` → `#6 (Menu)` → `#35 (Check voucher)` → `#19 (Tạo đơn)` → `#32 (Simulate VNPay)` → `#34 (Gọi IPN)` → `#3 (Login Barista)` → `#24 (PREPARING → READY → COMPLETED)`.
 2. **Luồng hủy đơn `PAID` & hoàn tiền VietQR:** `#19 (Tạo đơn)` → `#30 (Thanh toán SUCCESS)` → `#23 (Hủy với STK)` → `#27 (Fail refund)` → `#29 (Retry refund)` → `#25 (Confirm refund)`.
 3. **Luồng quản lý kho (Manager vs Barista):** `#4 (Login Manager)` → `#14 (Tạo NL mới)` → `#15 (Sửa ngưỡng)` → `#9 (Sửa công thức món)` → `#3 (Login Barista)` → `#16 (Nhập thêm kho)` → `#17 (Kiểm kê)` → `#18 (Xem thẻ kho)`.
+

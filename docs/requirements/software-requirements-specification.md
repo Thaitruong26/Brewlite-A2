@@ -96,7 +96,7 @@ Ngưỡng hiệu năng/availability là **đề xuất để nhóm phê duyệt*
 | UC-14 | Tích/tiêu điểm | Customer |
 | UC-15 | Quản lý tồn kho | Manager |
 
-Sơ đồ tổng quát: [use-case-overview.svg](use-case-overview.svg) / [PlantUML](use-case-overview.puml). Phạm vi trọng tâm checkout: [UC-CHK-01](use-case-checkout-specification.md) / [sơ đồ checkout](use-case-checkout.svg).
+Sơ đồ tổng quát: [use-case-overview.svg](use-case-overview.svg) / [PlantUML](use-case-overview.puml). Phạm vi trọng tâm checkout: [UC-CHK-01](use-case-checkout-specification.md) / [sơ đồ hủy đơn & hoàn tiền](use-case-cancel-refund.svg).
 
 ## 5. Data dictionary và state machine
 
