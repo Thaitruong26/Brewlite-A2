@@ -2145,10 +2145,16 @@ export default function BaristaPage() {
         const isUnknown = refundOrder.refundStatus === "UNKNOWN";
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs">
-            <div className="w-full max-w-md rounded-2xl bg-[#141414] border border-[#262626] text-white p-5 sm:p-6 shadow-2xl space-y-4">
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs"
+            role="presentation"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setRefundOrder(null);
+            }}
+          >
+            <div className="w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden rounded-2xl bg-[#141414] border border-[#262626] text-white shadow-2xl">
+              {/* Header (always visible) */}
+              <div className="shrink-0 flex items-center justify-between border-b border-[#262626] px-4 py-3">
                 <div className="flex items-center gap-2">
                   <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
                     Hoàn tiền đơn #{refundOrder.id}
@@ -2173,13 +2179,16 @@ export default function BaristaPage() {
                   <button
                     type="button"
                     onClick={() => setRefundOrder(null)}
-                    className="text-neutral-400 hover:text-white text-lg font-bold cursor-pointer ml-1"
                     aria-label="Đóng"
+                    className="rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white text-sm font-bold px-2.5 py-1 cursor-pointer ml-1 transition"
                   >
                     ✕
                   </button>
                 </div>
               </div>
+
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
               {/* SỐ TIỀN CẦN HOÀN */}
               <div className="text-center py-1">
@@ -2462,10 +2471,15 @@ export default function BaristaPage() {
                   </div>
                 )}
 
+              </div>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="shrink-0 border-t border-[#262626] bg-[#141414] px-4 py-2.5">
                 <button
                   type="button"
                   onClick={() => setRefundOrder(null)}
-                  className="w-full py-2 rounded-xl border border-neutral-800 text-xs font-semibold text-neutral-400 hover:text-white hover:bg-neutral-900 transition cursor-pointer"
+                  className="w-full py-2 rounded-xl border border-neutral-700 bg-neutral-900 text-xs font-semibold text-neutral-200 hover:text-white hover:bg-neutral-800 transition cursor-pointer"
                 >
                   Đóng
                 </button>
