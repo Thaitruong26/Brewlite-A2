@@ -1,130 +1,71 @@
 @startuml
 skinparam classAttributeIconSize 0
+skinparam shadowing false
 hide empty methods
-left to right direction
 
 class User {
-  +id: Int
-  +email: String
-  +passwordHash: String
-  +fullName: String
-  +role: Role
-  +loyaltyPoints: Int
-}
-
-class Product {
-  +id: Int
-  +name: String
-  +price: Int
-  +category: String
-  +isActive: Boolean
-}
-
-class Topping {
-  +id: Int
-  +name: String
-  +price: Int
-  +isActive: Boolean
+  id : Int
+  email : String
+  role : Role
+  loyaltyPoints : Int
 }
 
 class Order {
-  +id: Int
-  +userId: Int
-  +status: OrderStatus
-  +subtotal: Int
-  +discountAmount: Int
-  +total: Int
-  +promoCode: String?
-  +pointsEarned: Int
-  +pointsUsed: Int
-}
-
-class OrderItem {
-  +id: Int
-  +orderId: Int
-  +productId: Int
-  +productName: String
-  +size: Size
-  +qty: Int
-  +unitPrice: Int
-  +lineTotal: Int
-  +toppings: Json
-  +consumption: Json
-}
-
-class Payment {
-  +id: Int
-  +orderId: Int
-  +idempotencyKey: String
-  +amount: Int
-  +method: PaymentMethod
-  +status: PaymentStatus
-  +refundRef: String?
-  +refundedAmount: Int
-  +refundedAt: DateTime?
-}
-
-class PromoCode {
-  +id: Int
-  +code: String
-  +type: DiscountType
-  +value: Int
-  +usageLimit: Int?
-  +usedCount: Int
-  +expiresAt: DateTime
+  id : Int
+  userId : Int
+  status : OrderStatus
+  total : Int
+  pointsEarned : Int
 }
 
 class LoyaltyTransaction {
-  +id: Int
-  +userId: Int
-  +orderId: Int
-  +points: Int
-  +reversedAt: DateTime?
+  id : Int
+  userId : Int
+  orderId : Int
+  points : Int
+}
+
+class OrderItem {
+  id : Int
+  orderId : Int
+  productId : Int
+  quantity : Int
+  lineTotal : Int
+}
+
+class Payment {
+  id : Int
+  status : PaymentStatus
+  amount : Int
+  refundRef : String?
+  refundedAt : DateTime?
+}
+
+class Promotion {
+  code / id
+  value
+  expiresAt
+}
+
+class Product {
+  id : Int
+  name : String
+  price : Int
+  stock : Int
 }
 
 class Ingredient {
-  +id: Int
-  +name: String
-  +unit: IngredientUnit
-  +stock: Int
-  +version: Int
-  +lowThreshold: Int
+  id : Int
+  name : String
+  quantity : Decimal
+  version : Int
 }
 
-class ProductRecipe {
-  +productId: Int
-  +ingredientId: Int
-  +quantity: Int
-}
-
-class ToppingRecipe {
-  +toppingId: Int
-  +ingredientId: Int
-  +quantity: Int
-}
-
-class StockMovement {
-  +id: Int
-  +ingredientId: Int
-  +type: StockMovementType
-  +quantity: Int
-  +orderId: Int?
-  +userId: Int?
-  +reason: String?
-}
-
-User "1" --> "0..*" Order
-User "1" --> "0..*" LoyaltyTransaction
-User "1" --> "0..*" StockMovement
-Order "1" --> "1..*" OrderItem
-Order "1" --> "0..*" Payment
-Order "0..*" --> "0..1" PromoCode
-Order "1" --> "0..1" LoyaltyTransaction
-Order "1" --> "0..*" StockMovement
-Product "1" --> "0..*" OrderItem
-Product "1" --> "0..*" ProductRecipe
-Topping "1" --> "0..*" ToppingRecipe
-Ingredient "1" --> "0..*" ProductRecipe
-Ingredient "1" --> "0..*" ToppingRecipe
-Ingredient "1" --> "0..*" StockMovement
+User "1" -- "N" Order
+User "1" -- "N" LoyaltyTransaction
+Order "1" -- "N" OrderItem
+Order "1" -- "N" Payment
+Order "N" .. "0..1" Promotion
+OrderItem "N" -- "1" Product
+Product .. Ingredient : recipe / inventory
 @enduml

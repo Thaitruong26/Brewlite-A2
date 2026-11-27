@@ -81,20 +81,6 @@ export function confirmRefund(orderId: number, refundRef?: string) {
   });
 }
 
-// Chức năng: Hoàn tiền đơn hủy bằng điểm thưởng cho khách hàng. Cách hoạt động: Gọi PATCH /orders/:id/refund-points.
-export function refundOrderByPoints(orderId: number) {
-  return apiRequest<{
-    orderId: number;
-    pointsRefunded: number;
-    refundedAt: string;
-    refundedAmount: number;
-    refundRef: string;
-    message: string;
-  }>(`/orders/${orderId}/refund-points`, {
-    method: "PATCH",
-    authenticated: true,
-  });
-}
 
 // Chức năng: Hàm failRefund(orderId, reason). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
 export function failRefund(orderId: number, reason: string) {

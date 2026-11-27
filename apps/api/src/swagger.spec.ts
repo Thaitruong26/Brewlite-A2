@@ -142,7 +142,6 @@ const FRONTEND_ROUTES = new Set([
   'POST /api/orders/{id}/cancel',
   'PATCH /api/orders/{id}/status',
   'PATCH /api/orders/{id}/confirm-refund',
-  'PATCH /api/orders/{id}/refund-points',
   'PATCH /api/orders/{id}/fail-refund',
   'PATCH /api/orders/{id}/hold-refund',
   'PATCH /api/orders/{id}/retry-refund',
@@ -330,8 +329,7 @@ function generatePostmanCollection(openapi: any, frontendOnly = false) {
         routePath.includes('/ingredients') ||
         (routePath === '/api/orders' && methodLower === 'get') ||
         routePath.includes('/status') ||
-        routePath.includes('-refund') ||
-        routePath.includes('refund-points');
+        routePath.includes('-refund');
 
       const hasBearer = op.security && op.security.some((s: any) => 'bearer' in s);
       const authConfig: any = hasBearer

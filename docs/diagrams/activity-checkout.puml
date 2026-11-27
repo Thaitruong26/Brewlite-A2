@@ -1,40 +1,30 @@
-@startuml
-skinparam shadowing false
-|Customer|
-start
-:Xem menu, chọn size/topping;
-|Next.js UI|
-:Quản lý giỏ hàng, xác thực JWT;
-|NestJS API + DB|
-:Tính giá từ DB, kiểm tra kho;
-:Tạo Order PENDING (giữ nguyên liệu trong transaction);
-if (Đủ hàng?) then (Không)
-  :Rollback / trả 409 OUT_OF_STOCK;
-  |Next.js UI|
-  :Hiển thị lỗi, sửa giỏ;
-  stop
-else (Có)
-  |Customer|
-  :Chọn VNPay Sandbox / Mock test;
-  |NestJS API + DB|
-  :Tạo URL thanh toán + Idempotency-Key;
-  |VNPay Sandbox|
-  :Thanh toán & gửi IPN;
-  |NestJS API + DB|
-  :Xác minh chữ ký HMAC, amount, txnRef;
-  repeat
-    if (Xác minh thành công?) then (Không)
-      :Order PAYMENT_FAILED / Payment FAILED;
-      |Next.js UI|
-      :Thử lại (Retry) hoặc hủy đơn;
-    else (Có)
-      :Order PAID + Payment SUCCESS;
-      :Cộng điểm LoyaltyTransaction đúng một lần;
-      |Barista|
-      :Tiếp nhận & pha chế: PREPARING -> READY -> COMPLETED;
-      stop
-    endif
-  repeat while (Khách thử thanh toán lại?) is (Retry)
-  stop
-endif
-@enduml
+@startdot
+digraph G {
+  rankdir=TB;
+  bgcolor="transparent";
+  node [fontname="Arial", fontsize=11, color="#183d2c", fontcolor="#183d2c", style="filled", fillcolor="#f7f8f5"];
+  edge [color="#3b4d42", fontname="Arial", fontsize=10];
+
+  start_node [label="", shape=circle, width=0.3, fillcolor="#183d2c"];
+  step1 [label="Customer: xem menu, chọn size/topping", shape=box, style="rounded,filled"];
+  step2 [label="UI: quản lý giỏ, xác thực JWT", shape=box, style="rounded,filled"];
+  step3 [label="API: tính giá, kiểm tra kho, tạo PENDING\n(giữ nguyên liệu trong transaction)", shape=box, style="rounded,filled"];
+  dec1 [label="Đủ hàng?", shape=diamond];
+  err1 [label="409 OUT_OF_STOCK\nHiển thị lỗi, sửa giỏ", shape=box, style="rounded,filled"];
+  step4 [label="Chọn VNPay Sandbox / Mock test\nTạo URL thanh toán, Idempotency-Key", shape=box, style="rounded,filled"];
+  dec2 [label="Xác minh\nthành công?", shape=diamond];
+  fail1 [label="PAYMENT_FAILED\nThử lại hoặc hủy", shape=box, style="rounded,filled"];
+  paid1 [label="Order PAID + Payment SUCCESS\nCộng điểm đúng một lần", shape=box, style="rounded,filled"];
+  barista [label="Barista: PREPARING -> READY -> COMPLETED", shape=box, style="rounded,filled"];
+  end_node [label="", shape=doublecircle, width=0.3, fillcolor="#183d2c"];
+
+  start_node -> step1 -> step2 -> step3 -> dec1;
+  dec1 -> err1 [label="Không"];
+  dec1 -> step4 [label="Có"];
+  step4 -> dec2;
+  dec2 -> fail1 [label="Không"];
+  fail1 -> step4 [label="Retry"];
+  dec2 -> paid1 [label="Có"];
+  paid1 -> barista -> end_node;
+}
+@enddot

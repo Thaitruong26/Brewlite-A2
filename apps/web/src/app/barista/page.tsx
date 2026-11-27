@@ -8,7 +8,6 @@ import {
   getAllBaristaOrders,
   updateOrderStatus,
   confirmRefund,
-  refundOrderByPoints,
   failRefund,
   holdRefund,
   retryRefund,
@@ -425,29 +424,6 @@ export default function BaristaPage() {
   };
 
   // Chức năng: Xử lý sự kiện FailRefund. Cách hoạt động: Nhận sự kiện từ giao diện, cập nhật state hoặc gọi API xử lý nghiệp vụ tương ứng.
-  // Chức năng: Hoàn tiền đơn hủy bằng điểm thưởng cho khách. Cách hoạt động: Gọi refundOrderByPoints(orderId) và cập nhật lại danh sách đơn.
-  const handleRefundPoints = async (orderId: number) => {
-    setIsRefunding(true);
-    try {
-      const res = await refundOrderByPoints(orderId);
-      setRefundedOrders((prev) => {
-        const next = prev.includes(orderId) ? prev : [...prev, orderId];
-        if (typeof window !== "undefined") {
-          localStorage.setItem("brewlite_refunded_orders", JSON.stringify(next));
-        }
-        return next;
-      });
-      const ordersRes = await getAllBaristaOrders();
-      setOrders(ordersRes.data.map(mapBackendOrderToBarista));
-      setNotice(`✓ Đã hoàn ${res.pointsRefunded.toLocaleString("vi-VN")} điểm thưởng cho khách đơn #${orderId}!`);
-      setRefundOrder(null);
-    } catch (err: any) {
-      setNotice(`Lỗi hoàn điểm: ${err?.message || "Không thể hoàn điểm"}`);
-    } finally {
-      setIsRefunding(false);
-    }
-  };
-
   const handleFailRefund = async (orderId: number) => {
     const reason = prompt("Nhập lý do chuyển khoản thất bại (vd: Sai số tài khoản, tài khoản đóng):", "Sai số tài khoản hoặc tài khoản thụ hưởng không hợp lệ");
     if (!reason || !reason.trim()) return;
@@ -2370,27 +2346,6 @@ export default function BaristaPage() {
                 </button>
               </div>
 
-              {/* Lựa chọn thay thế: Hoàn trả bằng điểm thưởng */}
-              <div className="rounded-xl border border-amber-800/50 bg-amber-950/25 p-3 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-amber-300">Hoặc hoàn bằng điểm thưởng</span>
-                  <span className="font-mono font-bold text-amber-200">
-                    +{Math.ceil(refundOrder.total / 10).toLocaleString("vi-VN")} điểm
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-200/75 leading-snug">
-                  Quy đổi {money(refundOrder.total)} thành điểm tích lũy (1 điểm = 10đ) cộng thẳng vào tài khoản khách mà không cần chuyển khoản ngân hàng.
-                </p>
-                <button
-                  type="button"
-                  disabled={isRefunding}
-                  onClick={() => handleRefundPoints(refundOrder.id)}
-                  className="w-full rounded-xl bg-amber-700 hover:bg-amber-600 py-2 text-xs font-bold text-white transition disabled:opacity-40 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <span>🎁</span>
-                  <span>{isRefunding ? "Đang xử lý..." : "Hoàn trả bằng điểm thưởng cho khách"}</span>
-                </button>
-              </div>
 
               {/* Xử lý sự cố */}
               <div className="space-y-2.5 border-t border-[#262626] pt-2.5">

@@ -943,41 +943,6 @@
         ]
       }
     },
-    "/api/orders/{id}/refund-points": {
-      "patch": {
-        "description": "Quy đổi tổng tiền đơn đã thanh toán thành điểm thưởng (1 điểm = 10đ) và cộng trực tiếp vào tài khoản khách.",
-        "operationId": "OrdersController_refundPoints",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "ID đơn hàng",
-            "schema": {
-              "example": 1042,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Hoàn điểm thành công"
-          },
-          "403": {
-            "description": "Chỉ Barista hoặc Manager có quyền"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Hoàn tiền đơn hủy bằng điểm thưởng cho khách hàng (Barista/Manager)",
-        "tags": [
-          "Orders"
-        ]
-      }
-    },
     "/api/orders/{id}/fail-refund": {
       "patch": {
         "description": "Đánh dấu quy trình hoàn tiền thất bại với lý do cụ thể, chuyển sang FAILED để xử lý lại.",
