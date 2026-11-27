@@ -1,34 +1,29 @@
-@startuml
-left to right direction
-skinparam shadowing false
-actor "Customer" as C
-actor "Barista" as B
-actor "VNPay Sandbox" as V
-rectangle "UC-CHK-01 Checkout & Cancellation" {
- usecase "Chọn món/giỏ" as CART
- usecase "Đăng nhập" as AUTH
- usecase "UC-05 Tạo đơn" as ORDER
- usecase "Kiểm tra giá/kho" as VALIDATE
- usecase "UC-07 Chọn provider & khởi tạo" as PAY
- usecase "UC-08 Xác thực IPN / QueryDr" as IPN
- usecase "UC-12 Theo dõi" as TRACK
- usecase "UC-09 Hủy unpaid" as CANCEL1
- usecase "UC-10 Hủy PAID" as CANCEL2
- usecase "Tạo VietQR & xác nhận hoàn tiền" as REFUND_QR
- usecase "UC-13 Pha chế" as PREP
+@startdot
+digraph G {
+  rankdir=TB;
+  node [fontsize=11, color="#183d2c", fontcolor="#183d2c", style="filled", fillcolor="#f7f8f5"];
+  edge [color="#3b4d42", fontsize=10];
+
+  req [label="Khách yêu cầu hủy đơn", shape=box, style="rounded,filled"];
+  st [label="Trạng thái\nOrder?", shape=diamond];
+
+  unpaid [label="PENDING / PAYMENT_FAILED\nCANCELLED; trả kho / ưu đãi / điểm đã dùng\nKhông yêu cầu ngân hàng hoặc STK", shape=box, style="rounded,filled"];
+  inprog [label="PREPARING / READY / COMPLETED\nHTTP 409 - không hủy", shape=box, style="rounded,filled"];
+  paid [label="PAID: khách nhập ngân hàng & STK\nCANCELLED, hoàn kho, thu hồi điểm EARN", shape=box, style="rounded,filled"];
+
+  kds [label="KDS: cảnh báo Cần hoàn tiền\nVietQR Napas247 theo STK khách", shape=box, style="rounded,filled"];
+  bank [label="Barista chuyển tiền bằng ứng dụng ngân hàng", shape=box, style="rounded,filled"];
+  verify [label="Đã xác minh\nchuyển tiền?", shape=diamond];
+
+  unk [label="UNKNOWN / FAILED\nĐối soát trước khi thử lại\nKhông tự cộng điểm bù", shape=box, style="rounded,filled"];
+  ok [label="Barista xác nhận bằng chứng\nTránh đánh dấu hoàn trùng", shape=box, style="rounded,filled"];
+
+  req -> st;
+  st -> unpaid [label="Chưa trả"];
+  st -> inprog [label="Đang/làm xong"];
+  st -> paid [label="PAID"];
+  paid -> kds -> bank -> verify;
+  verify -> unk [label="Chưa rõ / thất bại"];
+  verify -> ok [label="Có"];
 }
-C --> CART
-C --> ORDER
-C --> PAY
-C --> TRACK
-C --> CANCEL1
-C --> CANCEL2
-B --> REFUND_QR
-B --> PREP
-V --> IPN
-ORDER ..> AUTH : <<include>>
-ORDER ..> VALIDATE : <<include>>
-PAY ..> IPN : <<triggers asynchronously>>
-CANCEL2 ..> REFUND_QR : <<triggers pending refund>>
-PREP ..> IPN : <<requires PAID>>
-@enduml
+@enddot
