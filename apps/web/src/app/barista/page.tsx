@@ -1145,34 +1145,6 @@ export default function BaristaPage() {
             </p>
           )}
 
-          {/* Cảnh báo đơn đã hủy cần hoàn tiền nếu có */}
-          {needingRefundCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setQueueTab("cancelled")}
-              className="w-full rounded-xl bg-red-50 border-2 border-red-500 p-3 flex items-center justify-between text-xs font-bold text-red-900 shadow-sm transition hover:bg-red-100 cursor-pointer text-left"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-base animate-pulse">🚨</span>
-                <div>
-                  <p className="font-extrabold text-red-700">Có {needingRefundCount} đơn đã hủy cần hoàn trả tiền!</p>
-                  <p className="text-[11px] font-normal text-stone-600">Bấm vào đây để mở tab Đã hủy & hiện mã QR chuyển lại tiền cho khách</p>
-                </div>
-              </div>
-              <span className="bg-red-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold shrink-0">
-                Xử lý ngay →
-              </span>
-            </button>
-          ) : counts.cancelled > 0 ? (
-            <div className="w-full rounded-xl bg-emerald-50 border border-emerald-300 p-3 flex items-center gap-2 text-xs font-bold text-emerald-800 shadow-sm">
-              <span className="text-base">✅</span>
-              <div>
-                <p className="font-extrabold text-emerald-800">Tất cả {counts.cancelled} đơn đã hủy đều đã hoàn tiền xong!</p>
-                <p className="text-[11px] font-normal text-emerald-700">Không còn đơn nào nợ tiền khách hàng.</p>
-              </div>
-            </div>
-          ) : null}
-
           {/* Status Filter Tabs (Flex Wrap để điện thoại hiển thị đủ tất cả tab) */}
           <div className="flex flex-wrap gap-1.5 pb-1 -mx-1 px-1" role="tablist" aria-label="Trạng thái đơn hàng">
             {(["pending", "cancelled", "preparing", "ready", "history"] as QueueTab[]).map((tab) => {

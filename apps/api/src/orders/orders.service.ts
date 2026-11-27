@@ -349,7 +349,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
       });
     }
 
-    if (order.userId !== user.id && user.role !== Role.BARISTA) {
+    if (order.userId !== user.id && user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
         message: 'Bạn không có quyền xem đơn hàng này',
@@ -415,7 +415,7 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      if (order.userId !== user.id && user.role !== Role.BARISTA) {
+      if (order.userId !== user.id && user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
         throw new ForbiddenException({
           code: 'FORBIDDEN',
           message: 'Bạn không có quyền hủy đơn hàng này',
@@ -508,10 +508,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   // Chức năng: Hàm confirmRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async confirmRefund(id: number, user: UserContext, dto?: ConfirmRefundDto) {
-    if (user.role !== Role.BARISTA) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
-        message: 'Chỉ nhân viên Barista mới có quyền xác nhận hoàn tiền cho đơn hàng',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền xác nhận hoàn tiền cho đơn hàng',
       });
     }
 
@@ -700,10 +700,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   // Chức năng: Hàm failRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async failRefund(id: number, user: UserContext, dto: FailRefundDto) {
-    if (user.role !== Role.BARISTA) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
-        message: 'Chỉ nhân viên Barista mới có quyền cập nhật trạng thái hoàn tiền',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền cập nhật trạng thái hoàn tiền',
       });
     }
 
@@ -775,10 +775,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   // Chức năng: Hàm holdRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async holdRefund(id: number, user: UserContext, dto?: HoldRefundDto) {
-    if (user.role !== Role.BARISTA) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
-        message: 'Chỉ nhân viên Barista mới có quyền chuyển trạng thái đối soát',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền chuyển trạng thái đối soát',
       });
     }
 
@@ -844,10 +844,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   // Chức năng: Hàm retryRefund(id, user, dto). Cách hoạt động: Thực thi logic xử lý nghiệp vụ của module và trả về kết quả cho nơi gọi.
   async retryRefund(id: number, user: UserContext, dto?: RetryRefundDto) {
-    if (user.role !== Role.BARISTA) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
-        message: 'Chỉ nhân viên Barista mới có quyền thực hiện thử lại hoàn tiền',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền thực hiện thử lại hoàn tiền',
       });
     }
 
@@ -1001,10 +1001,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   // Chức năng: Chuyển đổi trạng thái đơn hàng theo máy trạng thái. Cách hoạt động: Kiểm tra transition hợp lệ, nếu lên COMPLETED thì gọi LoyaltyService cộng điểm thưởng cho khách.
   async updateOrderStatus(id: number, nextStatus: OrderStatus, user: UserContext) {
-    if (user.role !== Role.BARISTA) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
-        message: 'Chỉ nhân viên Barista mới có quyền đổi trạng thái đơn hàng',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền đổi trạng thái đơn hàng',
       });
     }
 
@@ -1094,10 +1094,10 @@ export class OrdersService implements OnModuleInit, OnModuleDestroy {
 
   // Chức năng: Lấy dữ liệu BaristaOrders. Cách hoạt động: Truy vấn dữ liệu từ PostgreSQL qua Prisma và trả về kết quả đã định dạng.
   async getBaristaOrders(query: { status?: string; page?: number; limit?: number }, user: UserContext) {
-    if (user.role !== Role.BARISTA) {
+    if (user.role !== Role.BARISTA && user.role !== Role.MANAGER) {
       throw new ForbiddenException({
         code: 'FORBIDDEN',
-        message: 'Chỉ nhân viên Barista mới có quyền xem hàng đợi đơn hàng',
+        message: 'Chỉ nhân viên Barista hoặc Manager mới có quyền xem hàng đợi đơn hàng',
       });
     }
 
