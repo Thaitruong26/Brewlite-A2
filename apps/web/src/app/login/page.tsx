@@ -63,6 +63,14 @@ export default function LoginPage() {
     setFormError("");
   }
 
+  // Chức năng: Hàm fillManager. Cách hoạt động: Điền sẵn thông tin tài khoản Manager mẫu để kiểm thử nhanh.
+  function fillManager() {
+    setEmail("manager@brewlite.com");
+    setPassword("Manager@123");
+    setErrors({});
+    setFormError("");
+  }
+
   return <section className="w-full px-4 py-6 flex flex-col gap-6">
     <div className="w-full">
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">Tài khoản BrewLite</p>
@@ -78,6 +86,9 @@ export default function LoginPage() {
         </button>
         <button type="button" onClick={fillBarista} className="rounded-lg bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800 hover:bg-emerald-200 cursor-pointer">
           ☕ Barista
+        </button>
+        <button type="button" onClick={fillManager} className="rounded-lg bg-amber-100 px-2.5 py-1 font-medium text-amber-900 hover:bg-amber-200 cursor-pointer">
+          👑 Manager
         </button>
       </div>
 
